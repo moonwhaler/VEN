@@ -4,7 +4,7 @@ use tracing::info;
 use ffmpeg_autoencoder::{
     cli::{CliArgs, handle_commands},
     config::{Config, ProfileManager},
-    utils::{setup_logging, find_video_files, generate_uuid_filename, FfmpegWrapper, Result, Error, FileLogger},
+    utils::{setup_logging, find_video_files, generate_uuid_filename, FfmpegWrapper, Result, Error, FileLogger, ProgressMonitor},
     encoding::{EncodingMode, FilterBuilder, CrfEncoder, AbrEncoder, CbrEncoder, modes::Encoder},
     stream::preservation::StreamPreservation,
     hardware::cuda::{CudaAccelerator, HardwareAcceleration},
@@ -215,7 +215,7 @@ async fn process_single_file(
         output_path.file_name().unwrap_or_default().to_string_lossy()
     ))?;
 
-    let mut child = match encoding_mode {
+    let child = match encoding_mode {
         EncodingMode::CRF => {
             let encoder = CrfEncoder;
             encoder.encode(
@@ -261,7 +261,25 @@ async fn process_single_file(
     };
 
     let start_time = std::time::Instant::now();
-    let status = child.wait().await?;
+    
+    // Initialize progress monitor with frame calculation
+    let mut progress_monitor = ProgressMonitor::new(metadata.duration, metadata.fps, ffmpeg.clone());
+    let total_frames = if metadata.fps > 0.0 && metadata.duration > 0.0 {
+        (metadata.duration * metadata.fps as f64) as u32
+    } else {
+        0
+    };
+    
+    progress_monitor.set_message(&format!(
+        "Encoding {} ({}x{}, {:.1}fps, {} frames)", 
+        input_path.file_name().unwrap_or_default().to_string_lossy(),
+        metadata.width,
+        metadata.height,
+        metadata.fps,
+        total_frames
+    ));
+    
+    let status = progress_monitor.monitor_encoding(child).await?;
     let duration = start_time.elapsed();
 
     let output_size = std::fs::metadata(output_path).map(|m| m.len()).ok();

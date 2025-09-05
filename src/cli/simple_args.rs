@@ -124,7 +124,7 @@ impl CliArgs {
         } else if self.verbose {
             "info"
         } else {
-            "warn"
+            "info"  // Default to info level so users can see what's happening
         }
     }
 

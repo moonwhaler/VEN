@@ -24,7 +24,15 @@ static SPEED_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 static SIZE_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"size=\s*(\d+)kB").unwrap()
+    Regex::new(r"(?:size|Lsize)=\s*(\d+)k?iB").unwrap()
+});
+
+static BITRATE_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"bitrate=\s*([0-9.]+)kbits/s").unwrap()
+});
+
+static FPS_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"fps=\s*([0-9.]+)").unwrap()
 });
 
 #[derive(Debug, Clone)]
@@ -154,7 +162,12 @@ impl FfmpegWrapper {
         Ok(child)
     }
 
-    pub async fn parse_progress_line(&self, line: &str, total_duration: f64) -> Option<ProgressInfo> {
+    pub fn parse_progress_line(&self, line: &str, total_duration: f64) -> Option<ProgressInfo> {
+        // Skip lines that don't contain progress information
+        if !line.contains("frame=") {
+            return None;
+        }
+
         let mut progress = ProgressInfo {
             frame: None,
             fps: None,
@@ -165,6 +178,12 @@ impl FfmpegWrapper {
             progress_percentage: 0.0,
         };
 
+        // Parse frame count
+        if let Some(captures) = FRAME_REGEX.captures(line) {
+            progress.frame = captures[1].parse().ok();
+        }
+
+        // Parse current time
         if let Some(captures) = PROGRESS_REGEX.captures(line) {
             let hours: u32 = captures[1].parse().ok()?;
             let minutes: u32 = captures[2].parse().ok()?;
@@ -179,21 +198,34 @@ impl FfmpegWrapper {
             };
         }
 
-        if let Some(captures) = FRAME_REGEX.captures(line) {
-            progress.frame = captures[1].parse().ok();
+        // Parse fps
+        if let Some(captures) = FPS_REGEX.captures(line) {
+            progress.fps = captures[1].parse().ok();
         }
 
+        // Parse speed
         if let Some(captures) = SPEED_REGEX.captures(line) {
             progress.speed = captures[1].parse().ok();
         }
 
+        // Parse size (look for "Lsize=" format)
         if let Some(captures) = SIZE_REGEX.captures(line) {
             if let Ok(size_kb) = captures[1].parse::<u64>() {
                 progress.total_size = Some(size_kb * 1024);
             }
         }
 
-        Some(progress)
+        // Parse bitrate
+        if let Some(captures) = BITRATE_REGEX.captures(line) {
+            progress.bitrate = Some(format!("{}kbps", &captures[1]));
+        }
+
+        // Only return progress info if we have meaningful data
+        if progress.frame.is_some() || progress.time > 0.0 {
+            Some(progress)
+        } else {
+            None
+        }
     }
 
     fn parse_video_metadata(&self, data: serde_json::Value, input_path: &str) -> Result<VideoMetadata> {

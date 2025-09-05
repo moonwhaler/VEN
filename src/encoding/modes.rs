@@ -93,6 +93,16 @@ impl Encoder for CrfEncoder {
         let stream_preservation = crate::stream::preservation::StreamPreservation::new(ffmpeg.clone());
         args.extend(stream_preservation.get_metadata_args(stream_mapping, custom_title));
 
+        // Add progress monitoring (like bash implementation)
+        let progress_file = format!("/tmp/ffmpeg_progress_{}.txt", std::process::id());
+        args.extend(vec![
+            "-progress".to_string(),
+            progress_file,
+            "-nostats".to_string(),
+            "-stats_period".to_string(),
+            "0.5".to_string(),
+        ]);
+        
         // Add container optimization
         args.extend(vec![
             "-movflags".to_string(),
@@ -299,6 +309,16 @@ impl AbrEncoder {
         // Add metadata and stream-specific settings from stream preservation
         let stream_preservation = crate::stream::preservation::StreamPreservation::new(ffmpeg.clone());
         args.extend(stream_preservation.get_metadata_args(stream_mapping, custom_title));
+
+        // Add progress monitoring (like bash implementation)
+        let progress_file = format!("/tmp/ffmpeg_progress_{}.txt", std::process::id());
+        args.extend(vec![
+            "-progress".to_string(),
+            progress_file,
+            "-nostats".to_string(),
+            "-stats_period".to_string(),
+            "0.5".to_string(),
+        ]);
 
         // Add container optimization
         args.extend(vec![
