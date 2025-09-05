@@ -1,0 +1,457 @@
+# FFmpeg Autoencoder Configuration
+# Modern YAML-based configuration replacing the bash config.sh
+
+# Application Settings
+app:
+  temp_dir: "/tmp"
+  stats_prefix: "ffmpeg_stats"
+  max_concurrent_jobs: 1
+  
+# External Tool Paths
+tools:
+  ffmpeg: "ffmpeg"
+  ffprobe: "ffprobe"
+  nnedi_weights: "/home/christian/Documents/source/ffmpeg_autoencoder/neural/nnedi3_weights.bin"
+
+# Logging Configuration
+logging:
+  level: "info"  # trace, debug, info, warn, error
+  show_timestamps: true
+  colored_output: true
+
+# Progress Tracking
+progress:
+  update_interval_ms: 1000
+  stall_detection_seconds: 15
+  show_eta: true
+  show_file_size: true
+
+# Analysis Settings
+analysis:
+  complexity_analysis:
+    enabled: true
+    sample_points: [0.1, 0.25, 0.5, 0.75, 0.9]  # Percentage points for grain detection
+    methods:
+      - "high_frequency"
+      - "local_variance"
+      - "edge_detection"
+      - "dark_scene"
+  
+  crop_detection:
+    enabled: true
+    # Number of evenly distributed sample points across video duration
+    sample_count: 3  # 3 evenly spaced samples (start, middle, end with margins)
+    
+    # Advanced settings for different content types
+    sdr_crop_limit: 24      # Crop detection threshold for SDR content
+    hdr_crop_limit: 64      # Crop detection threshold for HDR content  
+    min_pixel_change_percent: 1.0  # Only apply crops that remove >1% of pixels
+  
+  hdr_detection:
+    enabled: true
+    color_space_patterns:
+      - "bt2020"
+      - "rec2020"
+    transfer_patterns:
+      - "smpte2084"
+      - "arib-std-b67"
+
+# Web Search Integration
+web_search:
+  enabled: true
+  timeout_seconds: 10
+  user_agent: "FFmpeg-Autoencoder/3.0"
+  simulation_mode: false  # Set to true for testing without actual web requests
+  
+# Content Type Classification Thresholds
+content_classification:
+  grain_thresholds:
+    low: 20
+    medium: 50
+    high: 80
+  motion_thresholds:
+    low: 10
+    medium: 30
+    high: 60
+  scene_change_thresholds:
+    low: 5
+    medium: 15
+    high: 25
+
+# Encoding Profiles
+profiles:
+  movie:
+    title: "Standard Movie"
+    base_crf: 22
+    base_bitrate: 10000
+    hdr_bitrate: 13000
+    content_type: "film"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      no-sao: true
+      bframes: 5
+      b-adapt: 2
+      ref: 4
+      psy-rd: 1.5
+      psy-rdoq: 2.0
+      aq-mode: 2
+      aq-strength: 0.9
+      deblock: "-1,-1"
+      rc-lookahead: 40
+      merange: 57
+      max-tu-size: 32
+      ctu: 64
+      rd: 4
+      rdoq-level: 2
+      qcomp: 0.70
+      weightb: true
+      weightp: true
+      cutree: true
+      me: "hex"
+      subme: 3
+
+  movie_mid_grain:
+    title: "Movies with lighter grain"
+    base_crf: 21
+    base_bitrate: 11000
+    hdr_bitrate: 14000
+    content_type: "film"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      no-sao: true
+      bframes: 5
+      b-adapt: 2
+      ref: 4
+      psy-rd: 2.0
+      psy-rdoq: 2.5
+      aq-mode: 2
+      aq-strength: 0.8
+      deblock: "-2,-2"
+      rc-lookahead: 40
+      merange: 57
+      max-tu-size: 32
+      ctu: 64
+      rd: 4
+      rdoq-level: 2
+      qcomp: 0.65
+      weightb: true
+      weightp: true
+      cutree: true
+      me: "hex"
+      subme: 4
+      rskip: 2
+      rskip-edge-threshold: 2
+      rect: true
+      strong-intra-smoothing: false
+
+  movie_size_focused:
+    title: "Standard Movie (smaller size)"
+    base_crf: 22
+    base_bitrate: 10000
+    hdr_bitrate: 13000
+    content_type: "film"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      rc-lookahead: 80
+      aq-mode: 2
+      repeat-headers: false
+      strong-intra-smoothing: true
+      bframes: 4
+      b-adapt: 2
+      frame-threads: 0
+      qcomp: 0.60
+      me: "hex"
+      subme: 4
+
+  heavy_grain:
+    title: "4K heavy grain (consider using --denoise)"
+    base_crf: 21
+    base_bitrate: 12000
+    hdr_bitrate: 15000
+    content_type: "heavy_grain"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      selective-sao: 2
+      deblock: "-1,-1"
+      aq-mode: 3
+      psy-rd: 0.8
+      psy-rdoq: 1.0
+      rskip: 2
+      rskip-edge-threshold: 2
+      bframes: 5
+      b-adapt: 2
+      ref: 6
+      rc-lookahead: 60
+      ctu: 64
+      rd: 4
+      rdoq-level: 2
+      qcomp: 0.75
+      keyint: 240
+      min-keyint: 24
+      me: "hex"
+      subme: 7
+      merange: 57
+
+  "3d_cgi":
+    title: "3D CGI (Pixar-like)"
+    base_crf: 22
+    base_bitrate: 10000
+    hdr_bitrate: 13000
+    content_type: "3d_animation"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      limit-sao: 1
+      deblock: "1,1"
+      aq-mode: 3
+      aq-strength: 0.9
+      psy-rd: 1.6
+      psy-rdoq: 1.5
+      rskip: 2
+      rskip-edge-threshold: 2
+      bframes: 5
+      b-adapt: 2
+      ref: 5
+      rc-lookahead: 60
+      ctu: 64
+      rd: 4
+      rdoq-level: 2
+      qcomp: 0.75
+      weightb: true
+      weightp: true
+      cutree: true
+      keyint: 240
+      min-keyint: 24
+      me: "hex"
+      subme: 7
+      merange: 57
+
+  "3d_complex":
+    title: "3D complex content (Arcane-like)"
+    base_crf: 22
+    base_bitrate: 11000
+    hdr_bitrate: 14000
+    content_type: "3d_animation"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      no-sao: true
+      deblock: "1,1"
+      aq-mode: 3
+      aq-strength: 1.0
+      psy-rd: 2.0
+      psy-rdoq: 2.5
+      rskip: 2
+      rskip-edge-threshold: 2
+      bframes: 6
+      b-adapt: 2
+      ref: 6
+      rc-lookahead: 80
+      ctu: 64
+      rd: 4
+      rdoq-level: 2
+      qcomp: 0.75
+      weightb: true
+      weightp: true
+      cutree: true
+      keyint: 240
+      min-keyint: 24
+      me: "hex"
+      subme: 6
+      merange: 57
+
+  anime:
+    title: "Anime"
+    base_crf: 23
+    base_bitrate: 9000
+    hdr_bitrate: 12000
+    content_type: "anime"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      limit-sao: 1
+      deblock: "1,1"
+      aq-mode: 3
+      aq-strength: 0.8
+      psy-rd: 1.1
+      psy-rdoq: 1.0
+      rskip: 2
+      rskip-edge-threshold: 2
+      bframes: 4
+      b-adapt: 2
+      ref: 6
+      rc-lookahead: 60
+      ctu: 64
+      rd: 4
+      rdoq-level: 2
+      qcomp: 0.75
+      keyint: 240
+      min-keyint: 24
+      me: "hex"
+      subme: 6
+      merange: 57
+
+  classic_anime:
+    title: "Classic 90s Anime with finer details"
+    base_crf: 22
+    base_bitrate: 10000
+    hdr_bitrate: 12000
+    content_type: "classic_anime"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      limit-sao: 1
+      deblock: "0,0"
+      aq-mode: 3
+      aq-strength: 0.8
+      psy-rd: 0.9
+      psy-rdoq: 1.0
+      rskip: 2
+      rskip-edge-threshold: 2
+      bframes: 5
+      b-adapt: 2
+      ref: 6
+      rc-lookahead: 80
+      ctu: 64
+      rd: 4
+      rdoq-level: 2
+      qcomp: 0.75
+      keyint: 240
+      min-keyint: 24
+      me: "hex"
+      subme: 5
+      merange: 57
+
+  "4k":
+    title: "General 4K balanced optimization"
+    base_crf: 22
+    base_bitrate: 15000
+    hdr_bitrate: 20000
+    content_type: "mixed"
+    x265_params:
+      preset: "medium"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      no-sao: true
+      bframes: 4
+      b-adapt: 2
+      ref: 4
+      psy-rd: 1.2
+      psy-rdoq: 1.8
+      aq-mode: 2
+      aq-strength: 0.9
+      deblock: "-1,-1"
+      rc-lookahead: 40
+      merange: 57
+      max-tu-size: 32
+      ctu: 64
+      rd: 4
+      rdoq-level: 2
+      qcomp: 0.65
+      weightb: true
+      weightp: true
+      cutree: true
+      me: "hex"
+      subme: 4
+
+  "4k_heavy_grain":
+    title: "4K heavy grain preservation with selective SAO"
+    base_crf: 21
+    base_bitrate: 18000
+    hdr_bitrate: 24000
+    content_type: "heavy_grain"
+    x265_params:
+      preset: "medium"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      selective-sao: 2
+      deblock: "-1,-1"
+      aq-mode: 3
+      aq-strength: 1.0
+      psy-rd: 0.8
+      psy-rdoq: 1.0
+      rskip: 2
+      rskip-edge-threshold: 2
+      bframes: 5
+      b-adapt: 2
+      ref: 6
+      rc-lookahead: 60
+      ctu: 64
+      rd: 4
+      rdoq-level: 2
+      qcomp: 0.75
+      keyint: 240
+      min-keyint: 24
+      me: "hex"
+      subme: 7
+      merange: 57
+
+# Content-Aware Parameter Adaptation
+content_adaptation:
+  crf_modifiers:
+    anime: 0.2
+    classic_anime: 0.5
+    3d_animation: -0.4
+    film: 0.0
+    heavy_grain: -0.8
+    light_grain: -0.3
+    action: -0.2
+    clean_digital: 0.3
+    mixed: 0.0
+  
+  bitrate_multipliers:
+    anime: 0.90
+    classic_anime: 0.85
+    3d_animation: 1.05
+    film: 1.0
+    heavy_grain: 1.25
+    light_grain: 1.10
+    action: 1.15
+    clean_digital: 0.80
+    mixed: 1.0
+
+# Hardware Acceleration Settings
+hardware:
+  cuda:
+    enabled: false
+    fallback_to_software: true
+    decode_acceleration: true
+    filter_acceleration: true
+  
+# Video Filter Settings
+filters:
+  deinterlace:
+    primary_method: "nnedi"
+    fallback_method: "yadif"
+    nnedi_settings:
+      field: "auto"
+  
+  denoise:
+    filter: "hqdn3d"
+    params: "1:1:2:2"
+    hardware_variant: "nlmeans"
+  
+  crop:
+    # DEPRECATED: This section is unused. 
+    # Actual crop detection settings are in analysis.crop_detection section.
+    # Keeping this for backward compatibility only.
+    auto_detect: true
+    validation:
+      min_change_percent: 1.0
+      temporal_samples: 3  # IGNORED: analysis.crop_detection.sample_points is used instead
+  
+  scale:
+    algorithm: "lanczos"
+    preserve_aspect_ratio: true

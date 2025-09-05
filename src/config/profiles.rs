@@ -1,0 +1,279 @@
+use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use crate::utils::{Result, Error};
+use super::types::{ContentType, RawProfile};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EncodingProfile {
+    pub name: String,
+    pub title: String,
+    pub base_crf: f32,
+    pub base_bitrate: u32,
+    pub hdr_bitrate: u32,
+    pub content_type: ContentType,
+    pub x265_params: HashMap<String, String>,
+}
+
+impl EncodingProfile {
+    pub fn from_raw(name: String, raw: RawProfile) -> Result<Self> {
+        let content_type = ContentType::from_str(&raw.content_type)
+            .ok_or_else(|| Error::profile(format!("Invalid content type: {}", raw.content_type)))?;
+
+        let x265_params = raw
+            .x265_params
+            .into_iter()
+            .map(|(k, v)| {
+                let value_str = match v {
+                    serde_yaml::Value::String(s) => s,
+                    serde_yaml::Value::Number(n) => n.to_string(),
+                    serde_yaml::Value::Bool(b) => if b { "1".to_string() } else { "0".to_string() },
+                    _ => {
+                        return Err(Error::profile(format!(
+                            "Unsupported parameter value type for {}: {:?}",
+                            k, v
+                        )));
+                    }
+                };
+                Ok((k, value_str))
+            })
+            .collect::<Result<HashMap<String, String>>>()?;
+
+        Ok(EncodingProfile {
+            name,
+            title: raw.title,
+            base_crf: raw.base_crf,
+            base_bitrate: raw.base_bitrate,
+            hdr_bitrate: raw.hdr_bitrate,
+            content_type,
+            x265_params,
+        })
+    }
+
+    pub fn calculate_adaptive_crf(&self, crf_modifier: f32, is_hdr: bool) -> f32 {
+        let mut crf = self.base_crf + crf_modifier;
+        if is_hdr {
+            crf += 2.0;
+        }
+        crf.max(1.0).min(51.0)
+    }
+
+    pub fn calculate_adaptive_bitrate(&self, bitrate_multiplier: f32, is_hdr: bool) -> u32 {
+        let base = if is_hdr { self.hdr_bitrate } else { self.base_bitrate };
+        (base as f32 * bitrate_multiplier) as u32
+    }
+
+    pub fn build_x265_params_string(&self, mode_specific_params: Option<&HashMap<String, String>>) -> String {
+        let mut params = self.x265_params.clone();
+        
+        if let Some(mode_params) = mode_specific_params {
+            for (key, value) in mode_params {
+                params.insert(key.clone(), value.clone());
+            }
+        }
+
+        let param_strs: Vec<String> = params
+            .into_iter()
+            .map(|(key, value)| {
+                if value.is_empty() || value == "true" || value == "1" {
+                    key
+                } else if value == "false" || value == "0" {
+                    format!("no-{}", key)
+                } else {
+                    format!("{}={}", key, value)
+                }
+            })
+            .collect();
+
+        param_strs.join(":")
+    }
+}
+
+pub struct ProfileManager {
+    profiles: HashMap<String, EncodingProfile>,
+}
+
+impl ProfileManager {
+    pub fn new() -> Self {
+        Self {
+            profiles: HashMap::new(),
+        }
+    }
+
+    pub fn load_profiles(&mut self, raw_profiles: HashMap<String, RawProfile>) -> Result<()> {
+        self.profiles.clear();
+        
+        for (name, raw_profile) in raw_profiles {
+            let profile = EncodingProfile::from_raw(name.clone(), raw_profile)?;
+            self.profiles.insert(name, profile);
+        }
+        
+        Ok(())
+    }
+
+    pub fn get_profile(&self, name: &str) -> Option<&EncodingProfile> {
+        self.profiles.get(name)
+    }
+
+    pub fn list_profiles(&self) -> Vec<&String> {
+        self.profiles.keys().collect()
+    }
+
+    pub fn get_profiles_by_content_type(&self, content_type: ContentType) -> Vec<&EncodingProfile> {
+        self.profiles
+            .values()
+            .filter(|p| p.content_type == content_type)
+            .collect()
+    }
+
+    pub fn recommend_profile_for_resolution(&self, width: u32, height: u32, content_type: ContentType) -> Option<&EncodingProfile> {
+        let profiles = self.get_profiles_by_content_type(content_type);
+        
+        if profiles.is_empty() {
+            return None;
+        }
+
+        let is_4k = width >= 3840 || height >= 2160;
+        
+        match content_type {
+            ContentType::Anime => {
+                if is_4k {
+                    self.get_profile("anime")
+                } else {
+                    self.get_profile("anime")
+                }
+            }
+            ContentType::ClassicAnime => {
+                self.get_profile("classic_anime")
+            }
+            ContentType::Animation3D => {
+                if is_4k {
+                    self.get_profile("3d_complex")
+                        .or_else(|| self.get_profile("3d_cgi"))
+                } else {
+                    self.get_profile("3d_cgi")
+                }
+            }
+            ContentType::Film => {
+                if is_4k {
+                    self.get_profile("movie")
+                } else {
+                    self.get_profile("movie_size_focused")
+                        .or_else(|| self.get_profile("movie"))
+                }
+            }
+            ContentType::HeavyGrain => {
+                self.get_profile("heavy_grain")
+            }
+            ContentType::LightGrain => {
+                self.get_profile("movie_mid_grain")
+                    .or_else(|| self.get_profile("movie"))
+            }
+            ContentType::Action | ContentType::CleanDigital => {
+                if is_4k {
+                    self.get_profile("movie")
+                } else {
+                    self.get_profile("movie_size_focused")
+                        .or_else(|| self.get_profile("movie"))
+                }
+            }
+            ContentType::Mixed => {
+                if is_4k {
+                    self.get_profile("4k")
+                        .or_else(|| self.get_profile("movie"))
+                } else {
+                    self.get_profile("movie")
+                }
+            }
+        }
+    }
+}
+
+impl Default for ProfileManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_yaml::Value;
+
+    fn create_test_raw_profile() -> RawProfile {
+        let mut x265_params = HashMap::new();
+        x265_params.insert("preset".to_string(), Value::String("slow".to_string()));
+        x265_params.insert("crf".to_string(), Value::Number(serde_yaml::Number::from(22)));
+        x265_params.insert("weightb".to_string(), Value::Bool(true));
+        x265_params.insert("no-sao".to_string(), Value::Bool(false));
+
+        RawProfile {
+            title: "Test Profile".to_string(),
+            base_crf: 22.0,
+            base_bitrate: 10000,
+            hdr_bitrate: 13000,
+            content_type: "film".to_string(),
+            x265_params,
+        }
+    }
+
+    #[test]
+    fn test_encoding_profile_from_raw() {
+        let raw = create_test_raw_profile();
+        let profile = EncodingProfile::from_raw("test".to_string(), raw).unwrap();
+
+        assert_eq!(profile.name, "test");
+        assert_eq!(profile.title, "Test Profile");
+        assert_eq!(profile.base_crf, 22.0);
+        assert_eq!(profile.content_type, ContentType::Film);
+        assert_eq!(profile.x265_params.get("preset"), Some(&"slow".to_string()));
+        assert_eq!(profile.x265_params.get("crf"), Some(&"22".to_string()));
+        assert_eq!(profile.x265_params.get("weightb"), Some(&"1".to_string()));
+        assert_eq!(profile.x265_params.get("no-sao"), Some(&"0".to_string()));
+    }
+
+    #[test]
+    fn test_calculate_adaptive_crf() {
+        let raw = create_test_raw_profile();
+        let profile = EncodingProfile::from_raw("test".to_string(), raw).unwrap();
+
+        assert_eq!(profile.calculate_adaptive_crf(0.0, false), 22.0);
+        assert_eq!(profile.calculate_adaptive_crf(0.5, false), 22.5);
+        assert_eq!(profile.calculate_adaptive_crf(0.0, true), 24.0);
+        assert_eq!(profile.calculate_adaptive_crf(0.5, true), 24.5);
+    }
+
+    #[test]
+    fn test_calculate_adaptive_bitrate() {
+        let raw = create_test_raw_profile();
+        let profile = EncodingProfile::from_raw("test".to_string(), raw).unwrap();
+
+        assert_eq!(profile.calculate_adaptive_bitrate(1.0, false), 10000);
+        assert_eq!(profile.calculate_adaptive_bitrate(1.5, false), 15000);
+        assert_eq!(profile.calculate_adaptive_bitrate(1.0, true), 13000);
+        assert_eq!(profile.calculate_adaptive_bitrate(1.5, true), 19500);
+    }
+
+    #[test]
+    fn test_build_x265_params_string() {
+        let raw = create_test_raw_profile();
+        let profile = EncodingProfile::from_raw("test".to_string(), raw).unwrap();
+
+        let params_str = profile.build_x265_params_string(None);
+        assert!(params_str.contains("preset=slow"));
+        assert!(params_str.contains("crf=22"));
+        assert!(params_str.contains("weightb"));
+        assert!(params_str.contains("no-no-sao"));
+    }
+
+    #[test]
+    fn test_profile_manager() {
+        let mut manager = ProfileManager::new();
+        let mut profiles = HashMap::new();
+        profiles.insert("test".to_string(), create_test_raw_profile());
+
+        manager.load_profiles(profiles).unwrap();
+        assert!(manager.get_profile("test").is_some());
+        assert!(manager.get_profile("nonexistent").is_none());
+        assert_eq!(manager.list_profiles().len(), 1);
+    }
+}
