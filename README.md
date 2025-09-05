@@ -46,8 +46,7 @@ This is a complete rewrite of the original bash-based ffmpeg autoencoder, design
 
 ### Prerequisites
 - **Rust 1.70+**: Install from [rustup.rs](https://rustup.rs/)
-- **FFmpeg**: With libx265 support and advanced filters
-- **FFprobe**: For video analysis
+- **FFmpeg**: With libx265 support and advanced filters (includes FFprobe)
 - **NNEDI Weights** (optional): For neural network deinterlacing
 
 ### Build from Source
@@ -64,13 +63,17 @@ The binary will be available at `target/release/ffmpeg-encoder`.
 #### Ubuntu/Debian
 ```bash
 sudo apt update
-sudo apt install ffmpeg bc uuid-runtime jq python3 python3-numpy
+sudo apt install ffmpeg
 ```
 
-#### macOS (Homebrew)
+#### macOS (Homebrew)  
 ```bash
-brew install ffmpeg bc ossp-uuid jq python3
-pip3 install numpy
+brew install ffmpeg
+```
+
+#### Arch Linux
+```bash
+sudo pacman -S ffmpeg
 ```
 
 #### NNEDI Weights (Optional)
@@ -267,34 +270,6 @@ src/
 - **Progress parsing**: Real-time progress extraction
 - **Metadata analysis**: Comprehensive video property detection
 
-## 🔄 Migration from Bash Version
-
-This Rust version maintains full compatibility with the original bash script while providing:
-
-### ✅ Preserved Features
-- All 8 original encoding profiles
-- Multi-mode encoding (CRF/ABR/CBR)
-- Automatic profile selection
-- Content-adaptive parameters
-- HDR detection and handling
-- Crop detection
-- Batch processing with UUID naming
-- Hardware acceleration support
-
-### 🚀 Improvements
-- **Performance**: Faster startup and processing
-- **Reliability**: Type safety and error handling
-- **Maintainability**: Clean, modular code structure
-- **Configuration**: Human-readable YAML configuration
-- **Logging**: Structured, configurable logging
-- **Testing**: Comprehensive unit tests
-
-### 🔧 Migration Steps
-1. Install Rust and build the application
-2. Copy your existing `config.yaml` or use the provided template
-3. Update any custom profiles to YAML format
-4. Replace bash script calls with the new binary
-
 ## 🧪 Testing
 
 Run the test suite:
@@ -312,14 +287,11 @@ cargo test -- --nocapture
 ## 📋 Requirements
 
 ### Runtime Dependencies
-- **FFmpeg** with libx265 support
-- **FFprobe** for video analysis
-- **System utilities**: Available automatically on most systems
+- **FFmpeg** with libx265 support (includes FFprobe)
 
 ### Optional Dependencies
 - **NNEDI weights**: For neural network deinterlacing
 - **CUDA**: For hardware acceleration
-- **Python3 + NumPy**: For advanced grain analysis (fallback available)
 
 ## 🚀 Performance
 
@@ -357,17 +329,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Original bash version contributors
 - FFmpeg development team
 - Rust community for excellent tooling
 - x265 project for the encoder
-
-## 📞 Support
-
-- **Issues**: Use GitHub Issues for bug reports and feature requests
-- **Documentation**: Check the [Wiki](../../wiki) for detailed guides
-- **Community**: Join our [Discussions](../../discussions)
-
----
-
-**Built with ❤️ in Rust for professional video encoding workflows**
