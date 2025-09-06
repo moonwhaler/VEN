@@ -84,7 +84,7 @@ async fn show_profile(config: &Config, name: &str) -> Result<()> {
         println!("  CRF Modifier: {:+.1}", crf_modifier);
         println!("  Bitrate Multiplier: {:.2}x", bitrate_multiplier);
         println!("  SDR Adaptive CRF: {:.1}", profile.base_crf + crf_modifier);
-        println!("  HDR Adaptive CRF: {:.1}", profile.base_crf + crf_modifier + 2.0);
+        println!("  HDR Adaptive CRF: {:.1}", profile.base_crf + crf_modifier + config.analysis.hdr_detection.crf_adjustment);
         println!("  SDR Adaptive Bitrate: {}kbps", 
                 (profile.base_bitrate as f32 * bitrate_multiplier) as u32);
         println!("  HDR Adaptive Bitrate: {}kbps", 

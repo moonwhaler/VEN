@@ -49,12 +49,12 @@ impl EncodingProfile {
         })
     }
 
-    pub fn calculate_adaptive_crf(&self, crf_modifier: f32, is_hdr: bool) -> f32 {
+    pub fn calculate_adaptive_crf(&self, crf_modifier: f32, is_hdr: bool, hdr_crf_adjustment: f32) -> f32 {
         let mut crf = self.base_crf + crf_modifier;
         if is_hdr {
-            crf += 2.0;
+            crf += hdr_crf_adjustment;
         }
-        crf.max(1.0).min(51.0)
+        crf.clamp(1.0, 51.0)
     }
 
     pub fn calculate_adaptive_bitrate(&self, bitrate_multiplier: f32, is_hdr: bool) -> u32 {
@@ -63,11 +63,60 @@ impl EncodingProfile {
     }
 
     pub fn build_x265_params_string(&self, mode_specific_params: Option<&HashMap<String, String>>) -> String {
+        self.build_x265_params_string_with_hdr(mode_specific_params, None, None, None, None, None, None)
+    }
+
+    pub fn build_x265_params_string_with_hdr(
+        &self, 
+        mode_specific_params: Option<&HashMap<String, String>>,
+        is_hdr: Option<bool>,
+        color_space: Option<&String>,
+        transfer_function: Option<&String>,
+        color_primaries: Option<&String>,
+        master_display: Option<&String>,
+        max_cll: Option<&String>
+    ) -> String {
         let mut params = self.x265_params.clone();
         
         if let Some(mode_params) = mode_specific_params {
             for (key, value) in mode_params {
                 params.insert(key.clone(), value.clone());
+            }
+        }
+
+        // Inject HDR-specific parameters if HDR content is detected
+        if is_hdr.unwrap_or(false) {
+            // Map color_space to colormatrix parameter
+            if let Some(cs) = color_space {
+                if cs.contains("bt2020") || cs.contains("rec2020") {
+                    params.insert("colormatrix".to_string(), "bt2020nc".to_string());
+                }
+            }
+
+            // Map transfer_function to transfer parameter
+            if let Some(tf) = transfer_function {
+                if tf.contains("smpte2084") {
+                    params.insert("transfer".to_string(), "smpte2084".to_string());
+                } else if tf.contains("arib-std-b67") {
+                    params.insert("transfer".to_string(), "arib-std-b67".to_string());
+                }
+            }
+
+            // Map color_primaries to colorprim parameter
+            if let Some(cp) = color_primaries {
+                if cp.contains("bt2020") || cp.contains("rec2020") {
+                    params.insert("colorprim".to_string(), "bt2020".to_string());
+                }
+            }
+
+            // Add master-display metadata if available
+            if let Some(md) = master_display {
+                params.insert("master-display".to_string(), md.clone());
+            }
+
+            // Add max-cll metadata if available
+            if let Some(cll) = max_cll {
+                params.insert("max-cll".to_string(), format!("{},400", cll));
             }
         }
 
@@ -236,10 +285,10 @@ mod tests {
         let raw = create_test_raw_profile();
         let profile = EncodingProfile::from_raw("test".to_string(), raw).unwrap();
 
-        assert_eq!(profile.calculate_adaptive_crf(0.0, false), 22.0);
-        assert_eq!(profile.calculate_adaptive_crf(0.5, false), 22.5);
-        assert_eq!(profile.calculate_adaptive_crf(0.0, true), 24.0);
-        assert_eq!(profile.calculate_adaptive_crf(0.5, true), 24.5);
+        assert_eq!(profile.calculate_adaptive_crf(0.0, false, 2.0), 22.0);
+        assert_eq!(profile.calculate_adaptive_crf(0.5, false, 2.0), 22.5);
+        assert_eq!(profile.calculate_adaptive_crf(0.0, true, 2.0), 24.0);
+        assert_eq!(profile.calculate_adaptive_crf(0.5, true, 2.0), 24.5);
     }
 
     #[test]
@@ -263,6 +312,58 @@ mod tests {
         assert!(params_str.contains("crf=22"));
         assert!(params_str.contains("weightb"));
         assert!(params_str.contains("no-no-sao"));
+    }
+
+    #[test]
+    fn test_hdr_parameter_injection() {
+        let raw = create_test_raw_profile();
+        let profile = EncodingProfile::from_raw("test".to_string(), raw).unwrap();
+
+        let color_space = Some("bt2020nc".to_string());
+        let transfer_function = Some("smpte2084".to_string());
+        let color_primaries = Some("bt2020".to_string());
+        let master_display = Some("G(0.17,0.797)B(0.131,0.046)R(0.708,0.292)WP(0.3127,0.329)L(1000,0.01)".to_string());
+        let max_cll = Some("1000".to_string());
+
+        let params_str = profile.build_x265_params_string_with_hdr(
+            None,
+            Some(true), // is_hdr = true
+            color_space.as_ref(),
+            transfer_function.as_ref(),
+            color_primaries.as_ref(),
+            master_display.as_ref(),
+            max_cll.as_ref(),
+        );
+
+        // Verify HDR-specific parameters are injected
+        assert!(params_str.contains("colormatrix=bt2020nc"));
+        assert!(params_str.contains("transfer=smpte2084"));
+        assert!(params_str.contains("colorprim=bt2020"));
+        assert!(params_str.contains("master-display=G(0.17,0.797)B(0.131,0.046)R(0.708,0.292)WP(0.3127,0.329)L(1000,0.01)"));
+        assert!(params_str.contains("max-cll=1000,400"));
+    }
+
+    #[test]
+    fn test_no_hdr_parameter_injection_when_sdr() {
+        let raw = create_test_raw_profile();
+        let profile = EncodingProfile::from_raw("test".to_string(), raw).unwrap();
+
+        let params_str = profile.build_x265_params_string_with_hdr(
+            None,
+            Some(false), // is_hdr = false
+            Some(&"bt709".to_string()),
+            Some(&"bt709".to_string()),
+            Some(&"bt709".to_string()),
+            None,
+            None,
+        );
+
+        // Verify HDR parameters are NOT injected for SDR content
+        assert!(!params_str.contains("colormatrix=bt2020nc"));
+        assert!(!params_str.contains("transfer=smpte2084"));
+        assert!(!params_str.contains("colorprim=bt2020"));
+        assert!(!params_str.contains("master-display"));
+        assert!(!params_str.contains("max-cll"));
     }
 
     #[test]

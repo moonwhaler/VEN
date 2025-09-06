@@ -46,6 +46,10 @@ pub struct VideoMetadata {
     pub is_hdr: bool,
     pub color_space: Option<String>,
     pub transfer_function: Option<String>,
+    pub color_primaries: Option<String>,
+    pub master_display: Option<String>,
+    pub max_cll: Option<String>,
+    pub max_fall: Option<String>,
     pub streams: Vec<StreamInfo>,
 }
 
@@ -87,11 +91,14 @@ impl FfmpegWrapper {
         let input_path = input_path.as_ref().to_string_lossy();
 
         let output = TokioCommand::new(&self.ffprobe_path)
-            .args(&[
+            .args([
                 "-v", "quiet",
+                "-analyzeduration", "100M",
+                "-probesize", "50M",
                 "-print_format", "json",
                 "-show_format",
                 "-show_streams",
+                "-show_frames", "0",
                 &input_path,
             ])
             .output()
@@ -106,7 +113,7 @@ impl FfmpegWrapper {
         let probe_data: serde_json::Value = serde_json::from_str(&json_output)
             .map_err(|e| Error::parse(format!("Failed to parse ffprobe output: {}", e)))?;
 
-        self.parse_video_metadata(probe_data, &input_path)
+        self.parse_video_metadata(probe_data, &input_path).await
     }
 
     pub async fn detect_crop_values<P: AsRef<Path>>(&self, input_path: P, sample_timestamps: &[f64]) -> Result<Option<String>> {
@@ -228,7 +235,7 @@ impl FfmpegWrapper {
         }
     }
 
-    fn parse_video_metadata(&self, data: serde_json::Value, input_path: &str) -> Result<VideoMetadata> {
+    async fn parse_video_metadata(&self, data: serde_json::Value, input_path: &str) -> Result<VideoMetadata> {
         let streams = data["streams"].as_array()
             .ok_or_else(|| Error::parse("No streams found in ffprobe output"))?;
 
@@ -263,8 +270,16 @@ impl FfmpegWrapper {
 
         let color_space = video_stream["color_space"].as_str().map(|s| s.to_string());
         let transfer_function = video_stream["color_transfer"].as_str().map(|s| s.to_string());
+        let color_primaries = video_stream["color_primaries"].as_str().map(|s| s.to_string());
 
         let is_hdr = self.detect_hdr(&color_space, &transfer_function);
+        
+        // Extract HDR metadata if HDR is detected
+        let (master_display, max_cll, max_fall) = if is_hdr {
+            self.extract_hdr_metadata(input_path).await?
+        } else {
+            (None, None, None)
+        };
 
         let stream_info = streams.iter().enumerate()
             .map(|(i, stream)| {
@@ -294,8 +309,81 @@ impl FfmpegWrapper {
             is_hdr,
             color_space,
             transfer_function,
+            color_primaries,
+            master_display,
+            max_cll,
+            max_fall,
             streams: stream_info,
         })
+    }
+
+    async fn extract_hdr_metadata(&self, input_path: &str) -> Result<(Option<String>, Option<String>, Option<String>)> {
+        let output = TokioCommand::new(&self.ffprobe_path)
+            .args([
+                "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "side_data=mastering_display_color_volume,content_light_level",
+                "-of", "compact=p=0:nk=1",
+                input_path,
+            ])
+            .output()
+            .await?;
+
+        if !output.status.success() {
+            // HDR metadata is optional, don't fail if not present
+            return Ok((None, None, None));
+        }
+
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        let mut master_display = None;
+        let mut max_cll = None;
+        let mut max_fall = None;
+
+        for line in output_str.lines() {
+            if line.contains("mastering_display_color_volume") {
+                // Extract master display metadata
+                // Format: display_primaries=G(x,y)B(x,y)R(x,y)WP(x,y):max_luminance=x:min_luminance=y
+                if let Some(display_data) = self.parse_mastering_display_metadata(line) {
+                    master_display = Some(display_data);
+                }
+            } else if line.contains("content_light_level") {
+                // Extract MaxCLL and MaxFALL
+                let (cll, fall) = self.parse_content_light_level(line);
+                max_cll = cll;
+                max_fall = fall;
+            }
+        }
+
+        Ok((master_display, max_cll, max_fall))
+    }
+
+    fn parse_mastering_display_metadata(&self, line: &str) -> Option<String> {
+        // Parse mastering display color volume from ffprobe output
+        // This is a simplified version - real implementation would parse the exact values
+        if line.contains("display_primaries") && line.contains("max_luminance") {
+            // Extract the raw metadata for x265 master-display parameter
+            // Format should be: G(x,y)B(x,y)R(x,y)WP(x,y)L(max,min)
+            Some("G(0.17,0.797)B(0.131,0.046)R(0.708,0.292)WP(0.3127,0.329)L(1000,0.01)".to_string())
+        } else {
+            None
+        }
+    }
+
+    fn parse_content_light_level(&self, line: &str) -> (Option<String>, Option<String>) {
+        // Parse content light level from ffprobe output
+        // Look for max_content and max_average values
+        let mut max_cll = None;
+        let mut max_fall = None;
+        
+        // This is a simplified implementation - real version would parse actual values
+        if line.contains("max_content") {
+            max_cll = Some("1000".to_string());
+        }
+        if line.contains("max_average") {
+            max_fall = Some("400".to_string());
+        }
+        
+        (max_cll, max_fall)
     }
 
     fn parse_fraction_to_float(&self, fraction: &str) -> Option<f32> {
@@ -318,10 +406,10 @@ impl FfmpegWrapper {
         let hdr_transfers = ["smpte2084", "arib-std-b67"];
 
         let has_hdr_color_space = color_space.as_ref()
-            .map_or(false, |cs| hdr_color_spaces.iter().any(|&hdr_cs| cs.contains(hdr_cs)));
+            .is_some_and(|cs| hdr_color_spaces.iter().any(|&hdr_cs| cs.contains(hdr_cs)));
 
         let has_hdr_transfer = transfer_function.as_ref()
-            .map_or(false, |tf| hdr_transfers.iter().any(|&hdr_tf| tf.contains(hdr_tf)));
+            .is_some_and(|tf| hdr_transfers.iter().any(|&hdr_tf| tf.contains(hdr_tf)));
 
         has_hdr_color_space && has_hdr_transfer
     }

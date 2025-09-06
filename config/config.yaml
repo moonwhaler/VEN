@@ -55,6 +55,7 @@ analysis:
     transfer_patterns:
       - "smpte2084"
       - "arib-std-b67"
+    crf_adjustment: 2.0  
 
 # Web Search Integration
 web_search:
@@ -442,15 +443,6 @@ filters:
     filter: "hqdn3d"
     params: "1:1:2:2"
     hardware_variant: "nlmeans"
-  
-  crop:
-    # DEPRECATED: This section is unused. 
-    # Actual crop detection settings are in analysis.crop_detection section.
-    # Keeping this for backward compatibility only.
-    auto_detect: true
-    validation:
-      min_change_percent: 1.0
-      temporal_samples: 3  # IGNORED: analysis.crop_detection.sample_points is used instead
   
   scale:
     algorithm: "lanczos"

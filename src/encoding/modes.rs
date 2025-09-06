@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use crate::utils::{Result, Error, FfmpegWrapper};
+use crate::utils::ffmpeg::VideoMetadata;
 use crate::config::EncodingProfile;
 use crate::encoding::FilterChain;
 use crate::stream::preservation::StreamMapping;
@@ -41,6 +42,7 @@ pub trait Encoder {
         profile: &EncodingProfile,
         filters: &FilterChain,
         stream_mapping: &StreamMapping,
+        metadata: &VideoMetadata,
         adaptive_crf: f32,
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
@@ -58,6 +60,7 @@ impl Encoder for CrfEncoder {
         profile: &EncodingProfile,
         filters: &FilterChain,
         stream_mapping: &StreamMapping,
+        metadata: &VideoMetadata,
         adaptive_crf: f32,
         _adaptive_bitrate: u32,
         custom_title: Option<&str>,
@@ -68,7 +71,15 @@ impl Encoder for CrfEncoder {
         let mut mode_params = HashMap::new();
         mode_params.insert("crf".to_string(), adaptive_crf.to_string());
 
-        let x265_params = profile.build_x265_params_string(Some(&mode_params));
+        let x265_params = profile.build_x265_params_string_with_hdr(
+            Some(&mode_params),
+            Some(metadata.is_hdr),
+            metadata.color_space.as_ref(),
+            metadata.transfer_function.as_ref(),
+            metadata.color_primaries.as_ref(),
+            metadata.master_display.as_ref(),
+            metadata.max_cll.as_ref(),
+        );
 
         let mut args = vec![
             "-i".to_string(),
@@ -130,6 +141,7 @@ impl Encoder for AbrEncoder {
         profile: &EncodingProfile,
         filters: &FilterChain,
         stream_mapping: &StreamMapping,
+        metadata: &VideoMetadata,
         adaptive_crf: f32,
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
@@ -141,6 +153,7 @@ impl Encoder for AbrEncoder {
             profile,
             filters,
             stream_mapping,
+            metadata,
             adaptive_crf,
             adaptive_bitrate,
             custom_title,
@@ -158,6 +171,7 @@ impl AbrEncoder {
         profile: &EncodingProfile,
         filters: &FilterChain,
         stream_mapping: &StreamMapping,
+        metadata: &VideoMetadata,
         adaptive_crf: f32,
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
@@ -175,6 +189,7 @@ impl AbrEncoder {
             &input_path_str,
             profile,
             filters,
+            metadata,
             adaptive_bitrate,
             &stats_file,
             is_cbr,
@@ -192,6 +207,7 @@ impl AbrEncoder {
             profile,
             filters,
             stream_mapping,
+            metadata,
             adaptive_crf,
             adaptive_bitrate,
             custom_title,
@@ -209,6 +225,7 @@ impl AbrEncoder {
         input_path: &str,
         profile: &EncodingProfile,
         filters: &FilterChain,
+        metadata: &VideoMetadata,
         adaptive_bitrate: u32,
         stats_file: &str,
         is_cbr: bool,
@@ -227,7 +244,15 @@ impl AbrEncoder {
             mode_params.insert("nal-hrd".to_string(), "cbr".to_string());
         }
 
-        let x265_params = profile.build_x265_params_string(Some(&mode_params));
+        let x265_params = profile.build_x265_params_string_with_hdr(
+            Some(&mode_params),
+            Some(metadata.is_hdr),
+            metadata.color_space.as_ref(),
+            metadata.transfer_function.as_ref(),
+            metadata.color_primaries.as_ref(),
+            metadata.master_display.as_ref(),
+            metadata.max_cll.as_ref(),
+        );
 
         let mut args = vec![
             "-i".to_string(),
@@ -267,6 +292,7 @@ impl AbrEncoder {
         profile: &EncodingProfile,
         filters: &FilterChain,
         stream_mapping: &StreamMapping,
+        metadata: &VideoMetadata,
         _adaptive_crf: f32,
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
@@ -285,7 +311,15 @@ impl AbrEncoder {
             mode_params.insert("nal-hrd".to_string(), "cbr".to_string());
         }
 
-        let x265_params = profile.build_x265_params_string(Some(&mode_params));
+        let x265_params = profile.build_x265_params_string_with_hdr(
+            Some(&mode_params),
+            Some(metadata.is_hdr),
+            metadata.color_space.as_ref(),
+            metadata.transfer_function.as_ref(),
+            metadata.color_primaries.as_ref(),
+            metadata.master_display.as_ref(),
+            metadata.max_cll.as_ref(),
+        );
 
         let mut args = vec![
             "-i".to_string(),
@@ -373,6 +407,7 @@ impl Encoder for CbrEncoder {
         profile: &EncodingProfile,
         filters: &FilterChain,
         stream_mapping: &StreamMapping,
+        metadata: &VideoMetadata,
         adaptive_crf: f32,
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
@@ -386,6 +421,7 @@ impl Encoder for CbrEncoder {
             profile,
             filters,
             stream_mapping,
+            metadata,
             adaptive_crf,
             adaptive_bitrate,
             custom_title,

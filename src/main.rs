@@ -129,7 +129,7 @@ async fn process_single_file(
     let crf_modifier = config.get_crf_modifier(selected_profile.content_type);
     let bitrate_multiplier = config.get_bitrate_multiplier(selected_profile.content_type);
 
-    let adaptive_crf = selected_profile.calculate_adaptive_crf(crf_modifier, metadata.is_hdr);
+    let adaptive_crf = selected_profile.calculate_adaptive_crf(crf_modifier, metadata.is_hdr, config.analysis.hdr_detection.crf_adjustment);
     let adaptive_bitrate = selected_profile.calculate_adaptive_bitrate(bitrate_multiplier, metadata.is_hdr);
 
     // Crop detection with logging
@@ -225,6 +225,7 @@ async fn process_single_file(
                 &selected_profile,
                 &filter_chain,
                 &stream_mapping,
+                &metadata,
                 adaptive_crf,
                 adaptive_bitrate,
                 args.title.as_deref(),
@@ -239,6 +240,7 @@ async fn process_single_file(
                 &selected_profile,
                 &filter_chain,
                 &stream_mapping,
+                &metadata,
                 adaptive_crf,
                 adaptive_bitrate,
                 args.title.as_deref(),
@@ -253,6 +255,7 @@ async fn process_single_file(
                 &selected_profile,
                 &filter_chain,
                 &stream_mapping,
+                &metadata,
                 adaptive_crf,
                 adaptive_bitrate,
                 args.title.as_deref(),

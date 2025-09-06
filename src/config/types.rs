@@ -110,6 +110,7 @@ pub struct HdrDetectionConfig {
     pub enabled: bool,
     pub color_space_patterns: Vec<String>,
     pub transfer_patterns: Vec<String>,
+    pub crf_adjustment: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

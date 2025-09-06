@@ -137,6 +137,7 @@ impl Default for Config {
                     enabled: true,
                     color_space_patterns: vec!["bt2020".to_string(), "rec2020".to_string()],
                     transfer_patterns: vec!["smpte2084".to_string(), "arib-std-b67".to_string()],
+                    crf_adjustment: 2.0,
                 },
             },
             web_search: WebSearchConfig {
