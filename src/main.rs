@@ -14,18 +14,35 @@ use ffmpeg_autoencoder::{
 async fn main() -> Result<()> {
     let args = CliArgs::parse();
 
+    // If no arguments provided and no info commands, show help
+    if !args.is_info_command() && args.input.is_empty() {
+        use clap::CommandFactory;
+        let mut cmd = CliArgs::command();
+        cmd.print_help().unwrap();
+        println!(); // Add newline after help
+        return Ok(());
+    }
+
     // Validate arguments first
     args.validate()?;
+
+    // Handle info commands that don't need config first
+    if args.help_topic.is_some() {
+        if let Some(topic) = &args.help_topic {
+            args.print_help_topic(topic);
+            return Ok(());
+        }
+    }
 
     let config = Config::load(&args.config)?;
 
     setup_logging(
-        &args.get_log_level(),
+        args.get_log_level(),
         config.logging.show_timestamps,
         config.logging.colored_output && args.should_use_color(),
     )?;
 
-    // Handle info commands first
+    // Handle info commands that need config
     if handle_commands(&args, &config).await? {
         return Ok(()); // Info command was handled
     }
@@ -338,7 +355,7 @@ async fn classify_content_from_metadata(
 ) -> Result<ffmpeg_autoencoder::config::ContentType> {
     use ffmpeg_autoencoder::config::ContentType;
     
-    let is_4k = metadata.width >= 3840 || metadata.height >= 2160;
+    let _is_4k = metadata.width >= 3840 || metadata.height >= 2160;
     let bitrate_per_pixel = metadata.bitrate.unwrap_or(0) as f64 / 
                            (metadata.width as f64 * metadata.height as f64);
 
@@ -346,8 +363,6 @@ async fn classify_content_from_metadata(
         Ok(ContentType::HeavyGrain)
     } else if bitrate_per_pixel > 0.015 {
         Ok(ContentType::LightGrain)
-    } else if is_4k {
-        Ok(ContentType::Film)
     } else {
         Ok(ContentType::Film)
     }

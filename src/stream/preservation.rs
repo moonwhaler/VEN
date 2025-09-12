@@ -277,13 +277,13 @@ impl StreamPreservation {
 
         // Map video stream (first video stream only for encoding)
         if let Some(video_stream) = streams.iter().find(|s| s.codec_type == "video") {
-            args.push(format!("-map"));
+            args.push("-map".to_string());
             args.push(format!("0:{}", video_stream.index));
         }
 
         // Map all audio streams with lossless copy
         for audio_stream in streams.iter().filter(|s| s.codec_type == "audio") {
-            args.push(format!("-map"));
+            args.push("-map".to_string());
             args.push(format!("0:{}", audio_stream.index));
         }
 
@@ -295,7 +295,7 @@ impl StreamPreservation {
 
         // Map all subtitle streams with lossless copy
         for subtitle_stream in streams.iter().filter(|s| s.codec_type == "subtitle") {
-            args.push(format!("-map"));
+            args.push("-map".to_string());
             args.push(format!("0:{}", subtitle_stream.index));
         }
 
@@ -307,7 +307,7 @@ impl StreamPreservation {
 
         // Map data/attachment streams (fonts, images, etc.)
         for data_stream in streams.iter().filter(|s| s.codec_type == "data" || s.codec_type == "attachment") {
-            args.push(format!("-map"));
+            args.push("-map".to_string());
             args.push(format!("0:{}", data_stream.index));
         }
 
@@ -327,7 +327,7 @@ impl StreamPreservation {
 
         // Preserve all existing metadata first
         for (key, value) in &mapping.metadata {
-            args.push(format!("-metadata"));
+            args.push("-metadata".to_string());
             args.push(format!("{}={}", key, value));
         }
 

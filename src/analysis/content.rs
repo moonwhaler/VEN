@@ -26,8 +26,6 @@ impl ContentAnalyzer {
             ContentType::HeavyGrain
         } else if bitrate_per_pixel > 0.015 {
             ContentType::LightGrain
-        } else if metadata.width >= 3840 || metadata.height >= 2160 {
-            ContentType::Film
         } else {
             ContentType::Film
         };

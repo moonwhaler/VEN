@@ -447,3 +447,12 @@ filters:
   scale:
     algorithm: "lanczos"
     preserve_aspect_ratio: true
+
+  crop:
+    # DEPRECATED: This section is unused. 
+    # Actual crop detection settings are in analysis.crop_detection section.
+    # Keeping this for backward compatibility only.
+    auto_detect: true
+    validation:
+      min_change_percent: 1.0
+      temporal_samples: 3  # IGNORED: analysis.crop_detection.sample_points is used instead

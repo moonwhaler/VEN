@@ -137,9 +137,7 @@ impl WebSearchClassifier {
     }
 
     fn clean_title(&self, title: &str) -> String {
-        title.replace('.', " ")
-            .replace('_', " ")
-            .replace('-', " ")
+        title.replace(['.', '_', '-'], " ")
             .trim()
             .to_string()
     }

@@ -30,12 +30,14 @@ impl FilterChain {
     pub fn is_empty(&self) -> bool {
         self.filters.is_empty()
     }
-    
-    pub fn to_string(&self) -> String {
+}
+
+impl std::fmt::Display for FilterChain {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.filters.is_empty() {
-            "None".to_string()
+            write!(f, "None")
         } else {
-            self.filters.join(",")
+            write!(f, "{}", self.filters.join(","))
         }
     }
 }

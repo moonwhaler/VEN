@@ -121,8 +121,6 @@ impl CliArgs {
     pub fn get_log_level(&self) -> &'static str {
         if self.debug {
             "debug"
-        } else if self.verbose {
-            "info"
         } else {
             "info"  // Default to info level so users can see what's happening
         }
@@ -159,13 +157,15 @@ impl CliArgs {
                     )));
                 }
             }
+        }
 
-            if !self.config.exists() {
-                return Err(crate::utils::Error::validation(format!(
-                    "Configuration file does not exist: {}",
-                    self.config.display()
-                )));
-            }
+        // Only validate config file for commands that actually need it
+        if (self.should_encode() || self.list_profiles || self.show_profile.is_some() || self.validate_config) 
+            && !self.config.exists() {
+            return Err(crate::utils::Error::validation(format!(
+                "Configuration file does not exist: {}",
+                self.config.display()
+            )));
         }
 
         // Validate encoding mode

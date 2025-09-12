@@ -98,7 +98,6 @@ impl FfmpegWrapper {
                 "-print_format", "json",
                 "-show_format",
                 "-show_streams",
-                "-show_frames", "0",
                 &input_path,
             ])
             .output()

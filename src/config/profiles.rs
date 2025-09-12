@@ -185,11 +185,7 @@ impl ProfileManager {
         
         match content_type {
             ContentType::Anime => {
-                if is_4k {
-                    self.get_profile("anime")
-                } else {
-                    self.get_profile("anime")
-                }
+                self.get_profile("anime")
             }
             ContentType::ClassicAnime => {
                 self.get_profile("classic_anime")

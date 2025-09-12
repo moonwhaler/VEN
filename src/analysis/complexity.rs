@@ -97,7 +97,7 @@ impl ComplexityAnalyzer {
 
     async fn analyze_high_frequency_noise(&self, input_path: &Path, timestamp: f64) -> Result<f32> {
         let output = Command::new("ffmpeg")
-            .args(&[
+            .args([
                 "-ss", &timestamp.to_string(),
                 "-i", &input_path.to_string_lossy(),
                 "-t", "1",
