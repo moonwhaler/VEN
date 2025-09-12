@@ -15,17 +15,11 @@ pub struct ComplexityMetrics {
     pub complexity_score: f32,
 }
 
-pub struct ComplexityAnalyzer {
-    sample_points: Vec<f32>,
-    methods: Vec<String>,
-}
+pub struct ComplexityAnalyzer {}
 
 impl ComplexityAnalyzer {
-    pub fn new(sample_points: Vec<f32>, methods: Vec<String>) -> Self {
-        Self { 
-            sample_points,
-            methods,
-        }
+    pub fn new() -> Self {
+        Self {}
     }
 
     pub async fn analyze_complexity<P: AsRef<Path>>(
@@ -74,53 +68,44 @@ impl ComplexityAnalyzer {
     ) -> Result<f32> {
         let mut grain_levels = Vec::new();
         
-        // Sample at 5 percentage-based points: 10%, 25%, 50%, 75%, 90%
-        for &sample_point in &self.sample_points {
-            let timestamp = duration * sample_point as f64;
-            
-            for method in &self.methods {
-                let grain_level = match method.as_str() {
-                    "high_frequency" => self.analyze_high_frequency_noise(input_path.as_ref(), timestamp).await?,
-                    "local_variance" => self.analyze_local_variance(input_path.as_ref(), timestamp).await?,
-                    "edge_detection" => self.analyze_edge_detection(input_path.as_ref(), timestamp).await?,
-                    "dark_scene" => self.analyze_dark_scene(input_path.as_ref(), timestamp).await?,
-                    _ => 0.0,
-                };
-                grain_levels.push(grain_level);
+        // Use bash script's strategic approach: only 3 key sample points (start, middle, end)
+        let strategic_points = vec![
+            60.0,                    // 60s from start
+            duration / 2.0,          // middle
+            duration - 60.0          // 60s from end
+        ];
+        
+        for timestamp in strategic_points {
+            // Skip invalid timestamps
+            if timestamp < 0.0 || timestamp > duration {
+                continue;
             }
+            
+            // Use only the most effective method (local_variance) like bash script's combined approach
+            let grain_level = self.analyze_local_variance(input_path.as_ref(), timestamp).await?;
+            grain_levels.push(grain_level);
         }
         
         // Calculate average grain level
-        let avg_grain = grain_levels.iter().sum::<f32>() / grain_levels.len() as f32;
-        Ok(avg_grain.min(100.0))
+        if grain_levels.is_empty() {
+            Ok(0.0)
+        } else {
+            let avg_grain = grain_levels.iter().sum::<f32>() / grain_levels.len() as f32;
+            Ok(avg_grain.min(100.0))
+        }
     }
 
-    async fn analyze_high_frequency_noise(&self, input_path: &Path, timestamp: f64) -> Result<f32> {
-        let output = Command::new("ffmpeg")
-            .args([
-                "-ss", &timestamp.to_string(),
-                "-i", &input_path.to_string_lossy(),
-                "-t", "1",
-                "-vf", "highpass=f=10,aformat=s16:44100",
-                "-f", "null",
-                "-"
-            ])
-            .output()
-            .await?;
-
-        // Parse ffmpeg output to extract noise level
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        self.extract_noise_level_from_output(&stderr)
-    }
 
     async fn analyze_local_variance(&self, input_path: &Path, timestamp: f64) -> Result<f32> {
-        // Extract frame as PNG for analysis
+        // Extract frame as PNG for analysis using bash script's crop approach
         let temp_frame = format!("/tmp/grain_frame_{}.png", uuid::Uuid::new_v4());
         
         let extract_result = Command::new("ffmpeg")
             .args(&[
                 "-ss", &timestamp.to_string(),
                 "-i", &input_path.to_string_lossy(),
+                "-t", "1",  // Limit to 1 second like bash script
+                "-vf", "crop=400:400:iw/2-200:ih/2-200",  // Use bash script's center crop
                 "-vframes", "1",
                 "-y",
                 &temp_frame
@@ -185,44 +170,14 @@ except Exception as e:
         }
     }
 
-    async fn analyze_edge_detection(&self, input_path: &Path, timestamp: f64) -> Result<f32> {
-        let output = Command::new("ffmpeg")
-            .args(&[
-                "-ss", &timestamp.to_string(),
-                "-i", &input_path.to_string_lossy(),
-                "-t", "1",
-                "-vf", "sobel",
-                "-f", "null",
-                "-"
-            ])
-            .output()
-            .await?;
 
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        self.extract_edge_density_from_output(&stderr)
-    }
-
-    async fn analyze_dark_scene(&self, input_path: &Path, timestamp: f64) -> Result<f32> {
-        let output = Command::new("ffmpeg")
-            .args(&[
-                "-ss", &timestamp.to_string(),
-                "-i", &input_path.to_string_lossy(),
-                "-t", "1",
-                "-vf", "signalstats",
-                "-f", "null",
-                "-"
-            ])
-            .output()
-            .await?;
-
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        self.extract_dark_scene_grain(&stderr)
-    }
 
     async fn calculate_si_ti(&self, input_path: &Path) -> Result<(f32, f32)> {
+        // Use bash script's approach: limit to 30 seconds for SI/TI calculation
         let output = Command::new("ffmpeg")
             .args(&[
                 "-i", &input_path.to_string_lossy(),
+                "-t", "30",  // Limit to 30 seconds like bash script
                 "-vf", "signalstats",
                 "-f", "null",
                 "-"
@@ -240,10 +195,12 @@ except Exception as e:
     }
 
     async fn detect_scene_changes(&self, input_path: &Path) -> Result<u32> {
+        // Use bash script's approach: limit to 60 seconds like the original
         let output = Command::new("ffmpeg")
             .args(&[
                 "-i", &input_path.to_string_lossy(),
-                "-vf", "select='gt(scene,0.3)',metadata=print",
+                "-t", "60",  // Limit analysis to 60 seconds like bash script
+                "-vf", "select='gt(scene,0.3)',showinfo",
                 "-f", "null",
                 "-"
             ])
@@ -270,11 +227,12 @@ except Exception as e:
     }
 
     async fn calculate_frame_complexity(&self, input_path: &Path) -> Result<f32> {
-        // Analyze frame types and their distribution
+        // Analyze frame types and their distribution using bash script's limited sampling approach
         let output = Command::new("ffprobe")
             .args(&[
-                "-v", "quiet",
+                "-v", "error",
                 "-select_streams", "v:0",
+                "-read_intervals", "%+#1800",  // Only analyze first 1800 frames like bash script
                 "-show_frames",
                 "-show_entries", "frame=pict_type",
                 "-of", "csv=p=0",
@@ -302,47 +260,8 @@ except Exception as e:
         Ok(complexity.min(100.0))
     }
 
-    fn extract_noise_level_from_output(&self, output: &str) -> Result<f32> {
-        // Parse ffmpeg output for noise level indicators
-        // This is a simplified implementation
-        if output.contains("noise") || output.contains("grain") {
-            Ok(75.0) // High grain detected
-        } else {
-            Ok(25.0) // Low grain
-        }
-    }
 
-    fn extract_edge_density_from_output(&self, output: &str) -> Result<f32> {
-        // Parse Sobel filter output for edge density
-        static EDGE_REGEX: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"edge_density=([0-9.]+)").unwrap()
-        });
-        
-        if let Some(captures) = EDGE_REGEX.captures(output) {
-            let density: f32 = captures[1].parse().unwrap_or(0.0);
-            Ok(density * 100.0) // Convert to 0-100 scale
-        } else {
-            Ok(30.0) // Default edge density
-        }
-    }
 
-    fn extract_dark_scene_grain(&self, output: &str) -> Result<f32> {
-        // Enhanced grain detection in dark scenes
-        static LUMA_REGEX: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"lavfi\.signalstats\.YAVG=([0-9.]+)").unwrap()
-        });
-        
-        if let Some(captures) = LUMA_REGEX.captures(output) {
-            let luma: f32 = captures[1].parse().unwrap_or(128.0);
-            if luma < 64.0 { // Dark scene
-                Ok(80.0) // Higher grain likelihood in dark scenes
-            } else {
-                Ok(40.0)
-            }
-        } else {
-            Ok(50.0)
-        }
-    }
 
     fn extract_spatial_info(&self, output: &str) -> Result<f32> {
         // Extract spatial information from signalstats
@@ -373,23 +292,15 @@ except Exception as e:
     }
 
     fn count_scene_changes(&self, output: &str) -> Result<u32> {
-        // Count scene changes from select filter output
-        let scene_changes = output.matches("select").count() as u32;
+        // Count scene changes from showinfo filter output (like bash script)
+        let scene_changes = output.matches("Parsed_showinfo").count() as u32;
         Ok(scene_changes)
     }
 }
 
 impl Default for ComplexityAnalyzer {
     fn default() -> Self {
-        Self::new(
-            vec![0.1, 0.25, 0.5, 0.75, 0.9],
-            vec![
-                "high_frequency".to_string(),
-                "local_variance".to_string(), 
-                "edge_detection".to_string(),
-                "dark_scene".to_string(),
-            ],
-        )
+        Self::new()
     }
 }
 
@@ -399,15 +310,7 @@ mod tests {
 
     #[test]
     fn test_complexity_analyzer_creation() {
-        let analyzer = ComplexityAnalyzer::default();
-        assert_eq!(analyzer.sample_points.len(), 5);
-        assert_eq!(analyzer.methods.len(), 4);
+        let _analyzer = ComplexityAnalyzer::default();
     }
 
-    #[test]
-    fn test_extract_noise_level() {
-        let analyzer = ComplexityAnalyzer::default();
-        assert!(analyzer.extract_noise_level_from_output("noise detected").unwrap() > 50.0);
-        assert!(analyzer.extract_noise_level_from_output("clean signal").unwrap() < 50.0);
-    }
 }
