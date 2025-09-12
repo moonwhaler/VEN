@@ -1,4 +1,4 @@
 .claude
 target
 *.lock
-bash_example_script
+*.bash_example_script
