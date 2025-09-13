@@ -203,7 +203,7 @@ mod tests {
     async fn test_validate_config() {
         // Create a temporary config file
         let mut temp_file = NamedTempFile::new().unwrap();
-        writeln!(temp_file, "app:\n  temp_dir: \"/tmp\"\n  stats_prefix: \"test\"\n  max_concurrent_jobs: 1").unwrap();
+        writeln!(temp_file, "app:\n  temp_dir: \"/tmp\"\n  stats_prefix: \"test\"").unwrap();
         writeln!(temp_file, "tools:\n  ffmpeg: \"ffmpeg\"\n  ffprobe: \"ffprobe\"").unwrap();
         writeln!(temp_file, "logging:\n  level: \"info\"\n  show_timestamps: true\n  colored_output: true").unwrap();
         writeln!(temp_file, "profiles: {{}}").unwrap();

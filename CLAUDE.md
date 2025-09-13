@@ -301,7 +301,7 @@ pub enum Error {
 **Key Principles**:
 - **Non-blocking I/O** throughout the application
 - **Process management** with Tokio's async process support
-- **Concurrent file processing** (configurable with `max_concurrent_jobs`)
+- **Sequential file processing** with async operations
 - **Resource cleanup** with proper async Drop implementations
 
 ### Testing Strategy
@@ -437,8 +437,7 @@ valgrind --tool=massif target/release/ffmpeg-encoder -i sample.mkv
 ```yaml
 app:
   temp_dir: "/tmp"                    # Temporary file directory
-  stats_prefix: "ffmpeg2pass"         # Two-pass statistics file prefix  
-  max_concurrent_jobs: 1              # Concurrent encoding jobs
+  stats_prefix: "ffmpeg2pass"         # Two-pass statistics file prefix
 
 tools:
   ffmpeg: "/usr/bin/ffmpeg"           # FFmpeg binary path
