@@ -251,7 +251,7 @@ impl CliArgs {
                 println!("  ffmpeg-encoder -i ~/Videos/Raw/ -p auto -m crf");
                 println!();
                 println!("Manual Overrides:");
-                println!("  ffmpeg-encoder -i input.mkv -p anime -c 1920:800:0:140 -s 1920x1080");
+                println!("  ffmpeg-encoder -i input.mkv -p anime --crop 1920:800:0:140 --denoise");
                 println!("  ffmpeg-encoder -i input.mkv -p auto -t \"Movie Title\"");
             },
             _ => {
