@@ -55,9 +55,6 @@ pub struct EncodingCommand {
     #[arg(short, long)]
     pub crop: Option<String>,
 
-    /// Scale video to specified resolution (widthxheight, -1 for auto)
-    #[arg(short, long)]
-    pub scale: Option<String>,
 
 
     /// Enable video denoising
@@ -157,14 +154,6 @@ impl EncodingCommand {
             }
         }
 
-        if let Some(scale) = &self.scale {
-            if !self.is_valid_scale_format(scale) {
-                return Err(crate::utils::Error::validation(format!(
-                    "Invalid scale format: {} (expected format: widthxheight)",
-                    scale
-                )));
-            }
-        }
 
         Ok(())
     }
@@ -181,15 +170,6 @@ impl EncodingCommand {
         parts.iter().all(|part| part.parse::<u32>().is_ok())
     }
 
-    fn is_valid_scale_format(&self, scale: &str) -> bool {
-        let parts: Vec<&str> = scale.split('x').collect();
-        if parts.len() != 2 {
-            return false;
-        }
-        parts.iter().all(|part| {
-            *part == "-1" || part.parse::<u32>().is_ok()
-        })
-    }
 }
 
 #[cfg(test)]
@@ -269,7 +249,6 @@ impl Default for EncodingCommand {
             title: None,
             mode: "abr".to_string(),
             crop: None,
-            scale: None,
             denoise: false,
             deinterlace: false,
             web_search_force: false,

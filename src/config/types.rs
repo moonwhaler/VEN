@@ -157,17 +157,11 @@ pub struct DenoiseConfig {
 }
 
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ScaleConfig {
-    pub algorithm: String,
-    pub preserve_aspect_ratio: bool,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FiltersConfig {
     pub deinterlace: DeinterlaceConfig,
     pub denoise: DenoiseConfig,
-    pub scale: ScaleConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

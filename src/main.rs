@@ -163,7 +163,6 @@ async fn process_single_file(
         .with_deinterlace(args.deinterlace)?
         .with_denoise(args.denoise)
         .with_crop(crop_values.as_deref())?
-        .with_scale(args.scale.as_deref())?
         .build();
 
     let encoding_mode = EncodingMode::from_string(&args.mode)

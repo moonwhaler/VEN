@@ -57,13 +57,11 @@ impl<'a> FilterBuilder<'a> {
     /// 1. Deinterlacing (NNEDI/yadif)
     /// 2. Denoising (hqdn3d)
     /// 3. Cropping (manual override or auto-detection)
-    /// 4. Scaling (resolution adjustment)
     pub fn build_complete_chain(
         mut self,
         deinterlace: bool,
         denoise: bool, 
         crop: Option<&str>,
-        scale: Option<&str>,
     ) -> Result<FilterChain> {
         // Step 1: Optional Deinterlacing (first in pipeline)
         if deinterlace {
@@ -83,11 +81,6 @@ impl<'a> FilterBuilder<'a> {
             self.chain.add_filter(filter);
         }
         
-        // Step 4: Scaling (last in pipeline)
-        if let Some(scale_value) = scale {
-            let filter = self.build_scale_filter(scale_value)?;
-            self.chain.add_filter(filter);
-        }
         
         Ok(self.chain)
     }
@@ -116,13 +109,6 @@ impl<'a> FilterBuilder<'a> {
         Ok(self)
     }
 
-    pub fn with_scale(mut self, scale: Option<&str>) -> Result<Self> {
-        if let Some(scale_value) = scale {
-            let filter = self.build_scale_filter(scale_value)?;
-            self.chain.add_filter(filter);
-        }
-        Ok(self)
-    }
 
     pub fn build(self) -> FilterChain {
         self.chain
@@ -150,26 +136,6 @@ impl<'a> FilterBuilder<'a> {
         format!("{}={}", denoise_config.filter, denoise_config.params)
     }
     
-    fn build_scale_filter(&self, scale_value: &str) -> Result<String> {
-        let scale_config = &self.config.filters.scale;
-        
-        // Parse widthxheight format, handle -1 for auto
-        let parts: Vec<&str> = scale_value.split('x').collect();
-        if parts.len() != 2 {
-            return Err(Error::encoding("Scale format must be WIDTHxHEIGHT (e.g., 1920x1080, -1x720)"));
-        }
-        
-        let width = parts[0];
-        let height = parts[1];
-        
-        let filter = if scale_config.preserve_aspect_ratio {
-            format!("scale={}:{}:flags={}", width, height, scale_config.algorithm)
-        } else {
-            format!("scale={}:{}:flags={}:force_original_aspect_ratio=disable", width, height, scale_config.algorithm)
-        };
-        
-        Ok(filter)
-    }
 }
 
 // Helper function to validate crop format
@@ -254,10 +220,6 @@ mod tests {
                     filter: "hqdn3d".to_string(),
                     params: "1:1:2:2".to_string(),
                     hardware_variant: "nlmeans".to_string(),
-                },
-                scale: ScaleConfig {
-                    algorithm: "lanczos".to_string(),
-                    preserve_aspect_ratio: true,
                 },
             },
         }

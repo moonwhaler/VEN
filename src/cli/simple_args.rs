@@ -56,9 +56,6 @@ pub struct CliArgs {
     #[arg(short, long, value_name = "W:H:X:Y")]
     pub crop: Option<String>,
 
-    /// Scale video to specified resolution (widthxheight, -1 for auto)
-    #[arg(short, long, value_name = "WxH")]
-    pub scale: Option<String>,
 
 
     /// Enable video denoising (hqdn3d=1:1:2:2)
@@ -180,15 +177,6 @@ impl CliArgs {
             }
         }
 
-        // Validate scale format
-        if let Some(scale) = &self.scale {
-            if !self.is_valid_scale_format(scale) {
-                return Err(crate::utils::Error::validation(format!(
-                    "Invalid scale format: {} (expected format: widthxheight)",
-                    scale
-                )));
-            }
-        }
 
         // Validate profile name
         let valid_profiles = [
@@ -215,15 +203,6 @@ impl CliArgs {
         parts.iter().all(|part| part.parse::<u32>().is_ok())
     }
 
-    fn is_valid_scale_format(&self, scale: &str) -> bool {
-        let parts: Vec<&str> = scale.split('x').collect();
-        if parts.len() != 2 {
-            return false;
-        }
-        parts.iter().all(|part| {
-            *part == "-1" || part.parse::<u32>().is_ok()
-        })
-    }
 
     pub fn print_help_topic(&self, topic: &str) {
         match topic.to_lowercase().as_str() {

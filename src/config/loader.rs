@@ -150,10 +150,6 @@ impl Default for Config {
                     params: "1:1:2:2".to_string(),
                     hardware_variant: "nlmeans".to_string(),
                 },
-                scale: ScaleConfig {
-                    algorithm: "lanczos".to_string(),
-                    preserve_aspect_ratio: true,
-                },
             },
         }
     }
@@ -255,9 +251,6 @@ filters:
     validation:
       min_change_percent: 1.0
       temporal_samples: 3
-  scale:
-    algorithm: "lanczos"
-    preserve_aspect_ratio: true
 "#;
 
         let config: Config = serde_yaml::from_str(yaml).unwrap();

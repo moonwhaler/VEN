@@ -403,8 +403,3 @@ filters:
     filter: "hqdn3d"
     params: "1:1:2:2"
     hardware_variant: "nlmeans"
-  
-  scale:
-    algorithm: "lanczos"
-    preserve_aspect_ratio: true
-

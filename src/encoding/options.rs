@@ -9,7 +9,6 @@ pub struct EncodingOptions {
     pub title: Option<String>,
     pub mode: String,
     pub crop: Option<String>,
-    pub scale: Option<String>,
     pub denoise: bool,
     pub deinterlace: bool,
     pub web_search_enabled: bool,
@@ -26,7 +25,6 @@ impl EncodingOptions {
             title: None,
             mode: "abr".to_string(),
             crop: None,
-            scale: None,
             denoise: false,
             deinterlace: false,
             web_search_enabled: true,
@@ -55,10 +53,6 @@ impl EncodingOptions {
         self
     }
 
-    pub fn with_scale(mut self, scale: Option<String>) -> Self {
-        self.scale = scale;
-        self
-    }
 
 
     pub fn with_denoise(mut self, enabled: bool) -> Self {
@@ -125,14 +119,6 @@ impl EncodingOptions {
             }
         }
 
-        if let Some(scale) = &self.scale {
-            if !self.is_valid_scale_format(scale) {
-                return Err(crate::utils::Error::validation(format!(
-                    "Invalid scale format: {} (expected format: widthxheight)",
-                    scale
-                )));
-            }
-        }
 
         Ok(())
     }
@@ -146,16 +132,6 @@ impl EncodingOptions {
         parts.iter().all(|part| part.parse::<u32>().is_ok())
     }
 
-    fn is_valid_scale_format(&self, scale: &str) -> bool {
-        let parts: Vec<&str> = scale.split('x').collect();
-        if parts.len() != 2 {
-            return false;
-        }
-
-        parts.iter().all(|part| {
-            *part == "-1" || part.parse::<u32>().is_ok()
-        })
-    }
 }
 
 impl Default for EncodingOptions {
@@ -197,17 +173,6 @@ mod tests {
         assert!(!options.is_valid_crop_format("invalid"));
     }
 
-    #[test]
-    fn test_validate_scale_format() {
-        let options = EncodingOptions::default();
-        
-        assert!(options.is_valid_scale_format("1920x1080"));
-        assert!(options.is_valid_scale_format("1280x-1"));
-        assert!(options.is_valid_scale_format("-1x720"));
-        assert!(!options.is_valid_scale_format("1920"));
-        assert!(!options.is_valid_scale_format("1920xabc"));
-        assert!(!options.is_valid_scale_format("invalid"));
-    }
 
     #[test]
     fn test_web_search_logic() {

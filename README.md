@@ -118,7 +118,6 @@ Download `nnedi3_weights.bin` for high-quality deinterlacing and update the path
 - `--deinterlace`: Enable deinterlacing for interlaced content
 - `--hardware`: Enable CUDA hardware acceleration
 - `--crop <CROP>`: Manual crop values (width:height:x:y)
-- `--scale <SCALE>`: Scale to resolution (widthxheight, -1 for auto)
 
 #### Web Search Control
 - `--web-search-force`: Force web search for content classification
