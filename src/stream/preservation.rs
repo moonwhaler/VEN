@@ -114,8 +114,8 @@ impl StreamPreservation {
         
         let output = self.ffmpeg.run_ffprobe(&[
             "-v", "quiet",
-            "-analyzeduration", "5M",  // Optimized: reduced from default for faster analysis
-            "-probesize", "5M",        // Optimized: reduced from default for faster analysis
+            "-analyzeduration", "5M",  // Optimized for faster analysis
+            "-probesize", "5M",        // Optimized for faster analysis
             "-print_format", "json", 
             "-show_streams",
             "-show_format",
@@ -470,10 +470,10 @@ mod tests {
     #[tokio::test]
     async fn test_stream_preservation_creation() {
         let ffmpeg = FfmpegWrapper::new("ffmpeg".to_string(), "ffprobe".to_string());
-        let preservation = StreamPreservation::new(ffmpeg);
+        let _preservation = StreamPreservation::new(ffmpeg);
         
         // Test basic functionality
-        assert!(true); // Placeholder - would need actual test files
+        // Placeholder test - would need actual test files to verify functionality
     }
 
     #[test]
@@ -481,47 +481,46 @@ mod tests {
         let ffmpeg = FfmpegWrapper::new("ffmpeg".to_string(), "ffprobe".to_string());
         let preservation = StreamPreservation::new(ffmpeg);
         
-        let mut streams = Vec::new();
-        
-        // Add sample video stream
-        streams.push(StreamInfo {
-            index: 0,
-            codec_type: "video".to_string(),
-            codec_name: "h264".to_string(),
-            language: None,
-            title: None,
-            disposition: StreamDisposition {
-                default: true,
-                forced: false,
-                comment: false,
-                lyrics: false,
-                karaoke: false,
-                original: false,
-                dub: false,
-                visual_impaired: false,
-                hearing_impaired: false,
+        let streams = vec![
+            // Sample video stream
+            StreamInfo {
+                index: 0,
+                codec_type: "video".to_string(),
+                codec_name: "h264".to_string(),
+                language: None,
+                title: None,
+                disposition: StreamDisposition {
+                    default: true,
+                    forced: false,
+                    comment: false,
+                    lyrics: false,
+                    karaoke: false,
+                    original: false,
+                    dub: false,
+                    visual_impaired: false,
+                    hearing_impaired: false,
+                },
             },
-        });
-        
-        // Add sample audio stream
-        streams.push(StreamInfo {
-            index: 1,
-            codec_type: "audio".to_string(),
-            codec_name: "aac".to_string(),
-            language: Some("eng".to_string()),
-            title: Some("English Audio".to_string()),
-            disposition: StreamDisposition {
-                default: true,
-                forced: false,
-                comment: false,
-                lyrics: false,
-                karaoke: false,
-                original: true,
-                dub: false,
-                visual_impaired: false,
-                hearing_impaired: false,
-            },
-        });
+            // Sample audio stream
+            StreamInfo {
+                index: 1,
+                codec_type: "audio".to_string(),
+                codec_name: "aac".to_string(),
+                language: Some("eng".to_string()),
+                title: Some("English Audio".to_string()),
+                disposition: StreamDisposition {
+                    default: true,
+                    forced: false,
+                    comment: false,
+                    lyrics: false,
+                    karaoke: false,
+                    original: true,
+                    dub: false,
+                    visual_impaired: false,
+                    hearing_impaired: false,
+                },
+            }
+        ];
         
         let mapping_args = preservation.build_mapping_arguments(&streams).unwrap();
         

@@ -187,7 +187,7 @@ async fn process_single_file(
     // Log video analysis results
     file_logger.log_analysis_results(
         &metadata,
-        None, // TODO: Add grain level when available  
+        None, // Grain level detection not implemented  
     )?;
     
     // Log crop detection results

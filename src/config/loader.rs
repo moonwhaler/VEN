@@ -111,7 +111,20 @@ impl Default for Config {
                     crf_adjustment: 2.0,
                 },
             },
-            profiles: HashMap::new(),
+            profiles: {
+                let mut profiles = HashMap::new();
+                let mut x265_params = HashMap::new();
+                x265_params.insert("preset".to_string(), serde_yaml::Value::String("medium".to_string()));
+                profiles.insert("default".to_string(), RawProfile {
+                    title: "Default Profile".to_string(),
+                    base_crf: 23.0,
+                    base_bitrate: 5000,
+                    hdr_bitrate: 6000,
+                    content_type: "film".to_string(),
+                    x265_params,
+                });
+                profiles
+            },
             filters: FiltersConfig {
                 deinterlace: DeinterlaceConfig {
                     primary_method: "nnedi".to_string(),
@@ -132,13 +145,15 @@ impl Default for Config {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
-    use std::io::Write;
+    // Unused imports removed
 
     #[test]
     fn test_config_validation() {
         let mut config = Config::default();
-        assert!(config.validate().is_ok());
+        match config.validate() {
+            Ok(()) => {},
+            Err(e) => panic!("Config validation failed: {}", e)
+        }
 
         config.app.max_concurrent_jobs = 0;
         assert!(config.validate().is_err());
@@ -178,6 +193,7 @@ analysis:
     enabled: true
     color_space_patterns: ["bt2020"]
     transfer_patterns: ["smpte2084"]
+    crf_adjustment: 2.0
 
 
 profiles:
@@ -212,6 +228,6 @@ filters:
         assert_eq!(config.logging.level, "debug");
         assert!(!config.logging.show_timestamps);
         assert_eq!(config.progress.update_interval_ms, 500);
-        assert!(!config.web_search.enabled);
+        // web_search was removed from config
     }
 }

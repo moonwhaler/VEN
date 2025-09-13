@@ -408,8 +408,10 @@ mod tests {
 
     #[test]
     fn test_dynamic_sample_timestamps() {
-        let mut config = CropDetectionConfig::default();
-        config.sample_count = 5;
+        let config = CropDetectionConfig {
+            sample_count: 5,
+            ..Default::default()
+        };
         
         // Test with 120 second video (2 minutes)
         let timestamps = config.get_sample_timestamps(120.0);
@@ -427,8 +429,10 @@ mod tests {
 
     #[test]
     fn test_single_sample_timestamp() {
-        let mut config = CropDetectionConfig::default();
-        config.sample_count = 1;
+        let config = CropDetectionConfig {
+            sample_count: 1,
+            ..Default::default()
+        };
         
         let timestamps = config.get_sample_timestamps(120.0);
         assert_eq!(timestamps.len(), 1);
@@ -449,8 +453,10 @@ mod tests {
 
     #[test]
     fn test_zero_sample_count() {
-        let mut config = CropDetectionConfig::default();
-        config.sample_count = 0;
+        let config = CropDetectionConfig {
+            sample_count: 0,
+            ..Default::default()
+        };
         
         let timestamps = config.get_sample_timestamps(120.0);
         assert_eq!(timestamps.len(), 0);

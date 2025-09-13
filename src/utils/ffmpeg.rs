@@ -91,7 +91,7 @@ impl FfmpegWrapper {
 
         let output = TokioCommand::new(&self.ffprobe_path)
             .args([
-                "-v", "error",  // Use 'error' instead of 'quiet' like bash script
+                "-v", "error",  // Reduced verbosity for cleaner output
                 "-analyzeduration", "5M",  // Reduced from 100M to 5M for faster analysis
                 "-probesize", "5M",        // Reduced from 50M to 5M for faster analysis
                 "-print_format", "json", 

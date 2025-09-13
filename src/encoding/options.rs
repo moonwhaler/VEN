@@ -115,11 +115,12 @@ impl Default for EncodingOptions {
 mod tests {
     use super::*;
     use tempfile::NamedTempFile;
+    use std::path::Path;
 
     #[test]
     fn test_encoding_options_builder() {
         let temp_input = NamedTempFile::new().unwrap();
-        let options = EncodingOptions::new(temp_input.path(), "output.mkv")
+        let options = EncodingOptions::new(temp_input.path(), Path::new("output.mkv"))
             .with_profile("anime".to_string())
             .with_mode("crf".to_string())
             .with_title("Test Movie".to_string())

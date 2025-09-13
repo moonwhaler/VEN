@@ -105,7 +105,7 @@ impl Encoder for CrfEncoder {
         let stream_preservation = crate::stream::preservation::StreamPreservation::new(ffmpeg.clone());
         args.extend(stream_preservation.get_metadata_args(stream_mapping, custom_title));
 
-        // Add progress monitoring (like bash implementation)
+        // Add progress monitoring for real-time feedback
         let progress_file = format!("/tmp/ffmpeg_progress_{}.txt", std::process::id());
         args.extend(vec![
             "-progress".to_string(),
@@ -348,7 +348,7 @@ impl AbrEncoder {
         let stream_preservation = crate::stream::preservation::StreamPreservation::new(ffmpeg.clone());
         args.extend(stream_preservation.get_metadata_args(stream_mapping, custom_title));
 
-        // Add progress monitoring (like bash implementation)
+        // Add progress monitoring for real-time feedback
         let progress_file = format!("/tmp/ffmpeg_progress_{}.txt", std::process::id());
         args.extend(vec![
             "-progress".to_string(),
