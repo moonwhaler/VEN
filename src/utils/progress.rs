@@ -22,7 +22,7 @@ impl ProgressMonitor {
             .progress_chars("█▉▊▋▌▍▎▏ "),
         );
 
-        // Calculate total frames using duration × framerate (like bash implementation)
+        // Calculate total frames using duration × framerate
         let total_frames = if fps > 0.0 && total_duration > 0.0 {
             Some((total_duration * fps as f64) as u32)
         } else {
@@ -48,7 +48,7 @@ impl ProgressMonitor {
         // Get progress file path (same format as in encoding)
         let progress_file = format!("/tmp/ffmpeg_progress_{}.txt", std::process::id());
         
-        // Monitor progress file like bash implementation
+        // Monitor progress file for encoding updates
         let mut interval_timer = interval(Duration::from_millis(500));
         
         loop {
@@ -86,7 +86,7 @@ impl ProgressMonitor {
             progress_percentage: 0.0,
         };
 
-        // Parse key=value lines (like bash implementation)
+        // Parse key=value lines from FFmpeg progress output
         let lines: Vec<&str> = content.lines().collect();
         let last_lines: Vec<&str> = lines.iter().rev().take(20).cloned().collect();
         
@@ -136,7 +136,7 @@ impl ProgressMonitor {
     }
 
     fn update_progress(&mut self, info: &crate::utils::ffmpeg::ProgressInfo) {
-        // Calculate progress using both time and frame methods (like bash implementation)
+        // Calculate progress using both time and frame methods
         let mut current_progress = info.progress_percentage as f64 / 100.0;
         
         // Frame-based progress calculation (more reliable for some content)
@@ -176,7 +176,7 @@ impl ProgressMonitor {
             }
         }
         
-        // Enhanced ETA calculation with multiple methods (like bash implementation)
+        // Enhanced ETA calculation with multiple methods
         if current_progress > 0.005 {
             let elapsed = self.start_time.elapsed().as_secs_f64();
             

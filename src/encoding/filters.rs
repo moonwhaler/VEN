@@ -53,7 +53,7 @@ impl<'a> FilterBuilder<'a> {
         }
     }
     
-    /// Build filter chain following exact bash implementation order:
+    /// Build complete filter chain in correct processing order:
     /// 1. Deinterlacing (NNEDI/yadif)
     /// 2. Denoising (hqdn3d)
     /// 3. Cropping (manual override or auto-detection)
@@ -242,8 +242,7 @@ mod tests {
         let result = builder.build_complete_chain(
             true,  // deinterlace
             true,  // denoise
-            Some("1920:800:0:140"), // crop
-            Some("1920x1080")       // scale
+            Some("1920:800:0:140") // crop
         );
         
         assert!(result.is_ok());

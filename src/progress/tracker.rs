@@ -178,7 +178,7 @@ impl EnhancedProgressTracker {
     ) -> Self {
         let bar = ProgressBar::new(10000); // Use 10000 for higher precision (0.01%)
         
-        // Enhanced progress bar template matching bash script
+        // Enhanced progress bar template with detailed status information
         let template = if show_eta && show_file_size {
             format!("{}: [{{bar:40.cyan/blue}}] {{pos:>5.2}}% | ETA: {{msg}}", description)
         } else if show_eta {
