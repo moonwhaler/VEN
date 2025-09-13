@@ -115,7 +115,6 @@ The tool uses a YAML configuration file (`config.yaml`) with the following struc
 app:
   temp_dir: "/tmp"
   stats_prefix: "ffmpeg2pass"
-  max_concurrent_jobs: 1
 ```
 
 ### Tool Paths

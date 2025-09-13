@@ -5,7 +5,6 @@
 app:
   temp_dir: "/tmp"
   stats_prefix: "ffmpeg_stats"
-  max_concurrent_jobs: 1
   
 # External Tool Paths
 tools:

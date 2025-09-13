@@ -165,7 +165,6 @@ mod tests {
             app: AppConfig {
                 temp_dir: "/tmp".to_string(),
                 stats_prefix: "test".to_string(),
-                max_concurrent_jobs: 1,
             },
             tools: ToolsConfig {
                 ffmpeg: "ffmpeg".to_string(),

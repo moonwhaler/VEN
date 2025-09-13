@@ -51,7 +51,6 @@ impl ContentType {
 pub struct AppConfig {
     pub temp_dir: String,
     pub stats_prefix: String,
-    pub max_concurrent_jobs: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

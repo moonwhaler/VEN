@@ -28,10 +28,6 @@ impl Config {
     }
 
     fn validate(&self) -> Result<()> {
-        if self.app.max_concurrent_jobs == 0 {
-            return Err(Error::validation("max_concurrent_jobs must be greater than 0"));
-        }
-
         if self.progress.update_interval_ms == 0 {
             return Err(Error::validation("update_interval_ms must be greater than 0"));
         }
@@ -78,7 +74,6 @@ impl Default for Config {
             app: AppConfig {
                 temp_dir: "/tmp".to_string(),
                 stats_prefix: "ffmpeg_stats".to_string(),
-                max_concurrent_jobs: 1,
             },
             tools: ToolsConfig {
                 ffmpeg: "ffmpeg".to_string(),
@@ -155,7 +150,8 @@ mod tests {
             Err(e) => panic!("Config validation failed: {}", e)
         }
 
-        config.app.max_concurrent_jobs = 0;
+        // Test validation with invalid update_interval_ms  
+        config.progress.update_interval_ms = 0;
         assert!(config.validate().is_err());
     }
 
@@ -165,7 +161,6 @@ mod tests {
 app:
   temp_dir: "/tmp"
   stats_prefix: "test"
-  max_concurrent_jobs: 2
 
 tools:
   ffmpeg: "ffmpeg"
@@ -224,7 +219,6 @@ filters:
 "#;
 
         let config: Config = serde_yaml::from_str(yaml).unwrap();
-        assert_eq!(config.app.max_concurrent_jobs, 2);
         assert_eq!(config.logging.level, "debug");
         assert!(!config.logging.show_timestamps);
         assert_eq!(config.progress.update_interval_ms, 500);
