@@ -9,7 +9,7 @@ use crate::utils::Result;
 #[command(long_about = "
 A professional-grade Rust implementation of automated video encoding using FFmpeg with x265/HEVC codec.
 Provides multi-mode encoding support (CRF/ABR/CBR), intelligent content analysis with automatic profile 
-selection, advanced complexity-based parameter optimization, and comprehensive batch processing capabilities.
+selection, and comprehensive batch processing capabilities.
 
 EXAMPLES:
   # Auto-selection with UUID output
@@ -18,8 +18,8 @@ EXAMPLES:
   # Specific profile with custom output  
   ffmpeg-encoder -i input.mkv -o output.mkv -p anime -m crf
 
-  # With complexity analysis and denoising
-  ffmpeg-encoder -i input.mkv -p 4k_heavy_grain -m crf --use-complexity --denoise
+  # With denoising
+  ffmpeg-encoder -i input.mkv -p 4k_heavy_grain -m crf --denoise
 
   # Legacy interlaced footage with neural network deinterlacing
   ffmpeg-encoder -i legacy_footage.mkv -p classic_anime -m crf --deinterlace
@@ -27,8 +27,8 @@ EXAMPLES:
   # Batch processing directory
   ffmpeg-encoder -i ~/Videos/Raw/ -p auto -m abr
 
-  # With complexity analysis and crop detection
-  ffmpeg-encoder -i input.mkv -p movie --use-complexity -m abr
+  # With crop detection
+  ffmpeg-encoder -i input.mkv -p movie -m abr
 ")]
 pub struct CliArgs {
     /// Input video file or directory (can be specified multiple times)
@@ -60,9 +60,6 @@ pub struct CliArgs {
     #[arg(short, long, value_name = "WxH")]
     pub scale: Option<String>,
 
-    /// Enable complexity analysis for better parameter optimization
-    #[arg(long)]
-    pub use_complexity: bool,
 
     /// Enable video denoising (hqdn3d=1:1:2:2)
     #[arg(long)]
@@ -275,7 +272,7 @@ impl CliArgs {
                 println!("  ffmpeg-encoder -i input.mkv -o output.mkv -p anime -m crf");
                 println!();
                 println!("Advanced Options:");
-                println!("  ffmpeg-encoder -i input.mkv -p 4k_heavy_grain --use-complexity --denoise");
+                println!("  ffmpeg-encoder -i input.mkv -p 4k_heavy_grain --denoise");
                 println!("  ffmpeg-encoder -i input.mkv -p movie --deinterlace -m abr");
                 println!();
                 println!("Batch Processing:");

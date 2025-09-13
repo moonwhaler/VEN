@@ -19,7 +19,6 @@ pub struct VideoAnalysis {
     pub grain_level: u8,
     pub motion_level: u8,
     pub scene_changes: u32,
-    pub complexity_score: f32,
     pub content_type: Option<ContentType>,
     pub crop_values: Option<String>,
 }
@@ -48,7 +47,6 @@ impl VideoAnalysis {
             grain_level: 0,
             motion_level: 0,
             scene_changes: 0,
-            complexity_score: 0.0,
             content_type: None,
             crop_values: None,
         }
@@ -112,10 +110,6 @@ impl VideoAnalysis {
         self
     }
 
-    pub fn with_complexity_score(mut self, complexity_score: f32) -> Self {
-        self.complexity_score = complexity_score;
-        self
-    }
 
     pub fn with_content_type(mut self, content_type: Option<ContentType>) -> Self {
         self.content_type = content_type;
@@ -173,7 +167,6 @@ mod tests {
             .with_grain_level(45)
             .with_motion_level(25)
             .with_scene_changes(150)
-            .with_complexity_score(75.5)
             .with_content_type(Some(ContentType::Film))
             .with_crop_values(Some("1920:800:0:140".to_string()));
 
@@ -185,7 +178,6 @@ mod tests {
         assert_eq!(analysis.grain_level, 45);
         assert_eq!(analysis.motion_level, 25);
         assert_eq!(analysis.scene_changes, 150);
-        assert_eq!(analysis.complexity_score, 75.5);
         assert_eq!(analysis.content_type, Some(ContentType::Film));
         assert_eq!(analysis.crop_values, Some("1920:800:0:140".to_string()));
     }

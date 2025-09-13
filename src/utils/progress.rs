@@ -192,7 +192,7 @@ impl ProgressMonitor {
                         // Use frame-based ETA if it's reasonable and progress-based seems off
                         if eta_frame > 0.0 && eta_frame < (48.0 * 3600.0) {
                             // Prefer frame-based for very early stages or if time-based seems unreasonable
-                            if current_progress < 0.02 || eta_seconds > (24.0 * 3600.0) || eta_seconds < 5.0 {
+                            if current_progress < 0.02 || !(5.0..=(24.0 * 3600.0)).contains(&eta_seconds) {
                                 eta_seconds = eta_frame;
                             }
                         }
@@ -212,7 +212,7 @@ impl ProgressMonitor {
             }
             
             // Sanity check: cap at 24 hours, minimum 5 seconds
-            eta_seconds = eta_seconds.max(5.0).min(24.0 * 3600.0);
+            eta_seconds = eta_seconds.clamp(5.0, 24.0 * 3600.0);
             
             if eta_seconds > 0.0 {
                 let eta = Duration::from_secs_f64(eta_seconds);

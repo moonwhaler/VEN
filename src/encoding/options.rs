@@ -10,7 +10,6 @@ pub struct EncodingOptions {
     pub mode: String,
     pub crop: Option<String>,
     pub scale: Option<String>,
-    pub use_complexity_analysis: bool,
     pub denoise: bool,
     pub deinterlace: bool,
     pub web_search_enabled: bool,
@@ -28,7 +27,6 @@ impl EncodingOptions {
             mode: "abr".to_string(),
             crop: None,
             scale: None,
-            use_complexity_analysis: false,
             denoise: false,
             deinterlace: false,
             web_search_enabled: true,
@@ -62,10 +60,6 @@ impl EncodingOptions {
         self
     }
 
-    pub fn with_complexity_analysis(mut self, enabled: bool) -> Self {
-        self.use_complexity_analysis = enabled;
-        self
-    }
 
     pub fn with_denoise(mut self, enabled: bool) -> Self {
         self.denoise = enabled;
@@ -183,14 +177,12 @@ mod tests {
             .with_mode("crf".to_string())
             .with_title("Test Movie".to_string())
             .with_crop(Some("1920:800:0:140".to_string()))
-            .with_complexity_analysis(true)
             .with_denoise(true);
 
         assert_eq!(options.profile_name, "anime");
         assert_eq!(options.mode, "crf");
         assert_eq!(options.title, Some("Test Movie".to_string()));
         assert_eq!(options.crop, Some("1920:800:0:140".to_string()));
-        assert!(options.use_complexity_analysis);
         assert!(options.denoise);
     }
 

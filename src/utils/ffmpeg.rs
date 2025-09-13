@@ -376,7 +376,7 @@ impl FfmpegWrapper {
     fn extract_duration_with_regex(&self, input_path: &str) -> Result<f64> {
         // Run ffprobe without JSON format to get raw text output
         let output = std::process::Command::new(&self.ffprobe_path)
-            .args(&["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1", input_path])
+            .args(["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1", input_path])
             .output()
             .map_err(|e| Error::ffmpeg(format!("Failed to run ffprobe for duration: {}", e)))?;
 

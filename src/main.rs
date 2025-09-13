@@ -133,11 +133,8 @@ async fn process_single_file(
     // Create per-file logger
     let file_logger = FileLogger::new(output_path)?;
     
-    let crf_modifier = config.get_crf_modifier(selected_profile.content_type);
-    let bitrate_multiplier = config.get_bitrate_multiplier(selected_profile.content_type);
-
-    let adaptive_crf = selected_profile.calculate_adaptive_crf(crf_modifier, metadata.is_hdr, config.analysis.hdr_detection.crf_adjustment);
-    let adaptive_bitrate = selected_profile.calculate_adaptive_bitrate(bitrate_multiplier, metadata.is_hdr);
+    let adaptive_crf = selected_profile.calculate_adaptive_crf(0.0, metadata.is_hdr, config.analysis.hdr_detection.crf_adjustment);
+    let adaptive_bitrate = selected_profile.calculate_adaptive_bitrate(1.0, metadata.is_hdr);
 
     // Crop detection with logging
     let (crop_values, crop_sample_timestamps, crop_analysis_result) = if let Some(crop) = &args.crop {
@@ -169,7 +166,7 @@ async fn process_single_file(
         .with_scale(args.scale.as_deref())?
         .build();
 
-    let encoding_mode = EncodingMode::from_str(&args.mode)
+    let encoding_mode = EncodingMode::from_string(&args.mode)
         .ok_or_else(|| Error::encoding(format!("Invalid encoding mode: {}", args.mode)))?;
 
     // Generate stream mapping for preservation
@@ -191,7 +188,6 @@ async fn process_single_file(
     // Log video analysis results
     file_logger.log_analysis_results(
         &metadata,
-        None, // TODO: Add complexity analysis when available
         None, // TODO: Add grain level when available  
     )?;
     

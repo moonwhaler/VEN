@@ -76,12 +76,6 @@ pub struct ProgressConfig {
     pub show_file_size: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ComplexityAnalysisConfig {
-    pub enabled: bool,
-    pub sample_points: Vec<f32>,
-    pub methods: Vec<String>,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CropDetectionConfig {
@@ -115,7 +109,6 @@ pub struct HdrDetectionConfig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AnalysisConfig {
-    pub complexity_analysis: ComplexityAnalysisConfig,
     pub crop_detection: CropDetectionConfig,
     pub hdr_detection: HdrDetectionConfig,
 }
@@ -142,11 +135,6 @@ pub struct ThresholdConfig {
     pub high: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ContentAdaptationConfig {
-    pub crf_modifiers: HashMap<String, f32>,
-    pub bitrate_multipliers: HashMap<String, f32>,
-}
 
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

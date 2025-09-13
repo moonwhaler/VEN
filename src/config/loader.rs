@@ -14,7 +14,6 @@ pub struct Config {
     pub web_search: WebSearchConfig,
     pub content_classification: ContentClassificationConfig,
     pub profiles: HashMap<String, RawProfile>,
-    pub content_adaptation: ContentAdaptationConfig,
     pub filters: FiltersConfig,
 }
 
@@ -73,21 +72,6 @@ impl Config {
         Ok(())
     }
 
-    pub fn get_crf_modifier(&self, content_type: ContentType) -> f32 {
-        self.content_adaptation
-            .crf_modifiers
-            .get(content_type.as_str())
-            .copied()
-            .unwrap_or(0.0)
-    }
-
-    pub fn get_bitrate_multiplier(&self, content_type: ContentType) -> f32 {
-        self.content_adaptation
-            .bitrate_multipliers
-            .get(content_type.as_str())
-            .copied()
-            .unwrap_or(1.0)
-    }
 }
 
 impl Default for Config {
@@ -115,16 +99,6 @@ impl Default for Config {
                 show_file_size: true,
             },
             analysis: AnalysisConfig {
-                complexity_analysis: ComplexityAnalysisConfig {
-                    enabled: true,
-                    sample_points: vec![0.1, 0.25, 0.5, 0.75, 0.9],
-                    methods: vec![
-                        "high_frequency".to_string(),
-                        "local_variance".to_string(),
-                        "edge_detection".to_string(),
-                        "dark_scene".to_string(),
-                    ],
-                },
                 crop_detection: CropDetectionConfig {
                     enabled: true,
                     sample_count: 3,
@@ -163,10 +137,6 @@ impl Default for Config {
                 },
             },
             profiles: HashMap::new(),
-            content_adaptation: ContentAdaptationConfig {
-                crf_modifiers: HashMap::new(),
-                bitrate_multipliers: HashMap::new(),
-            },
             filters: FiltersConfig {
                 deinterlace: DeinterlaceConfig {
                     primary_method: "nnedi".to_string(),
@@ -228,10 +198,6 @@ progress:
   show_file_size: false
 
 analysis:
-  complexity_analysis:
-    enabled: true
-    sample_points: [0.1, 0.5, 0.9]
-    methods: ["high_frequency"]
   crop_detection:
     enabled: false
     sample_count: 1
@@ -272,13 +238,6 @@ profiles:
     content_type: "film"
     x265_params:
       preset: "medium"
-
-content_adaptation:
-  crf_modifiers:
-    film: 0.0
-  bitrate_multipliers:
-    film: 1.0
-
 
 filters:
   deinterlace:

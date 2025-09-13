@@ -165,7 +165,7 @@ impl CropDetector {
                timestamp, crop_limit, is_hdr);
         
         let output = Command::new("ffmpeg")
-            .args(&[
+            .args([
                 "-ss", &timestamp.to_string(),
                 "-i", &input_path_str,
                 "-t", "2", // Analyze 2 seconds for better accuracy
@@ -308,10 +308,10 @@ impl CropDetector {
     }
     
     fn crops_match_with_tolerance(&self, crop1: &CropValues, crop2: &CropValues, tolerance: u32) -> bool {
-        let width_diff = (crop1.width as i32 - crop2.width as i32).abs() as u32;
-        let height_diff = (crop1.height as i32 - crop2.height as i32).abs() as u32;
-        let x_diff = (crop1.x as i32 - crop2.x as i32).abs() as u32;
-        let y_diff = (crop1.y as i32 - crop2.y as i32).abs() as u32;
+        let width_diff = (crop1.width as i32 - crop2.width as i32).unsigned_abs();
+        let height_diff = (crop1.height as i32 - crop2.height as i32).unsigned_abs();
+        let x_diff = (crop1.x as i32 - crop2.x as i32).unsigned_abs();
+        let y_diff = (crop1.y as i32 - crop2.y as i32).unsigned_abs();
         
         width_diff <= tolerance && height_diff <= tolerance && 
         x_diff <= tolerance && y_diff <= tolerance

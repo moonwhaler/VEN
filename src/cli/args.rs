@@ -59,9 +59,6 @@ pub struct EncodingCommand {
     #[arg(short, long)]
     pub scale: Option<String>,
 
-    /// Enable complexity analysis for better parameter optimization
-    #[arg(long)]
-    pub use_complexity: bool,
 
     /// Enable video denoising
     #[arg(long)]
@@ -208,7 +205,6 @@ mod tests {
             "-o", "output.mkv",
             "-p", "anime",
             "-m", "crf",
-            "--use-complexity",
             "--denoise",
         ]);
 
@@ -218,7 +214,6 @@ mod tests {
         assert_eq!(args.encoding.output, Some(PathBuf::from("output.mkv")));
         assert_eq!(args.encoding.profile, "anime");
         assert_eq!(args.encoding.mode, "crf");
-        assert!(args.encoding.use_complexity);
         assert!(args.encoding.denoise);
     }
 
@@ -275,7 +270,6 @@ impl Default for EncodingCommand {
             mode: "abr".to_string(),
             crop: None,
             scale: None,
-            use_complexity: false,
             denoise: false,
             deinterlace: false,
             web_search_force: false,

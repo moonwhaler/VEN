@@ -14,7 +14,7 @@ pub enum EncodingMode {
 }
 
 impl EncodingMode {
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_string(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "crf" => Some(Self::CRF),
             "abr" => Some(Self::ABR),
@@ -34,6 +34,7 @@ impl EncodingMode {
 
 pub trait Encoder {
     #[allow(async_fn_in_trait)]
+    #[allow(clippy::too_many_arguments)]
     async fn encode<P: AsRef<Path>>(
         &self,
         ffmpeg: &FfmpegWrapper,
@@ -163,6 +164,7 @@ impl Encoder for AbrEncoder {
 }
 
 impl AbrEncoder {
+    #[allow(clippy::too_many_arguments)]
     async fn run_two_pass_encoding<P: AsRef<Path>>(
         &self,
         ffmpeg: &FfmpegWrapper,
@@ -219,6 +221,7 @@ impl AbrEncoder {
         pass2_result
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn run_first_pass(
         &self,
         ffmpeg: &FfmpegWrapper,
@@ -284,6 +287,7 @@ impl AbrEncoder {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn run_second_pass(
         &self,
         ffmpeg: &FfmpegWrapper,
@@ -436,11 +440,11 @@ mod tests {
 
     #[test]
     fn test_encoding_mode_from_str() {
-        assert_eq!(EncodingMode::from_str("crf"), Some(EncodingMode::CRF));
-        assert_eq!(EncodingMode::from_str("CRF"), Some(EncodingMode::CRF));
-        assert_eq!(EncodingMode::from_str("abr"), Some(EncodingMode::ABR));
-        assert_eq!(EncodingMode::from_str("cbr"), Some(EncodingMode::CBR));
-        assert_eq!(EncodingMode::from_str("invalid"), None);
+        assert_eq!(EncodingMode::from_string("crf"), Some(EncodingMode::CRF));
+        assert_eq!(EncodingMode::from_string("CRF"), Some(EncodingMode::CRF));
+        assert_eq!(EncodingMode::from_string("abr"), Some(EncodingMode::ABR));
+        assert_eq!(EncodingMode::from_string("cbr"), Some(EncodingMode::CBR));
+        assert_eq!(EncodingMode::from_string("invalid"), None);
     }
 
     #[test]

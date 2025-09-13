@@ -78,17 +78,12 @@ async fn show_profile(config: &Config, name: &str) -> Result<()> {
         println!("Content Type: {}", profile.content_type.as_str());
         println!();
 
-        println!("Content Adaptation:");
-        let crf_modifier = config.get_crf_modifier(profile.content_type);
-        let bitrate_multiplier = config.get_bitrate_multiplier(profile.content_type);
-        println!("  CRF Modifier: {:+.1}", crf_modifier);
-        println!("  Bitrate Multiplier: {:.2}x", bitrate_multiplier);
-        println!("  SDR Adaptive CRF: {:.1}", profile.base_crf + crf_modifier);
-        println!("  HDR Adaptive CRF: {:.1}", profile.base_crf + crf_modifier + config.analysis.hdr_detection.crf_adjustment);
-        println!("  SDR Adaptive Bitrate: {}kbps", 
-                (profile.base_bitrate as f32 * bitrate_multiplier) as u32);
-        println!("  HDR Adaptive Bitrate: {}kbps", 
-                (profile.hdr_bitrate as f32 * bitrate_multiplier) as u32);
+        println!("HDR Adjustments:");
+        println!("  HDR CRF Adjustment: {:+.1}", config.analysis.hdr_detection.crf_adjustment);
+        println!("  SDR CRF: {:.1}", profile.base_crf);
+        println!("  HDR CRF: {:.1}", profile.base_crf + config.analysis.hdr_detection.crf_adjustment);
+        println!("  SDR Bitrate: {}kbps", profile.base_bitrate);
+        println!("  HDR Bitrate: {}kbps", profile.hdr_bitrate);
         println!();
 
         println!("x265 Parameters:");
@@ -128,7 +123,6 @@ async fn validate_config(config_path: &std::path::Path) -> Result<()> {
             println!("{:-<40}", "");
             println!("Profiles defined: {}", config.profiles.len());
             println!("Web search enabled: {}", config.web_search.enabled);
-            println!("Complexity analysis: {}", config.analysis.complexity_analysis.enabled);
             println!("Crop detection: {}", config.analysis.crop_detection.enabled);
             println!("HDR detection: {}", config.analysis.hdr_detection.enabled);
             

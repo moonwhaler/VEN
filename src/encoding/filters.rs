@@ -218,11 +218,6 @@ mod tests {
                 show_file_size: true,
             },
             analysis: AnalysisConfig {
-                complexity_analysis: ComplexityAnalysisConfig {
-                    enabled: false,
-                    sample_points: vec![],
-                    methods: vec![],
-                },
                 crop_detection: CropDetectionConfig::default(),
                 hdr_detection: HdrDetectionConfig {
                     enabled: true,

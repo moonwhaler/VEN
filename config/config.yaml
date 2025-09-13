@@ -28,15 +28,6 @@ progress:
 
 # Analysis Settings
 analysis:
-  complexity_analysis:
-    enabled: true
-    sample_points: [0.1, 0.25, 0.5, 0.75, 0.9]  # Percentage points for grain detection
-    methods:
-      - "high_frequency"
-      - "local_variance"
-      - "edge_detection"
-      - "dark_scene"
-  
   crop_detection:
     enabled: true
     # Number of evenly distributed sample points across video duration
@@ -400,30 +391,6 @@ profiles:
       merange: 57
 
 # Content-Aware Parameter Adaptation
-content_adaptation:
-  crf_modifiers:
-    anime: 0.2
-    classic_anime: 0.5
-    3d_animation: -0.4
-    film: 0.0
-    heavy_grain: -0.8
-    light_grain: -0.3
-    action: -0.2
-    clean_digital: 0.3
-    mixed: 0.0
-  
-  bitrate_multipliers:
-    anime: 0.90
-    classic_anime: 0.85
-    3d_animation: 1.05
-    film: 1.0
-    heavy_grain: 1.25
-    light_grain: 1.10
-    action: 1.15
-    clean_digital: 0.80
-    mixed: 1.0
-
-  
 # Video Filter Settings
 filters:
   deinterlace:

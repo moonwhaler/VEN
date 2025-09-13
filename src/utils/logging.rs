@@ -67,12 +67,11 @@ pub fn log_encoding_complete(duration: std::time::Duration, output_size: u64) {
     );
 }
 
-pub fn log_analysis_result(complexity: f32, content_type: &str, grain_level: u8) {
+pub fn log_analysis_result(content_type: &str, grain_level: u8) {
     let style = Style::new().bold().cyan();
     tracing::info!(
-        "{} Analysis: complexity={:.2}, type={}, grain={}",
+        "{} Analysis: type={}, grain={}",
         style.apply_to("🔍"),
-        complexity,
         content_type,
         grain_level
     );
@@ -109,6 +108,7 @@ impl FileLogger {
         Ok(Self { writer, log_path })
     }
     
+    #[allow(clippy::too_many_arguments)]
     pub fn log_encoding_settings(
         &self,
         input_path: &Path,
@@ -132,7 +132,7 @@ impl FileLogger {
         writeln!(writer, "INPUT/OUTPUT:")?;
         writeln!(writer, "  Input:  {}", input_path.display())?;
         writeln!(writer, "  Output: {}", output_path.display())?;
-        writeln!(writer, "")?;
+        writeln!(writer)?;
         
         writeln!(writer, "ENCODING SETTINGS:")?;
         writeln!(writer, "  Mode: {}", mode.to_uppercase())?;
@@ -140,23 +140,23 @@ impl FileLogger {
         writeln!(writer, "  Content Type: {:?}", profile_settings.content_type)?;
         writeln!(writer, "  Adaptive CRF: {}", adaptive_crf)?;
         writeln!(writer, "  Adaptive Bitrate: {} kbps", adaptive_bitrate)?;
-        writeln!(writer, "")?;
+        writeln!(writer)?;
         
         if let Some(filters) = filter_chain {
             writeln!(writer, "VIDEO FILTERS:")?;
             writeln!(writer, "  {}", filters)?;
-            writeln!(writer, "")?;
+            writeln!(writer)?;
         }
         
         writeln!(writer, "STREAM MAPPING:")?;
         writeln!(writer, "  {}", stream_mapping)?;
-        writeln!(writer, "")?;
+        writeln!(writer)?;
         
         writeln!(writer, "x265 PARAMETERS:")?;
         for (key, value) in &profile_settings.x265_params {
             writeln!(writer, "  {}: {}", key, value)?;
         }
-        writeln!(writer, "")?;
+        writeln!(writer)?;
         
         writer.flush()?;
         Ok(())
@@ -165,7 +165,6 @@ impl FileLogger {
     pub fn log_analysis_results(
         &self,
         metadata: &crate::utils::ffmpeg::VideoMetadata,
-        complexity_score: Option<f32>,
         grain_level: Option<u8>,
     ) -> crate::utils::Result<()> {
         let mut writer = self.writer.lock().unwrap();
@@ -180,15 +179,12 @@ impl FileLogger {
         }
         writeln!(writer, "  HDR: {}", if metadata.is_hdr { "Yes" } else { "No" })?;
         
-        if let Some(complexity) = complexity_score {
-            writeln!(writer, "  Complexity Score: {:.2}", complexity)?;
-        }
         
         if let Some(grain) = grain_level {
             writeln!(writer, "  Grain Level: {}", grain)?;
         }
         
-        writeln!(writer, "")?;
+        writeln!(writer)?;
         writer.flush()?;
         Ok(())
     }
@@ -211,7 +207,7 @@ impl FileLogger {
         writeln!(writer, "  Enabled: {}", if enabled { "Yes" } else { "No" })?;
         
         if !enabled {
-            writeln!(writer, "")?;
+            writeln!(writer)?;
             writer.flush()?;
             return Ok(());
         }
@@ -252,7 +248,7 @@ impl FileLogger {
             }
         }
         
-        writeln!(writer, "")?;
+        writeln!(writer)?;
         writer.flush()?;
         Ok(())
     }
@@ -318,7 +314,7 @@ impl FileLogger {
         
         let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
         writeln!(writer, "  Completed: {}", timestamp)?;
-        writeln!(writer, "")?;
+        writeln!(writer)?;
         
         writer.flush()?;
         Ok(())

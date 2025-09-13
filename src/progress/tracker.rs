@@ -165,6 +165,7 @@ pub struct EnhancedProgressTracker {
 }
 
 impl EnhancedProgressTracker {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         total_duration: f64, 
         fps: f32,
