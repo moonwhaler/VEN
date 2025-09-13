@@ -40,12 +40,12 @@ analysis:
   crop_detection:
     enabled: true
     # Number of evenly distributed sample points across video duration
-    sample_count: 3  # 3 evenly spaced samples (start, middle, end with margins)
+    sample_count: 10  # 3 evenly spaced samples (start, middle, end with margins)
     
     # Advanced settings for different content types
     sdr_crop_limit: 24      # Crop detection threshold for SDR content
     hdr_crop_limit: 64      # Crop detection threshold for HDR content  
-    min_pixel_change_percent: 1.0  # Only apply crops that remove >1% of pixels
+    min_pixel_change_percent: 2.0  # Only apply crops that remove >1% of pixels
   
   hdr_detection:
     enabled: true

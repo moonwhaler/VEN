@@ -114,6 +114,8 @@ impl StreamPreservation {
         
         let output = self.ffmpeg.run_ffprobe(&[
             "-v", "quiet",
+            "-analyzeduration", "5M",  // Optimized: reduced from default for faster analysis
+            "-probesize", "5M",        // Optimized: reduced from default for faster analysis
             "-print_format", "json", 
             "-show_streams",
             "-show_format",

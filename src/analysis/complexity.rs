@@ -173,11 +173,11 @@ except Exception as e:
 
 
     async fn calculate_si_ti(&self, input_path: &Path) -> Result<(f32, f32)> {
-        // Use bash script's approach: limit to 30 seconds for SI/TI calculation
+        // Reduced from 30 to 15 seconds for faster SI/TI calculation  
         let output = Command::new("ffmpeg")
             .args(&[
                 "-i", &input_path.to_string_lossy(),
-                "-t", "30",  // Limit to 30 seconds like bash script
+                "-t", "15",  // Reduced from 30 to 15 seconds for faster analysis
                 "-vf", "signalstats",
                 "-f", "null",
                 "-"
@@ -195,11 +195,11 @@ except Exception as e:
     }
 
     async fn detect_scene_changes(&self, input_path: &Path) -> Result<u32> {
-        // Use bash script's approach: limit to 60 seconds like the original
+        // Reduced from 60 to 30 seconds for faster scene change detection
         let output = Command::new("ffmpeg")
             .args(&[
                 "-i", &input_path.to_string_lossy(),
-                "-t", "60",  // Limit analysis to 60 seconds like bash script
+                "-t", "30",  // Reduced from 60 to 30 seconds for faster analysis
                 "-vf", "select='gt(scene,0.3)',showinfo",
                 "-f", "null",
                 "-"
@@ -232,7 +232,7 @@ except Exception as e:
             .args(&[
                 "-v", "error",
                 "-select_streams", "v:0",
-                "-read_intervals", "%+#1800",  // Only analyze first 1800 frames like bash script
+                "-read_intervals", "%+#600",   // Reduced from 1800 to 600 frames for faster analysis
                 "-show_frames",
                 "-show_entries", "frame=pict_type",
                 "-of", "csv=p=0",

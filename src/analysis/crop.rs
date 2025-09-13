@@ -316,6 +316,34 @@ impl CropDetector {
         width_diff <= tolerance && height_diff <= tolerance && 
         x_diff <= tolerance && y_diff <= tolerance
     }
+    
+    pub fn parse_sample_point(&self, sample_point: &str, duration: f64) -> Result<f64> {
+        match sample_point {
+            "middle" => Ok(duration / 2.0),
+            point if point.ends_with('s') => {
+                let time_str = &point[..point.len() - 1];
+                if let Some(negative_time) = time_str.strip_prefix('-') {
+                    let offset: f64 = negative_time.parse()
+                        .map_err(|_| crate::utils::Error::validation("Invalid negative time format"))?;
+                    Ok(duration - offset)
+                } else {
+                    time_str.parse()
+                        .map_err(|_| crate::utils::Error::validation("Invalid time format"))
+                }
+            }
+            point if point.ends_with('%') => {
+                let percent_str = &point[..point.len() - 1];
+                let percent: f64 = percent_str.parse()
+                    .map_err(|_| crate::utils::Error::validation("Invalid percentage format"))?;
+                Ok(duration * (percent / 100.0))
+            }
+            point => {
+                // Try parsing as raw seconds
+                point.parse()
+                    .map_err(|_| crate::utils::Error::validation("Invalid sample point format"))
+            }
+        }
+    }
 }
 
 impl Default for CropDetector {

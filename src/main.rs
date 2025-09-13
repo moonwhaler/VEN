@@ -150,15 +150,26 @@ async fn process_single_file(
     let adaptive_bitrate = selected_profile.calculate_adaptive_bitrate(bitrate_multiplier, metadata.is_hdr);
 
     // Crop detection with logging
-    let (crop_values, crop_sample_timestamps) = if let Some(crop) = &args.crop {
-        (Some(crop.clone()), vec![-1.0]) // -1.0 indicates manual override
+    let (crop_values, crop_sample_timestamps, crop_analysis_result) = if let Some(crop) = &args.crop {
+        (Some(crop.clone()), vec![-1.0], None) // -1.0 indicates manual override
     } else if config.analysis.crop_detection.enabled {
-        // Generate dynamic sample timestamps based on video duration
+        use ffmpeg_autoencoder::analysis::CropDetector;
+        let crop_detector = CropDetector::new(config.analysis.crop_detection.clone());
+        
+        let crop_analysis = crop_detector.detect_crop_values(
+            input_path, 
+            metadata.duration, 
+            metadata.width, 
+            metadata.height, 
+            metadata.is_hdr
+        ).await?;
+        
         let sample_timestamps = config.analysis.crop_detection.get_sample_timestamps(metadata.duration);
-        let crop_result = ffmpeg.detect_crop_values(input_path, &sample_timestamps).await?;
-        (crop_result, sample_timestamps)
+        let crop_values = crop_analysis.crop_values.as_ref().map(|cv| cv.to_ffmpeg_string());
+        
+        (crop_values, sample_timestamps, Some(crop_analysis))
     } else {
-        (None, vec![])
+        (None, vec![], None)
     };
 
     let hardware_acceleration = if args.hardware {
@@ -203,6 +214,8 @@ async fn process_single_file(
     // Log crop detection results
     let detection_method = if args.crop.is_some() {
         "manual_override"
+    } else if let Some(ref analysis) = crop_analysis_result {
+        &analysis.detection_method
     } else if config.analysis.crop_detection.enabled {
         "automatic_detection"
     } else {
@@ -219,6 +232,16 @@ async fn process_single_file(
         config.analysis.crop_detection.hdr_crop_limit,
         metadata.is_hdr,
     )?;
+    
+    // Log additional crop analysis details if available
+    if let Some(ref analysis) = crop_analysis_result {
+        file_logger.log_encoding_progress(&format!(
+            "Crop Analysis: {:.1}% confidence, {:.1}% pixel change, {} samples processed",
+            analysis.confidence,
+            analysis.pixel_change_percent,
+            analysis.sample_results.len()
+        ))?;
+    }
 
     info!("Starting {} encoding: {} -> {}",
           encoding_mode.as_str().to_uppercase(),
