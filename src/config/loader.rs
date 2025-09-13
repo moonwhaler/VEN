@@ -11,7 +11,6 @@ pub struct Config {
     pub logging: LoggingConfig,
     pub progress: ProgressConfig,
     pub analysis: AnalysisConfig,
-    pub content_classification: ContentClassificationConfig,
     pub profiles: HashMap<String, RawProfile>,
     pub filters: FiltersConfig,
 }
@@ -112,23 +111,6 @@ impl Default for Config {
                     crf_adjustment: 2.0,
                 },
             },
-            content_classification: ContentClassificationConfig {
-                grain_thresholds: ThresholdConfig {
-                    low: 20,
-                    medium: 50,
-                    high: 80,
-                },
-                motion_thresholds: ThresholdConfig {
-                    low: 10,
-                    medium: 30,
-                    high: 60,
-                },
-                scene_change_thresholds: ThresholdConfig {
-                    low: 5,
-                    medium: 15,
-                    high: 25,
-                },
-            },
             profiles: HashMap::new(),
             filters: FiltersConfig {
                 deinterlace: DeinterlaceConfig {
@@ -141,7 +123,6 @@ impl Default for Config {
                 denoise: DenoiseConfig {
                     filter: "hqdn3d".to_string(),
                     params: "1:1:2:2".to_string(),
-                    hardware_variant: "nlmeans".to_string(),
                 },
             },
         }
@@ -198,19 +179,6 @@ analysis:
     color_space_patterns: ["bt2020"]
     transfer_patterns: ["smpte2084"]
 
-content_classification:
-  grain_thresholds:
-    low: 10
-    medium: 25
-    high: 50
-  motion_thresholds:
-    low: 5
-    medium: 15
-    high: 30
-  scene_change_thresholds:
-    low: 2
-    medium: 8
-    high: 15
 
 profiles:
   test:
@@ -232,7 +200,6 @@ filters:
   denoise:
     filter: "hqdn3d"
     params: "1:1:2:2"
-    hardware_variant: "nlmeans"
   crop:
     auto_detect: true
     validation:

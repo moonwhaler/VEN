@@ -114,19 +114,6 @@ pub struct AnalysisConfig {
 }
 
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ContentClassificationConfig {
-    pub grain_thresholds: ThresholdConfig,
-    pub motion_thresholds: ThresholdConfig,
-    pub scene_change_thresholds: ThresholdConfig,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ThresholdConfig {
-    pub low: u32,
-    pub medium: u32,
-    pub high: u32,
-}
 
 
 
@@ -146,7 +133,6 @@ pub struct DeinterlaceConfig {
 pub struct DenoiseConfig {
     pub filter: String,
     pub params: String,
-    pub hardware_variant: String,
 }
 
 

@@ -192,22 +192,7 @@ mod tests {
                     crf_adjustment: 2.0,
                 },
             },
-            web_search: WebSearchConfig {
-                enabled: false,
-                timeout_seconds: 10,
-                user_agent: "test".to_string(),
-                simulation_mode: false,
-            },
-            content_classification: ContentClassificationConfig {
-                grain_thresholds: ThresholdConfig { low: 20, medium: 50, high: 80 },
-                motion_thresholds: ThresholdConfig { low: 10, medium: 30, high: 60 },
-                scene_change_thresholds: ThresholdConfig { low: 5, medium: 15, high: 25 },
-            },
             profiles: HashMap::new(),
-            content_adaptation: ContentAdaptationConfig {
-                crf_modifiers: HashMap::new(),
-                bitrate_multipliers: HashMap::new(),
-            },
             filters: FiltersConfig {
                 deinterlace: DeinterlaceConfig {
                     primary_method: "nnedi".to_string(),
@@ -219,7 +204,6 @@ mod tests {
                 denoise: DenoiseConfig {
                     filter: "hqdn3d".to_string(),
                     params: "1:1:2:2".to_string(),
-                    hardware_variant: "nlmeans".to_string(),
                 },
             },
         }

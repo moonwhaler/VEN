@@ -48,20 +48,19 @@ analysis:
       - "arib-std-b67"
     crf_adjustment: 2.0  
 
-# Content Type Classification Thresholds
-content_classification:
-  grain_thresholds:
-    low: 20
-    medium: 50
-    high: 80
-  motion_thresholds:
-    low: 10
-    medium: 30
-    high: 60
-  scene_change_thresholds:
-    low: 5
-    medium: 15
-    high: 25
+# Content-Aware Parameter Adaptation
+# Video Filter Settings
+filters:
+  deinterlace:
+    primary_method: "nnedi"
+    fallback_method: "yadif"
+    nnedi_settings:
+      field: "auto"
+  
+  denoise:
+    filter: "hqdn3d"
+    params: "1:1:2:2"
+    
 
 # Encoding Profiles
 profiles:
@@ -383,16 +382,3 @@ profiles:
       subme: 7
       merange: 57
 
-# Content-Aware Parameter Adaptation
-# Video Filter Settings
-filters:
-  deinterlace:
-    primary_method: "nnedi"
-    fallback_method: "yadif"
-    nnedi_settings:
-      field: "auto"
-  
-  denoise:
-    filter: "hqdn3d"
-    params: "1:1:2:2"
-    hardware_variant: "nlmeans"
