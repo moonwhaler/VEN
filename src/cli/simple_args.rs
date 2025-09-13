@@ -1,11 +1,13 @@
+use crate::utils::Result;
 use clap::Parser;
 use std::path::PathBuf;
-use crate::utils::Result;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 #[command(name = "ffmpeg-encoder")]
-#[command(about = "Modern Rust-based FFmpeg video encoding automation with intelligent content analysis")]
+#[command(
+    about = "Modern Rust-based FFmpeg video encoding automation with intelligent content analysis"
+)]
 #[command(long_about = "
 A professional-grade Rust implementation of automated video encoding using FFmpeg with x265/HEVC codec.
 Provides multi-mode encoding support (CRF/ABR/CBR), intelligent content analysis with automatic profile 
@@ -39,7 +41,7 @@ pub struct CliArgs {
     #[arg(short, long, value_name = "PATH")]
     pub output: Option<PathBuf>,
 
-    /// Encoding profile to use [anime, classic_anime, 3d_cgi, 3d_complex, movie, movie_mid_grain, 
+    /// Encoding profile to use [anime, classic_anime, 3d_cgi, 3d_complex, movie, movie_mid_grain,
     /// movie_size_focused, heavy_grain, 4k, 4k_heavy_grain, auto]
     #[arg(short, long, default_value = "auto", value_name = "PROFILE")]
     pub profile: String,
@@ -56,8 +58,6 @@ pub struct CliArgs {
     #[arg(short, long, value_name = "W:H:X:Y")]
     pub crop: Option<String>,
 
-
-
     /// Enable video denoising (hqdn3d=1:1:2:2)
     #[arg(long)]
     pub denoise: bool,
@@ -65,8 +65,6 @@ pub struct CliArgs {
     /// Enable deinterlacing for interlaced content (NNEDI/yadif)
     #[arg(long)]
     pub deinterlace: bool,
-
-
 
     /// Configuration file path
     #[arg(long, default_value = "config.yaml", value_name = "FILE")]
@@ -106,7 +104,7 @@ impl CliArgs {
         if self.debug {
             "debug"
         } else {
-            "info"  // Default to info level so users can see what's happening
+            "info" // Default to info level so users can see what's happening
         }
     }
 
@@ -115,7 +113,9 @@ impl CliArgs {
     }
 
     pub fn is_info_command(&self) -> bool {
-        self.list_profiles || self.show_profile.is_some() || self.validate_config 
+        self.list_profiles
+            || self.show_profile.is_some()
+            || self.validate_config
             || self.help_topic.is_some()
     }
 
@@ -128,10 +128,10 @@ impl CliArgs {
         if self.should_encode() {
             if self.input.is_empty() {
                 return Err(crate::utils::Error::validation(
-                    "At least one input path is required for encoding".to_string()
+                    "At least one input path is required for encoding".to_string(),
                 ));
             }
-            
+
             // Validate all input paths exist
             for input in &self.input {
                 if !input.exists() {
@@ -144,8 +144,12 @@ impl CliArgs {
         }
 
         // Only validate config file for commands that actually need it
-        if (self.should_encode() || self.list_profiles || self.show_profile.is_some() || self.validate_config) 
-            && !self.config.exists() {
+        if (self.should_encode()
+            || self.list_profiles
+            || self.show_profile.is_some()
+            || self.validate_config)
+            && !self.config.exists()
+        {
             return Err(crate::utils::Error::validation(format!(
                 "Configuration file does not exist: {}",
                 self.config.display()
@@ -170,12 +174,19 @@ impl CliArgs {
             }
         }
 
-
         // Validate profile name
         let valid_profiles = [
-            "auto", "anime", "classic_anime", "3d_cgi", "3d_complex", 
-            "movie", "movie_mid_grain", "movie_size_focused", "heavy_grain", 
-            "4k", "4k_heavy_grain"
+            "auto",
+            "anime",
+            "classic_anime",
+            "3d_cgi",
+            "3d_complex",
+            "movie",
+            "movie_mid_grain",
+            "movie_size_focused",
+            "heavy_grain",
+            "4k",
+            "4k_heavy_grain",
         ];
         if !valid_profiles.contains(&self.profile.as_str()) {
             return Err(crate::utils::Error::validation(format!(
@@ -196,7 +207,6 @@ impl CliArgs {
         parts.iter().all(|part| part.parse::<u32>().is_ok())
     }
 
-
     pub fn print_help_topic(&self, topic: &str) {
         match topic.to_lowercase().as_str() {
             "profiles" => {
@@ -205,7 +215,9 @@ impl CliArgs {
                 println!("  anime           - Modern anime content (CRF=23, 9000kbps)");
                 println!("  classic_anime   - 90s anime with finer details (CRF=22, 10000kbps)");
                 println!("  3d_cgi          - 3D CGI Pixar-like (CRF=22, 10000kbps)");
-                println!("  3d_complex      - Complex 3D animation Arcane-like (CRF=22, 11000kbps)");
+                println!(
+                    "  3d_complex      - Complex 3D animation Arcane-like (CRF=22, 11000kbps)"
+                );
                 println!();
                 println!("Film Profiles:");
                 println!("  movie           - Standard movie (CRF=22, 10000kbps)");
@@ -214,12 +226,16 @@ impl CliArgs {
                 println!("  heavy_grain     - 4K heavy grain preservation (CRF=21, 12000kbps)");
                 println!();
                 println!("Resolution Profiles:");
-                println!("  4k              - General 4K balanced optimization (CRF=22, 15000kbps)");
+                println!(
+                    "  4k              - General 4K balanced optimization (CRF=22, 15000kbps)"
+                );
                 println!("  4k_heavy_grain  - 4K heavy grain preservation (CRF=21, 18000kbps)");
                 println!();
                 println!("Automatic:");
-                println!("  auto            - Intelligent profile selection based on content analysis");
-            },
+                println!(
+                    "  auto            - Intelligent profile selection based on content analysis"
+                );
+            }
             "modes" => {
                 println!("ENCODING MODES:\n");
                 println!("CRF Mode (-m crf):");
@@ -236,7 +252,7 @@ impl CliArgs {
                 println!("  Two-pass constant bitrate with VBV buffer constraints");
                 println!("  Best for: Broadcast transmission with constant bandwidth");
                 println!("  Technical: Maintains strict bitrate limits for streaming");
-            },
+            }
             "examples" => {
                 println!("USAGE EXAMPLES:\n");
                 println!("Basic Usage:");
@@ -253,7 +269,7 @@ impl CliArgs {
                 println!("Manual Overrides:");
                 println!("  ffmpeg-encoder -i input.mkv -p anime --crop 1920:800:0:140 --denoise");
                 println!("  ffmpeg-encoder -i input.mkv -p auto -t \"Movie Title\"");
-            },
+            }
             _ => {
                 println!("Unknown help topic: {}", topic);
                 println!("Available topics: profiles, modes, examples");

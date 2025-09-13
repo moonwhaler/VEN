@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-use std::path::Path;
-use crate::utils::{Result, Error, FfmpegWrapper};
-use crate::utils::ffmpeg::VideoMetadata;
 use crate::config::EncodingProfile;
 use crate::encoding::FilterChain;
 use crate::stream::preservation::StreamMapping;
+use crate::utils::ffmpeg::VideoMetadata;
+use crate::utils::{Error, FfmpegWrapper, Result};
+use std::collections::HashMap;
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EncodingMode {
@@ -82,10 +82,7 @@ impl Encoder for CrfEncoder {
             metadata.max_cll.as_ref(),
         );
 
-        let mut args = vec![
-            "-i".to_string(),
-            input_path_str.to_string(),
-        ];
+        let mut args = vec!["-i".to_string(), input_path_str.to_string()];
 
         // Add filter chain
         args.extend(filters.build_ffmpeg_args());
@@ -102,7 +99,8 @@ impl Encoder for CrfEncoder {
         ]);
 
         // Add metadata and stream-specific settings from stream preservation
-        let stream_preservation = crate::stream::preservation::StreamPreservation::new(ffmpeg.clone());
+        let stream_preservation =
+            crate::stream::preservation::StreamPreservation::new(ffmpeg.clone());
         args.extend(stream_preservation.get_metadata_args(stream_mapping, custom_title));
 
         // Add progress monitoring for real-time feedback
@@ -114,7 +112,7 @@ impl Encoder for CrfEncoder {
             "-stats_period".to_string(),
             "0.5".to_string(),
         ]);
-        
+
         // Add container optimization
         args.extend(vec![
             "-movflags".to_string(),
@@ -122,11 +120,15 @@ impl Encoder for CrfEncoder {
             output_path_str.to_string(),
         ]);
 
-        tracing::info!("Starting CRF encoding with CRF={} ({} streams)", 
-                      adaptive_crf, 
-                      stream_mapping.video_streams.len() + stream_mapping.audio_streams.len() + 
-                      stream_mapping.subtitle_streams.len() + stream_mapping.data_streams.len());
-                      
+        tracing::info!(
+            "Starting CRF encoding with CRF={} ({} streams)",
+            adaptive_crf,
+            stream_mapping.video_streams.len()
+                + stream_mapping.audio_streams.len()
+                + stream_mapping.subtitle_streams.len()
+                + stream_mapping.data_streams.len()
+        );
+
         ffmpeg.start_encoding(input_path, output_path, args).await
     }
 }
@@ -159,7 +161,8 @@ impl Encoder for AbrEncoder {
             adaptive_bitrate,
             custom_title,
             false,
-        ).await
+        )
+        .await
     }
 }
 
@@ -183,39 +186,46 @@ impl AbrEncoder {
         let output_path_str = output_path.as_ref().to_string_lossy();
         let stats_file = format!("/tmp/ffmpeg2pass_{}", uuid::Uuid::new_v4());
 
-        tracing::info!("Starting two-pass {} encoding (bitrate={}kbps)", 
-                      if is_cbr { "CBR" } else { "ABR" }, adaptive_bitrate);
+        tracing::info!(
+            "Starting two-pass {} encoding (bitrate={}kbps)",
+            if is_cbr { "CBR" } else { "ABR" },
+            adaptive_bitrate
+        );
 
-        let pass1_result = self.run_first_pass(
-            ffmpeg,
-            &input_path_str,
-            profile,
-            filters,
-            metadata,
-            adaptive_bitrate,
-            &stats_file,
-            is_cbr,
-        ).await;
+        let pass1_result = self
+            .run_first_pass(
+                ffmpeg,
+                &input_path_str,
+                profile,
+                filters,
+                metadata,
+                adaptive_bitrate,
+                &stats_file,
+                is_cbr,
+            )
+            .await;
 
         if let Err(e) = pass1_result {
             self.cleanup_stats_files(&stats_file);
             return Err(e);
         }
 
-        let pass2_result = self.run_second_pass(
-            ffmpeg,
-            &input_path_str,
-            &output_path_str,
-            profile,
-            filters,
-            stream_mapping,
-            metadata,
-            adaptive_crf,
-            adaptive_bitrate,
-            custom_title,
-            &stats_file,
-            is_cbr,
-        ).await;
+        let pass2_result = self
+            .run_second_pass(
+                ffmpeg,
+                &input_path_str,
+                &output_path_str,
+                profile,
+                filters,
+                stream_mapping,
+                metadata,
+                adaptive_crf,
+                adaptive_bitrate,
+                custom_title,
+                &stats_file,
+                is_cbr,
+            )
+            .await;
 
         self.cleanup_stats_files(&stats_file);
         pass2_result
@@ -257,10 +267,7 @@ impl AbrEncoder {
             metadata.max_cll.as_ref(),
         );
 
-        let mut args = vec![
-            "-i".to_string(),
-            input_path.to_string(),
-        ];
+        let mut args = vec!["-i".to_string(), input_path.to_string()];
 
         args.extend(filters.build_ffmpeg_args());
 
@@ -325,10 +332,7 @@ impl AbrEncoder {
             metadata.max_cll.as_ref(),
         );
 
-        let mut args = vec![
-            "-i".to_string(),
-            input_path.to_string(),
-        ];
+        let mut args = vec!["-i".to_string(), input_path.to_string()];
 
         // Add filter chain
         args.extend(filters.build_ffmpeg_args());
@@ -345,7 +349,8 @@ impl AbrEncoder {
         ]);
 
         // Add metadata and stream-specific settings from stream preservation
-        let stream_preservation = crate::stream::preservation::StreamPreservation::new(ffmpeg.clone());
+        let stream_preservation =
+            crate::stream::preservation::StreamPreservation::new(ffmpeg.clone());
         args.extend(stream_preservation.get_metadata_args(stream_mapping, custom_title));
 
         // Add progress monitoring for real-time feedback
@@ -416,21 +421,26 @@ impl Encoder for CbrEncoder {
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
     ) -> Result<tokio::process::Child> {
-        tracing::info!("Starting CBR encoding (constant bitrate={}kbps)", adaptive_bitrate);
-        
-        self.abr_encoder.run_two_pass_encoding(
-            ffmpeg,
-            input_path,
-            output_path,
-            profile,
-            filters,
-            stream_mapping,
-            metadata,
-            adaptive_crf,
-            adaptive_bitrate,
-            custom_title,
-            true,
-        ).await
+        tracing::info!(
+            "Starting CBR encoding (constant bitrate={}kbps)",
+            adaptive_bitrate
+        );
+
+        self.abr_encoder
+            .run_two_pass_encoding(
+                ffmpeg,
+                input_path,
+                output_path,
+                profile,
+                filters,
+                stream_mapping,
+                metadata,
+                adaptive_crf,
+                adaptive_bitrate,
+                custom_title,
+                true,
+            )
+            .await
     }
 }
 

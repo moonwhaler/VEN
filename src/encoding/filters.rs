@@ -1,5 +1,5 @@
-use crate::utils::{Result, Error};
 use crate::config::Config;
+use crate::utils::{Error, Result};
 
 #[derive(Debug, Clone, Default)]
 pub struct FilterChain {
@@ -52,7 +52,7 @@ impl<'a> FilterBuilder<'a> {
             chain: FilterChain::new(),
         }
     }
-    
+
     /// Build complete filter chain in correct processing order:
     /// 1. Deinterlacing (NNEDI/yadif)
     /// 2. Denoising (hqdn3d)
@@ -60,7 +60,7 @@ impl<'a> FilterBuilder<'a> {
     pub fn build_complete_chain(
         mut self,
         deinterlace: bool,
-        denoise: bool, 
+        denoise: bool,
         crop: Option<&str>,
     ) -> Result<FilterChain> {
         // Step 1: Optional Deinterlacing (first in pipeline)
@@ -68,23 +68,22 @@ impl<'a> FilterBuilder<'a> {
             let filter = self.build_deinterlace_filter()?;
             self.chain.add_filter(filter);
         }
-        
+
         // Step 2: Optional Denoising (second in pipeline)
         if denoise {
             let filter = self.build_denoise_filter();
             self.chain.add_filter(filter);
         }
-        
+
         // Step 3: Cropping (third in pipeline)
         if let Some(crop_value) = crop {
             let filter = format!("crop={}", crop_value);
             self.chain.add_filter(filter);
         }
-        
-        
+
         Ok(self.chain)
     }
-    
+
     pub fn with_deinterlace(mut self, enabled: bool) -> Result<Self> {
         if enabled {
             let filter = self.build_deinterlace_filter()?;
@@ -109,33 +108,34 @@ impl<'a> FilterBuilder<'a> {
         Ok(self)
     }
 
-
     pub fn build(self) -> FilterChain {
         self.chain
     }
-    
+
     fn build_deinterlace_filter(&self) -> Result<String> {
         let deinterlace_config = &self.config.filters.deinterlace;
-        
+
         // Use fallback method (yadif) for simplicity since NNEDI requires weights file
         let filter = match deinterlace_config.fallback_method.as_str() {
             "yadif" => "yadif=mode=send_field:parity=auto:deint=interlaced".to_string(),
             "bwdif" => "bwdif=mode=send_field:parity=auto:deint=interlaced".to_string(),
             other => {
-                return Err(Error::encoding(format!("Unsupported deinterlace method: {}", other)));
+                return Err(Error::encoding(format!(
+                    "Unsupported deinterlace method: {}",
+                    other
+                )));
             }
         };
-        
+
         Ok(filter)
     }
-    
+
     fn build_denoise_filter(&self) -> String {
         let denoise_config = &self.config.filters.denoise;
-        
+
         // Use software denoising only
         format!("{}={}", denoise_config.filter, denoise_config.params)
     }
-    
 }
 
 // Helper function to validate crop format
@@ -144,13 +144,13 @@ pub fn validate_crop_format(crop: &str) -> Result<()> {
     if parts.len() != 4 {
         return Err(Error::encoding("Crop format must be width:height:x:y"));
     }
-    
+
     for part in parts {
         if part.parse::<u32>().is_err() {
             return Err(Error::encoding("All crop values must be positive integers"));
         }
     }
-    
+
     Ok(())
 }
 
@@ -220,9 +220,12 @@ mod tests {
         let mut chain = FilterChain::new();
         chain.add_filter("scale=1920:1080".to_string());
         chain.add_filter("hqdn3d=1:1:2:2".to_string());
-        
+
         assert!(!chain.is_empty());
-        assert_eq!(chain.build_ffmpeg_args(), vec!["-vf", "scale=1920:1080,hqdn3d=1:1:2:2"]);
+        assert_eq!(
+            chain.build_ffmpeg_args(),
+            vec!["-vf", "scale=1920:1080,hqdn3d=1:1:2:2"]
+        );
     }
 
     #[test]
@@ -237,13 +240,13 @@ mod tests {
     fn test_filter_builder_with_all_options() {
         let config = create_test_config();
         let builder = FilterBuilder::new(&config);
-        
+
         let result = builder.build_complete_chain(
-            true,  // deinterlace
-            true,  // denoise
-            Some("1920:800:0:140") // crop
+            true,                   // deinterlace
+            true,                   // denoise
+            Some("1920:800:0:140"), // crop
         );
-        
+
         assert!(result.is_ok());
         let chain = result.unwrap();
         assert!(!chain.is_empty());

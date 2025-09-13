@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EncodingOptions {
@@ -47,8 +47,6 @@ impl EncodingOptions {
         self
     }
 
-
-
     pub fn with_denoise(mut self, enabled: bool) -> Self {
         self.denoise = enabled;
         self
@@ -59,12 +57,9 @@ impl EncodingOptions {
         self
     }
 
-
-
     pub fn is_auto_profile(&self) -> bool {
         self.profile_name == "auto"
     }
-
 
     pub fn validate(&self) -> crate::utils::Result<()> {
         if !self.input_path.exists() {
@@ -90,7 +85,6 @@ impl EncodingOptions {
             }
         }
 
-
         Ok(())
     }
 
@@ -102,7 +96,6 @@ impl EncodingOptions {
 
         parts.iter().all(|part| part.parse::<u32>().is_ok())
     }
-
 }
 
 impl Default for EncodingOptions {
@@ -114,8 +107,8 @@ impl Default for EncodingOptions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
     use std::path::Path;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_encoding_options_builder() {
@@ -137,13 +130,11 @@ mod tests {
     #[test]
     fn test_validate_crop_format() {
         let options = EncodingOptions::default();
-        
+
         assert!(options.is_valid_crop_format("1920:800:0:140"));
         assert!(options.is_valid_crop_format("1280:720:0:0"));
         assert!(!options.is_valid_crop_format("1920:800:0"));
         assert!(!options.is_valid_crop_format("1920:800:0:abc"));
         assert!(!options.is_valid_crop_format("invalid"));
     }
-
-
 }
