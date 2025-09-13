@@ -11,9 +11,6 @@ pub struct EncodingOptions {
     pub crop: Option<String>,
     pub denoise: bool,
     pub deinterlace: bool,
-    pub web_search_enabled: bool,
-    pub web_search_force: bool,
-    pub no_web_search: bool,
 }
 
 impl EncodingOptions {
@@ -27,9 +24,6 @@ impl EncodingOptions {
             crop: None,
             denoise: false,
             deinterlace: false,
-            web_search_enabled: true,
-            web_search_force: false,
-            no_web_search: false,
         }
     }
 
@@ -66,34 +60,11 @@ impl EncodingOptions {
     }
 
 
-    pub fn with_web_search(mut self, enabled: bool) -> Self {
-        self.web_search_enabled = enabled;
-        self
-    }
-
-    pub fn with_web_search_force(mut self, force: bool) -> Self {
-        self.web_search_force = force;
-        self
-    }
-
-    pub fn with_no_web_search(mut self, disabled: bool) -> Self {
-        self.no_web_search = disabled;
-        self
-    }
 
     pub fn is_auto_profile(&self) -> bool {
         self.profile_name == "auto"
     }
 
-    pub fn should_use_web_search(&self) -> bool {
-        if self.no_web_search {
-            false
-        } else if self.web_search_force {
-            true
-        } else {
-            self.web_search_enabled
-        }
-    }
 
     pub fn validate(&self) -> crate::utils::Result<()> {
         if !self.input_path.exists() {
@@ -174,23 +145,4 @@ mod tests {
     }
 
 
-    #[test]
-    fn test_web_search_logic() {
-        let mut options = EncodingOptions::default();
-        
-        // Default behavior
-        assert!(options.should_use_web_search());
-        
-        // Force enabled
-        options = options.with_web_search_force(true);
-        assert!(options.should_use_web_search());
-        
-        // Disabled
-        options = options.with_no_web_search(true);
-        assert!(!options.should_use_web_search());
-        
-        // Disabled overrides force
-        options = options.with_web_search_force(true).with_no_web_search(true);
-        assert!(!options.should_use_web_search());
-    }
 }

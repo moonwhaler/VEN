@@ -25,8 +25,6 @@ pub enum Error {
     #[error("Progress tracking error: {message}")]
     Progress { message: String },
     
-    #[error("Web search error: {0}")]
-    WebSearch(#[from] reqwest::Error),
     
     #[error("JSON parsing error: {0}")]
     Json(#[from] serde_json::Error),

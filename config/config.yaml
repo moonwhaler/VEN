@@ -48,13 +48,6 @@ analysis:
       - "arib-std-b67"
     crf_adjustment: 2.0  
 
-# Web Search Integration
-web_search:
-  enabled: true
-  timeout_seconds: 10
-  user_agent: "FFmpeg-Autoencoder/3.0"
-  simulation_mode: false  # Set to true for testing without actual web requests
-  
 # Content Type Classification Thresholds
 content_classification:
   grain_thresholds:

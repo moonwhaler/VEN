@@ -67,13 +67,6 @@ pub struct CliArgs {
     pub deinterlace: bool,
 
 
-    /// Force web search for content classification (overrides config)
-    #[arg(long)]
-    pub web_search_force: bool,
-
-    /// Disable web search for content classification
-    #[arg(long)]
-    pub no_web_search: bool,
 
     /// Configuration file path
     #[arg(long, default_value = "config.yaml", value_name = "FILE")]
@@ -259,7 +252,7 @@ impl CliArgs {
                 println!();
                 println!("Manual Overrides:");
                 println!("  ffmpeg-encoder -i input.mkv -p anime -c 1920:800:0:140 -s 1920x1080");
-                println!("  ffmpeg-encoder -i input.mkv -p auto --web-search-force -t \"Movie Title\"");
+                println!("  ffmpeg-encoder -i input.mkv -p auto -t \"Movie Title\"");
             },
             _ => {
                 println!("Unknown help topic: {}", topic);

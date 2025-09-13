@@ -66,13 +66,6 @@ pub struct EncodingCommand {
     pub deinterlace: bool,
 
 
-    /// Force web search for content classification (overrides config)
-    #[arg(long)]
-    pub web_search_force: bool,
-
-    /// Disable web search for content classification
-    #[arg(long)]
-    pub no_web_search: bool,
 
     /// Configuration file path
     #[arg(long, default_value = "config.yaml")]
@@ -251,8 +244,6 @@ impl Default for EncodingCommand {
             crop: None,
             denoise: false,
             deinterlace: false,
-            web_search_force: false,
-            no_web_search: false,
             config: PathBuf::from("config.yaml"),
             verbose: false,
             debug: false,

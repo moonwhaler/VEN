@@ -113,13 +113,6 @@ pub struct AnalysisConfig {
     pub hdr_detection: HdrDetectionConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct WebSearchConfig {
-    pub enabled: bool,
-    pub timeout_seconds: u64,
-    pub user_agent: String,
-    pub simulation_mode: bool,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ContentClassificationConfig {

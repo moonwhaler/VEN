@@ -11,7 +11,6 @@ pub struct Config {
     pub logging: LoggingConfig,
     pub progress: ProgressConfig,
     pub analysis: AnalysisConfig,
-    pub web_search: WebSearchConfig,
     pub content_classification: ContentClassificationConfig,
     pub profiles: HashMap<String, RawProfile>,
     pub filters: FiltersConfig,
@@ -113,12 +112,6 @@ impl Default for Config {
                     crf_adjustment: 2.0,
                 },
             },
-            web_search: WebSearchConfig {
-                enabled: true,
-                timeout_seconds: 10,
-                user_agent: "FFmpeg-Autoencoder/3.0".to_string(),
-                simulation_mode: false,
-            },
             content_classification: ContentClassificationConfig {
                 grain_thresholds: ThresholdConfig {
                     low: 20,
@@ -204,12 +197,6 @@ analysis:
     enabled: true
     color_space_patterns: ["bt2020"]
     transfer_patterns: ["smpte2084"]
-
-web_search:
-  enabled: false
-  timeout_seconds: 5
-  user_agent: "test"
-  simulation_mode: true
 
 content_classification:
   grain_thresholds:

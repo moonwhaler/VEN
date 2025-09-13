@@ -116,12 +116,8 @@ Download `nnedi3_weights.bin` for high-quality deinterlacing and update the path
 - `--use-complexity`: Enable complexity analysis for parameter optimization
 - `--denoise`: Enable video denoising
 - `--deinterlace`: Enable deinterlacing for interlaced content
-- `--hardware`: Enable CUDA hardware acceleration
 - `--crop <CROP>`: Manual crop values (width:height:x:y)
 
-#### Web Search Control
-- `--web-search-force`: Force web search for content classification
-- `--no-web-search`: Disable web search, use technical analysis only
 
 #### Utility Commands
 - `list-profiles`: Show all available profiles
@@ -168,11 +164,11 @@ Download `nnedi3_weights.bin` for high-quality deinterlacing and update the path
 # Legacy interlaced content
 ./ffmpeg-encoder -i old_tv_show.mkv --deinterlace --denoise --profile classic_anime
 
-# Hardware accelerated with all features
-./ffmpeg-encoder -i video.mkv --hardware --denoise --use-complexity
+# Denoising and complexity analysis
+./ffmpeg-encoder -i video.mkv --denoise --use-complexity
 
-# Force web search for accurate classification
-./ffmpeg-encoder -i "Spirited Away (2001).mkv" --web-search-force
+# Encode with specific title
+./ffmpeg-encoder -i "Spirited Away (2001).mkv" -t "Spirited Away"
 ```
 
 ## ⚙️ Configuration
