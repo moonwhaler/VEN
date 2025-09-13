@@ -60,7 +60,6 @@ filters:
   denoise:
     filter: "hqdn3d"
     params: "1:1:2:2"
-    
 
 # Encoding Profiles
 profiles:
@@ -381,4 +380,3 @@ profiles:
       me: "hex"
       subme: 7
       merange: 57
-

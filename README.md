@@ -1,306 +1,254 @@
-# FFmpeg Autoencoder (Rust)
+# FFmpeg Autoencoder
 
-A modern, high-performance Rust-based video encoding automation tool that provides intelligent content analysis, multi-mode encoding support (CRF/ABR/CBR), and professional-grade optimization features.
+A professional Rust-based video encoding tool built around FFmpeg and x265, designed for reliable batch processing with intelligent content analysis and comprehensive stream preservation.
 
-This is a complete rewrite of the original bash-based ffmpeg autoencoder, designed for maintainability, performance, and extensibility while preserving all advanced functionality.
+## 🚀 Features
 
-## ✨ Features
+### Core Encoding
+- **Three encoding modes**: CRF (quality-based), ABR (average bitrate), CBR (constant bitrate)
+- **x265/HEVC encoding** with professionally tuned parameters
+- **Multi-pass encoding** for ABR/CBR modes with optimized first-pass settings
+- **Stream preservation** - losslessly preserves all audio, subtitle, data streams, chapters, and metadata
 
-### 🎯 Multi-Mode Encoding
-- **CRF Mode**: Quality-based Variable Bitrate (VBR) for archival and mastering
-- **ABR Mode**: Two-pass Average Bitrate encoding for streaming and delivery
-- **CBR Mode**: Two-pass Constant Bitrate with VBV constraints for broadcast
+### Intelligent Video Analysis
+- **Automatic crop detection** with multi-temporal sampling and HDR/SDR-specific thresholds
+- **HDR content detection** with automatic parameter adjustment for HDR10 content
+- **Content classification** for optimal profile selection
+- **Comprehensive metadata extraction** with optimized FFprobe settings
 
-### 🧠 Intelligent Content Analysis
-- **Automatic Profile Selection**: AI-driven content type detection
-- **Content-Adaptive Parameters**: Dynamic CRF and bitrate optimization
-- **Grain Detection**: Multi-method grain level analysis
-- **HDR Detection**: Automatic HDR10 content identification
-- **Complexity Analysis**: Advanced video complexity scoring
+### Professional Profiles
+11 content-specific encoding profiles:
+- **movie** - Standard live-action films (CRF=22, 10Mbps)
+- **movie_mid_grain** - Films with moderate grain (CRF=21, 11Mbps)  
+- **movie_size_focused** - Size-optimized films
+- **heavy_grain** - Heavy grain preservation (CRF=21, 12Mbps)
+- **3d_cgi** - Pixar-like 3D animation
+- **3d_complex** - Complex 3D content like Arcane (CRF=22, 11Mbps)
+- **anime** - Modern 2D animation (CRF=23, 9Mbps)
+- **classic_anime** - Traditional animation with grain preservation
+- **4k** - General 4K content (15Mbps)
+- **4k_heavy_grain** - 4K heavy grain preservation (18Mbps)
+- **auto** - Automatic profile selection based on content analysis
 
-### 🔧 Advanced Video Processing
-- **Neural Network Deinterlacing**: High-quality NNEDI-based deinterlacing
-- **Automatic Crop Detection**: Multi-temporal sampling crop detection
-- **Hardware Acceleration**: CUDA decode and filter acceleration
-- **Professional Filters**: Denoising, scaling, and preprocessing
+### Video Processing Pipeline  
+- **Deinterlacing** - NNEDI3 primary with yadif fallback
+- **Denoising** - Configurable hqdn3d temporal/spatial filtering
+- **Crop detection** - Intelligent black bar removal with validation
+- **Progress monitoring** - Real-time encoding progress with ETA calculations
 
-### 📊 Professional Profiles
-8 expertly-tuned encoding profiles:
-- **movie**: Standard live-action films
-- **movie_mid_grain**: Films with lighter grain
-- **movie_size_focused**: Size-optimized films
-- **heavy_grain**: Heavy grain preservation
-- **3d_cgi**: Pixar-like 3D animation
-- **3d_complex**: Complex 3D content (Arcane-like)
-- **anime**: Modern 2D animation
-- **classic_anime**: Traditional animation with grain
-
-### 🚀 Modern Architecture
-- **Async/Await**: Non-blocking I/O for better performance
-- **Structured Logging**: Professional logging with tracing
-- **YAML Configuration**: Human-readable configuration
-- **Type Safety**: Rust's type system prevents runtime errors
-- **Modular Design**: Clean separation of concerns
-
-## 🛠️ Installation
+## 📦 Installation
 
 ### Prerequisites
-- **Rust 1.70+**: Install from [rustup.rs](https://rustup.rs/)
-- **FFmpeg**: With libx265 support and advanced filters (includes FFprobe)
-- **NNEDI Weights** (optional): For neural network deinterlacing
+- **Rust** 1.70+ (with Cargo)
+- **FFmpeg** with libx265 support
+- **FFprobe** (included with FFmpeg)
 
 ### Build from Source
 ```bash
-git clone <repository-url>
+git clone https://github.com/user/ffmpeg_autoencoder_rust.git
 cd ffmpeg_autoencoder_rust
 cargo build --release
 ```
 
-The binary will be available at `target/release/ffmpeg-encoder`.
+The binary will be created at `target/release/ffmpeg-encoder`.
 
-### Dependencies Installation
+## 🛠️ Usage
 
-#### Ubuntu/Debian
+### Basic Encoding
 ```bash
-sudo apt update
-sudo apt install ffmpeg
+# Auto-detect profile and encode with default settings
+./ffmpeg-encoder -i input.mkv
+
+# Specify profile and encoding mode
+./ffmpeg-encoder -i input.mkv -p anime -m crf
+
+# Batch processing directory
+./ffmpeg-encoder -i /path/to/videos/ -p auto -m abr
 ```
 
-#### macOS (Homebrew)  
+### Advanced Options
 ```bash
-brew install ffmpeg
-```
+# Manual crop with denoising
+./ffmpeg-encoder -i input.mkv -p movie --crop 1920:800:0:140 --denoise
 
-#### Arch Linux
-```bash
-sudo pacman -S ffmpeg
-```
+# CBR encoding for streaming
+./ffmpeg-encoder -i input.mkv -p movie -m cbr
 
-#### NNEDI Weights (Optional)
-Download `nnedi3_weights.bin` for high-quality deinterlacing and update the path in `config.yaml`.
-
-## 📖 Usage
-
-### Quick Start
-
-#### Single File Encoding
-```bash
-# Auto-select profile with CRF mode
-./ffmpeg-encoder -i input.mkv --mode crf
-
-# Specific profile with output path
-./ffmpeg-encoder -i input.mkv -o output.mkv --profile anime --mode abr
-
-# With advanced features
-./ffmpeg-encoder -i input.mkv --profile 4k_heavy_grain --mode crf --use-complexity --denoise
-```
-
-#### Directory/Batch Processing
-```bash
-# Process all videos in directory
-./ffmpeg-encoder -i ~/Videos/Raw/ --profile auto --mode abr
-
-# All output files automatically get UUID-based names to prevent collisions
-```
-
-### Command Line Options
-
-#### Basic Options
-- `-i, --input <PATH>`: Input video file or directory
-- `-o, --output <PATH>`: Output file (optional, auto-generates if not specified)
-- `-p, --profile <PROFILE>`: Encoding profile (default: auto)
-- `-m, --mode <MODE>`: Encoding mode - crf/abr/cbr (default: abr)
-- `-t, --title <TITLE>`: Video title for metadata
-
-#### Advanced Features
-- `--use-complexity`: Enable complexity analysis for parameter optimization
-- `--denoise`: Enable video denoising
-- `--deinterlace`: Enable deinterlacing for interlaced content
-- `--crop <CROP>`: Manual crop values (width:height:x:y)
-
-
-#### Utility Commands
-- `list-profiles`: Show all available profiles
-- `show-profile <NAME>`: Show detailed profile information
-- `validate-config`: Validate configuration file
-
-### Examples
-
-#### Quality-Focused Encoding (CRF)
-```bash
-# Auto-selection with complexity analysis
-./ffmpeg-encoder -i movie.mkv --mode crf --use-complexity
-
-# Anime with denoising
-./ffmpeg-encoder -i anime.mkv --profile anime --mode crf --denoise
-
-# Heavy grain preservation
-./ffmpeg-encoder -i film.mkv --profile heavy_grain --mode crf
-```
-
-#### Streaming-Optimized (ABR)
-```bash
-# Default ABR mode with auto-selection
-./ffmpeg-encoder -i video.mkv
-
-# With title metadata
-./ffmpeg-encoder -i video.mkv --title "My Movie" --profile movie
-
-# 4K content with complexity analysis
-./ffmpeg-encoder -i 4k_video.mkv --profile movie --use-complexity
-```
-
-#### Broadcast/Live (CBR)
-```bash
-# Constant bitrate for broadcast
-./ffmpeg-encoder -i video.mkv --mode cbr --profile movie
-
-# With manual crop
-./ffmpeg-encoder -i video.mkv --mode cbr --crop 1920:800:0:140
-```
-
-#### Advanced Processing
-```bash
 # Legacy interlaced content
-./ffmpeg-encoder -i old_tv_show.mkv --deinterlace --denoise --profile classic_anime
+./ffmpeg-encoder -i old_content.avi --deinterlace --denoise -p classic_anime
 
-# Denoising and complexity analysis
-./ffmpeg-encoder -i video.mkv --denoise --use-complexity
-
-# Encode with specific title
-./ffmpeg-encoder -i "Spirited Away (2001).mkv" -t "Spirited Away"
+# Custom output location
+./ffmpeg-encoder -i input.mkv -o /custom/path/output.mkv
 ```
+
+## 🎛️ Command Line Options
+
+### Basic Options
+- `-i, --input <PATH>` - Input file or directory (required)
+- `-o, --output <PATH>` - Output file path (optional, generates UUID names)
+- `-p, --profile <PROFILE>` - Encoding profile (default: auto)
+- `-m, --mode <MODE>` - Encoding mode: crf/abr/cbr (default: abr)
+
+### Processing Options  
+- `--denoise` - Enable video denoising (hqdn3d filter)
+- `--deinterlace` - Enable NNEDI3/yadif deinterlacing
+- `--crop <W:H:X:Y>` - Manual crop values (overrides auto-detection)
+
+### Utility Commands
+- `--list-profiles` - Show all available encoding profiles
+- `--show-profile <NAME>` - Display detailed profile information
+- `--validate-config` - Validate configuration file
+- `--help-topic <TOPIC>` - Get help on specific topics (profiles, modes, examples)
+
+### Configuration
+- `--config <FILE>` - Custom configuration file path (default: config.yaml)
+- `-v, --verbose` - Enable verbose logging
+- `--debug` - Enable debug logging
+- `--no-color` - Disable colored output
 
 ## ⚙️ Configuration
 
-The application uses a YAML configuration file (`config.yaml`) for settings:
+The tool uses a YAML configuration file (`config.yaml`) with the following structure:
 
-### Key Configuration Sections
-
-#### Application Settings
+### Application Settings
 ```yaml
 app:
   temp_dir: "/tmp"
+  stats_prefix: "ffmpeg2pass"
   max_concurrent_jobs: 1
 ```
 
-#### Tool Paths
+### Tool Paths
 ```yaml
 tools:
-  ffmpeg: "ffmpeg"
-  ffprobe: "ffprobe"
-  nnedi_weights: "/path/to/nnedi3_weights.bin"
+  ffmpeg: "/usr/bin/ffmpeg" 
+  ffprobe: "/usr/bin/ffprobe"
+  nnedi_weights: null  # Optional NNEDI weights file
 ```
 
-#### Analysis Configuration
+### Video Analysis
 ```yaml
 analysis:
-  complexity_analysis:
-    enabled: true
-    sample_points: [0.1, 0.25, 0.5, 0.75, 0.9]
   crop_detection:
     enabled: true
+    sample_count: 3              # Number of temporal samples
+    sdr_crop_limit: 24           # SDR content threshold
+    hdr_crop_limit: 64           # HDR content threshold
     min_pixel_change_percent: 1.0
+  
   hdr_detection:
     enabled: true
+    color_space_patterns: ["bt2020", "rec2020"]
+    transfer_patterns: ["smpte2084", "arib-std-b67"] 
+    crf_adjustment: 2.0          # CRF increase for HDR content
 ```
 
-#### Hardware Acceleration
+### Processing Filters
 ```yaml
-hardware:
-  cuda:
-    enabled: false
-    fallback_to_software: true
-    decode_acceleration: true
-    filter_acceleration: true
+filters:
+  deinterlace:
+    primary_method: "nnedi"
+    fallback_method: "yadif"
+    nnedi_settings:
+      field: "auto"
+  
+  denoise:
+    filter: "hqdn3d"
+    params: "1:1:2:2"           # luma_spatial:chroma_spatial:luma_temporal:chroma_temporal
 ```
 
-### Adding Custom Profiles
-
-Profiles are defined in the `profiles` section:
-
+### Encoding Profiles
+Each profile defines content-specific parameters:
 ```yaml
 profiles:
-  my_custom_profile:
-    title: "My Custom Profile"
-    base_crf: 21
-    base_bitrate: 12000
-    hdr_bitrate: 15000
+  movie:
+    title: "Standard Movie"
+    base_crf: 22
+    base_bitrate: 10000          # kbps for ABR/CBR modes
+    hdr_bitrate: 13000           # kbps for HDR content
     content_type: "film"
     x265_params:
       preset: "slow"
-      pix_fmt: "yuv420p10le"
-      profile: "main10"
-      # ... other x265 parameters
+      tune: "grain"
+      # ... extensive x265 parameters
 ```
+
+## 🎨 Examples
+
+### Content-Specific Encoding
+```bash
+# Anime content with size optimization
+./ffmpeg-encoder -i "Your Name (2016).mkv" -p anime -m crf
+
+# Heavy grain film preservation
+./ffmpeg-encoder -i "Saving Private Ryan.mkv" -p heavy_grain
+
+# 4K content with grain preservation
+./ffmpeg-encoder -i "4K_Movie.mkv" -p 4k_heavy_grain
+
+# 3D animated content
+./ffmpeg-encoder -i "Pixar_Movie.mkv" -p 3d_cgi
+```
+
+### Batch Processing
+```bash
+# Process entire directory with automatic profile detection
+./ffmpeg-encoder -i ~/Movies/ToEncode/ -p auto
+
+# Size-focused batch processing
+./ffmpeg-encoder -i ~/Movies/ -p movie_size_focused -m crf
+```
+
+### Advanced Processing
+```bash
+# Legacy content with full restoration
+./ffmpeg-encoder -i old_tv_show.avi --deinterlace --denoise -p classic_anime
+
+# Manual crop with custom settings
+./ffmpeg-encoder -i letterbox_movie.mkv --crop 1920:800:0:140 -p movie
+
+# Streaming-optimized CBR encoding
+./ffmpeg-encoder -i content.mkv -p movie -m cbr
+```
+
+## 🔍 Output and Logging
+
+### File Naming
+- **Auto-generated names**: `{UUID}.mkv` to prevent conflicts
+- **Custom output**: Use `-o` flag for specific output path
+- **Batch processing**: Creates files alongside originals with UUID names
+
+### Logging
+The tool creates detailed per-file logs (`{output}.log`) containing:
+- **Input/output paths** and selected profile information
+- **Video analysis results** (resolution, duration, HDR detection, crop detection)
+- **Encoding settings** (adaptive CRF/bitrate, filters, x265 parameters)
+- **Stream mapping** (audio/subtitle/data stream preservation)
+- **Performance metrics** (encoding duration, output size, completion status)
+
+### Progress Monitoring
+Real-time progress display showing:
+- **Progress bar** with percentage completion
+- **Current FPS** and encoding speed multiplier
+- **ETA calculations** using multiple estimation methods
+- **File size estimates** based on current progress
 
 ## 🏗️ Architecture
 
-### Project Structure
-```
-src/
-├── cli/              # Command-line interface
-├── config/           # Configuration management
-├── encoding/         # Encoding modes and logic
-├── analysis/         # Video analysis and classification
-├── progress/         # Progress tracking (planned)
-├── utils/            # Utilities and FFmpeg wrapper
-└── main.rs          # Application entry point
-```
+### Core Modules
+- **CLI Interface** (`src/cli/`) - Clap-based command parsing with validation
+- **Configuration** (`src/config/`) - Type-safe YAML configuration management
+- **Encoding Modes** (`src/encoding/`) - CRF/ABR/CBR implementations with multi-pass support
+- **Video Analysis** (`src/analysis/`) - Crop detection, HDR detection, content classification
+- **Stream Processing** (`src/stream/`) - Lossless stream preservation and metadata handling
+- **Utilities** (`src/utils/`) - FFmpeg wrapper, progress monitoring, error handling
 
-### Key Components
-
-#### Config System
-- **Type-safe configuration**: Serde-based YAML parsing
-- **Profile management**: Dynamic profile loading and validation
-- **Content adaptation**: Configurable CRF/bitrate modifiers
-
-#### Encoding System
-- **Mode abstraction**: Clean separation of CRF/ABR/CBR logic
-- **Filter pipeline**: Composable video filter system
-- **Hardware acceleration**: CUDA decode and filter support
-
-#### FFmpeg Integration
-- **Async wrapper**: Non-blocking FFmpeg process management
-- **Progress parsing**: Real-time progress extraction
-- **Metadata analysis**: Comprehensive video property detection
-
-## 🧪 Testing
-
-Run the test suite:
-```bash
-# Unit tests
-cargo test
-
-# Integration tests with temporary files
-cargo test --features integration
-
-# Test with verbose output
-cargo test -- --nocapture
-```
-
-## 📋 Requirements
-
-### Runtime Dependencies
-- **FFmpeg** with libx265 support (includes FFprobe)
-
-### Optional Dependencies
-- **NNEDI weights**: For neural network deinterlacing
-- **CUDA**: For hardware acceleration
-
-## 🚀 Performance
-
-### Benchmarks (vs Bash Version)
-- **Startup time**: ~10x faster
-- **Configuration parsing**: ~50x faster  
-- **Memory usage**: ~75% reduction
-- **Error handling**: Comprehensive vs basic
-
-### Optimization Features
-- **Async I/O**: Non-blocking operations
-- **Efficient parsing**: Binary format processing
-- **Memory management**: Rust's zero-cost abstractions
-- **Parallel processing**: Ready for concurrent encoding
+### Key Features
+- **Async Architecture** - Non-blocking I/O throughout using Tokio
+- **Type Safety** - Comprehensive Rust type system with Serde for configuration
+- **Error Handling** - Detailed error types with context and recovery
+- **Performance** - Optimized FFprobe settings and efficient progress parsing
+- **Stream Preservation** - Complete audio/subtitle/chapter/metadata retention
 
 ## 🤝 Contributing
 
@@ -310,20 +258,12 @@ cargo test -- --nocapture
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-### Development Setup
-```bash
-git clone <repository-url>
-cd ffmpeg_autoencoder_rust
-cargo build
-cargo test
-```
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## ✨ Acknowledgments
 
-- FFmpeg development team
-- Rust community for excellent tooling
-- x265 project for the encoder
+- **FFmpeg team** for the incredible media processing framework
+- **x265 developers** for the high-quality HEVC encoder
+- **Rust community** for excellent async and CLI libraries
