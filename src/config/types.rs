@@ -31,7 +31,7 @@ impl ContentType {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_string(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "anime" => Some(Self::Anime),
             "classic_anime" => Some(Self::ClassicAnime),
@@ -148,18 +148,6 @@ pub struct ContentAdaptationConfig {
     pub bitrate_multipliers: HashMap<String, f32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CudaConfig {
-    pub enabled: bool,
-    pub fallback_to_software: bool,
-    pub decode_acceleration: bool,
-    pub filter_acceleration: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct HardwareConfig {
-    pub cuda: CudaConfig,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NnediSettings {

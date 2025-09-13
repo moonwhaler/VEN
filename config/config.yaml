@@ -423,13 +423,6 @@ content_adaptation:
     clean_digital: 0.80
     mixed: 1.0
 
-# Hardware Acceleration Settings
-hardware:
-  cuda:
-    enabled: false
-    fallback_to_software: true
-    decode_acceleration: true
-    filter_acceleration: true
   
 # Video Filter Settings
 filters:

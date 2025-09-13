@@ -27,8 +27,8 @@ EXAMPLES:
   # Batch processing directory
   ffmpeg-encoder -i ~/Videos/Raw/ -p auto -m abr
 
-  # Hardware acceleration with crop detection
-  ffmpeg-encoder -i input.mkv -p movie --hardware --use-complexity -m abr
+  # With complexity analysis and crop detection
+  ffmpeg-encoder -i input.mkv -p movie --use-complexity -m abr
 ")]
 pub struct CliArgs {
     /// Input video file or directory (can be specified multiple times)
@@ -72,9 +72,6 @@ pub struct CliArgs {
     #[arg(long)]
     pub deinterlace: bool,
 
-    /// Enable hardware acceleration (CUDA)
-    #[arg(long)]
-    pub hardware: bool,
 
     /// Force web search for content classification (overrides config)
     #[arg(long)]
@@ -279,7 +276,7 @@ impl CliArgs {
                 println!();
                 println!("Advanced Options:");
                 println!("  ffmpeg-encoder -i input.mkv -p 4k_heavy_grain --use-complexity --denoise");
-                println!("  ffmpeg-encoder -i input.mkv -p movie --hardware --deinterlace -m abr");
+                println!("  ffmpeg-encoder -i input.mkv -p movie --deinterlace -m abr");
                 println!();
                 println!("Batch Processing:");
                 println!("  ffmpeg-encoder -i ~/Videos/Raw/ -p auto -m crf");

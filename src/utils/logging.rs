@@ -193,6 +193,7 @@ impl FileLogger {
         Ok(())
     }
     
+    #[allow(clippy::too_many_arguments)]
     pub fn log_crop_detection_results(
         &self,
         enabled: bool,

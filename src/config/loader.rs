@@ -15,7 +15,6 @@ pub struct Config {
     pub content_classification: ContentClassificationConfig,
     pub profiles: HashMap<String, RawProfile>,
     pub content_adaptation: ContentAdaptationConfig,
-    pub hardware: HardwareConfig,
     pub filters: FiltersConfig,
 }
 
@@ -63,7 +62,7 @@ impl Config {
                 )));
             }
 
-            if ContentType::from_str(&profile.content_type).is_none() {
+            if ContentType::from_string(&profile.content_type).is_none() {
                 return Err(Error::validation(format!(
                     "Invalid content_type for profile '{}': {}",
                     name, profile.content_type
@@ -167,14 +166,6 @@ impl Default for Config {
             content_adaptation: ContentAdaptationConfig {
                 crf_modifiers: HashMap::new(),
                 bitrate_multipliers: HashMap::new(),
-            },
-            hardware: HardwareConfig {
-                cuda: CudaConfig {
-                    enabled: false,
-                    fallback_to_software: true,
-                    decode_acceleration: true,
-                    filter_acceleration: true,
-                },
             },
             filters: FiltersConfig {
                 deinterlace: DeinterlaceConfig {
@@ -288,12 +279,6 @@ content_adaptation:
   bitrate_multipliers:
     film: 1.0
 
-hardware:
-  cuda:
-    enabled: false
-    fallback_to_software: true
-    decode_acceleration: true
-    filter_acceleration: true
 
 filters:
   deinterlace:

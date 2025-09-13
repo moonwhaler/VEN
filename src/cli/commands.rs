@@ -128,7 +128,6 @@ async fn validate_config(config_path: &std::path::Path) -> Result<()> {
             println!("{:-<40}", "");
             println!("Profiles defined: {}", config.profiles.len());
             println!("Web search enabled: {}", config.web_search.enabled);
-            println!("Hardware acceleration: {}", config.hardware.cuda.enabled);
             println!("Complexity analysis: {}", config.analysis.complexity_analysis.enabled);
             println!("Crop detection: {}", config.analysis.crop_detection.enabled);
             println!("HDR detection: {}", config.analysis.hdr_detection.enabled);

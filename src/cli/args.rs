@@ -71,9 +71,6 @@ pub struct EncodingCommand {
     #[arg(long)]
     pub deinterlace: bool,
 
-    /// Enable hardware acceleration (CUDA)
-    #[arg(long)]
-    pub hardware: bool,
 
     /// Force web search for content classification (overrides config)
     #[arg(long)]
@@ -281,7 +278,6 @@ impl Default for EncodingCommand {
             use_complexity: false,
             denoise: false,
             deinterlace: false,
-            hardware: false,
             web_search_force: false,
             no_web_search: false,
             config: PathBuf::from("config.yaml"),

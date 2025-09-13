@@ -16,7 +16,7 @@ pub struct EncodingProfile {
 
 impl EncodingProfile {
     pub fn from_raw(name: String, raw: RawProfile) -> Result<Self> {
-        let content_type = ContentType::from_str(&raw.content_type)
+        let content_type = ContentType::from_string(&raw.content_type)
             .ok_or_else(|| Error::profile(format!("Invalid content type: {}", raw.content_type)))?;
 
         let x265_params = raw
@@ -66,6 +66,7 @@ impl EncodingProfile {
         self.build_x265_params_string_with_hdr(mode_specific_params, None, None, None, None, None, None)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn build_x265_params_string_with_hdr(
         &self, 
         mode_specific_params: Option<&HashMap<String, String>>,

@@ -101,7 +101,7 @@ impl ComplexityAnalyzer {
         let temp_frame = format!("/tmp/grain_frame_{}.png", uuid::Uuid::new_v4());
         
         let extract_result = Command::new("ffmpeg")
-            .args(&[
+            .args([
                 "-ss", &timestamp.to_string(),
                 "-i", &input_path.to_string_lossy(),
                 "-t", "1",  // Limit to 1 second like bash script
@@ -157,7 +157,7 @@ except Exception as e:
 "#, frame_path);
 
         let output = Command::new("python3")
-            .args(&["-c", &python_script])
+            .args(["-c", &python_script])
             .output()
             .await;
 
@@ -175,7 +175,7 @@ except Exception as e:
     async fn calculate_si_ti(&self, input_path: &Path) -> Result<(f32, f32)> {
         // Reduced from 30 to 15 seconds for faster SI/TI calculation  
         let output = Command::new("ffmpeg")
-            .args(&[
+            .args([
                 "-i", &input_path.to_string_lossy(),
                 "-t", "15",  // Reduced from 30 to 15 seconds for faster analysis
                 "-vf", "signalstats",
@@ -197,7 +197,7 @@ except Exception as e:
     async fn detect_scene_changes(&self, input_path: &Path) -> Result<u32> {
         // Reduced from 60 to 30 seconds for faster scene change detection
         let output = Command::new("ffmpeg")
-            .args(&[
+            .args([
                 "-i", &input_path.to_string_lossy(),
                 "-t", "30",  // Reduced from 60 to 30 seconds for faster analysis
                 "-vf", "select='gt(scene,0.3)',showinfo",
@@ -229,7 +229,7 @@ except Exception as e:
     async fn calculate_frame_complexity(&self, input_path: &Path) -> Result<f32> {
         // Analyze frame types and their distribution using bash script's limited sampling approach
         let output = Command::new("ffprobe")
-            .args(&[
+            .args([
                 "-v", "error",
                 "-select_streams", "v:0",
                 "-read_intervals", "%+#600",   // Reduced from 1800 to 600 frames for faster analysis

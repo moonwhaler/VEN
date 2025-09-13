@@ -13,7 +13,6 @@ pub struct EncodingOptions {
     pub use_complexity_analysis: bool,
     pub denoise: bool,
     pub deinterlace: bool,
-    pub hardware_accel: bool,
     pub web_search_enabled: bool,
     pub web_search_force: bool,
     pub no_web_search: bool,
@@ -32,7 +31,6 @@ impl EncodingOptions {
             use_complexity_analysis: false,
             denoise: false,
             deinterlace: false,
-            hardware_accel: false,
             web_search_enabled: true,
             web_search_force: false,
             no_web_search: false,
@@ -79,10 +77,6 @@ impl EncodingOptions {
         self
     }
 
-    pub fn with_hardware_accel(mut self, enabled: bool) -> Self {
-        self.hardware_accel = enabled;
-        self
-    }
 
     pub fn with_web_search(mut self, enabled: bool) -> Self {
         self.web_search_enabled = enabled;

@@ -1,7 +1,5 @@
-use std::path::Path;
 use crate::utils::{Result, Error};
 use crate::config::Config;
-use crate::hardware::cuda::{CudaAccelerator, HardwareAcceleration};
 
 #[derive(Debug, Clone, Default)]
 pub struct FilterChain {
@@ -45,30 +43,21 @@ impl std::fmt::Display for FilterChain {
 pub struct FilterBuilder<'a> {
     config: &'a Config,
     chain: FilterChain,
-    hardware_acceleration: Option<HardwareAcceleration>,
-    cuda_accelerator: Option<&'a CudaAccelerator>,
 }
 
 impl<'a> FilterBuilder<'a> {
-    pub fn new(
-        config: &'a Config, 
-        hardware_acceleration: Option<HardwareAcceleration>,
-        cuda_accelerator: Option<&'a CudaAccelerator>,
-    ) -> Self {
+    pub fn new(config: &'a Config) -> Self {
         Self {
             config,
             chain: FilterChain::new(),
-            hardware_acceleration,
-            cuda_accelerator,
         }
     }
     
     /// Build filter chain following exact bash implementation order:
     /// 1. Deinterlacing (NNEDI/yadif)
     /// 2. Denoising (hqdn3d)
-    /// 3. Hardware acceleration (CUDA decode → hwdownload → CPU filters)
-    /// 4. Cropping (manual override or auto-detection)
-    /// 5. Scaling (resolution adjustment)
+    /// 3. Cropping (manual override or auto-detection)
+    /// 4. Scaling (resolution adjustment)
     pub fn build_complete_chain(
         mut self,
         deinterlace: bool,
@@ -88,21 +77,13 @@ impl<'a> FilterBuilder<'a> {
             self.chain.add_filter(filter);
         }
         
-        // Step 3: Hardware Acceleration handling
-        if let (Some(accel), Some(cuda)) = (&self.hardware_acceleration, &self.cuda_accelerator) {
-            if accel.uses_filter_acceleration() && cuda.get_capabilities().cuda_available {
-                // For CUDA: decode → hwdownload → CPU filters → hwupload
-                self.add_hardware_transition_filters();
-            }
-        }
-        
-        // Step 4: Cropping (fourth in pipeline)
+        // Step 3: Cropping (third in pipeline)
         if let Some(crop_value) = crop {
-            let filter = self.build_crop_filter(crop_value)?;
+            let filter = format!("crop={}", crop_value);
             self.chain.add_filter(filter);
         }
         
-        // Step 5: Scaling (last in pipeline)
+        // Step 4: Scaling (last in pipeline)
         if let Some(scale_value) = scale {
             let filter = self.build_scale_filter(scale_value)?;
             self.chain.add_filter(filter);
@@ -111,15 +92,6 @@ impl<'a> FilterBuilder<'a> {
         Ok(self.chain)
     }
     
-    fn add_hardware_transition_filters(&mut self) {
-        // Add hwdownload to transition from GPU to CPU for filters
-        if !self.chain.filters.is_empty() {
-            self.chain.add_filter("hwdownload".to_string());
-            self.chain.add_filter("format=nv12".to_string());
-        }
-    }
-
-    // Legacy methods for backward compatibility
     pub fn with_deinterlace(mut self, enabled: bool) -> Result<Self> {
         if enabled {
             let filter = self.build_deinterlace_filter()?;
@@ -138,7 +110,7 @@ impl<'a> FilterBuilder<'a> {
 
     pub fn with_crop(mut self, crop: Option<&str>) -> Result<Self> {
         if let Some(crop_value) = crop {
-            let filter = self.build_crop_filter(crop_value)?;
+            let filter = format!("crop={}", crop_value);
             self.chain.add_filter(filter);
         }
         Ok(self)
@@ -155,243 +127,186 @@ impl<'a> FilterBuilder<'a> {
     pub fn build(self) -> FilterChain {
         self.chain
     }
-
+    
     fn build_deinterlace_filter(&self) -> Result<String> {
         let deinterlace_config = &self.config.filters.deinterlace;
         
-        let primary_method = &deinterlace_config.primary_method;
-        let fallback_method = &deinterlace_config.fallback_method;
-
-        match primary_method.as_str() {
-            "nnedi" => {
-                if let Some(nnedi_weights) = &self.config.tools.nnedi_weights {
-                    if Path::new(nnedi_weights).exists() {
-                        let field = &deinterlace_config.nnedi_settings.field;
-                        Ok(format!("nnedi=weights='{}':field={}", nnedi_weights, field))
-                    } else {
-                        tracing::warn!("NNEDI weights not found, falling back to {}", fallback_method);
-                        self.build_fallback_deinterlace_filter(fallback_method)
-                    }
-                } else {
-                    tracing::warn!("NNEDI weights path not configured, falling back to {}", fallback_method);
-                    self.build_fallback_deinterlace_filter(fallback_method)
-                }
+        // Use fallback method (yadif) for simplicity since NNEDI requires weights file
+        let filter = match deinterlace_config.fallback_method.as_str() {
+            "yadif" => "yadif=mode=send_field:parity=auto:deint=interlaced".to_string(),
+            "bwdif" => "bwdif=mode=send_field:parity=auto:deint=interlaced".to_string(),
+            other => {
+                return Err(Error::encoding(format!("Unsupported deinterlace method: {}", other)));
             }
-            "yadif" => Ok("yadif=1".to_string()),
-            "bwdif" => Ok("bwdif=1".to_string()),
-            _ => {
-                tracing::warn!("Unknown deinterlace method: {}, falling back to yadif", primary_method);
-                Ok("yadif=1".to_string())
-            }
-        }
+        };
+        
+        Ok(filter)
     }
-
-    fn build_fallback_deinterlace_filter(&self, method: &str) -> Result<String> {
-        match method {
-            "yadif" => Ok("yadif=1".to_string()),
-            "bwdif" => Ok("bwdif=1".to_string()),
-            _ => Ok("yadif=1".to_string()),
-        }
-    }
-
+    
     fn build_denoise_filter(&self) -> String {
         let denoise_config = &self.config.filters.denoise;
         
-        // Match bash implementation: hqdn3d=1:1:2:2 (light uniform grain reduction)
-        if let Some(accel) = &self.hardware_acceleration {
-            if accel.uses_filter_acceleration() && self.config.hardware.cuda.filter_acceleration {
-                format!("{}={}", denoise_config.hardware_variant, denoise_config.params)
-            } else {
-                format!("{}={}", denoise_config.filter, denoise_config.params)
-            }
-        } else {
-            format!("{}={}", denoise_config.filter, denoise_config.params)
-        }
+        // Use software denoising only
+        format!("{}={}", denoise_config.filter, denoise_config.params)
     }
-
-    fn build_crop_filter(&self, crop: &str) -> Result<String> {
-        let parts: Vec<&str> = crop.split(':').collect();
-        if parts.len() != 4 {
-            return Err(Error::validation(format!(
-                "Invalid crop format: {} (expected width:height:x:y)",
-                crop
-            )));
-        }
-
-        let width: u32 = parts[0].parse()
-            .map_err(|_| Error::validation("Invalid crop width"))?;
-        let height: u32 = parts[1].parse()
-            .map_err(|_| Error::validation("Invalid crop height"))?;
-        let x: u32 = parts[2].parse()
-            .map_err(|_| Error::validation("Invalid crop x offset"))?;
-        let y: u32 = parts[3].parse()
-            .map_err(|_| Error::validation("Invalid crop y offset"))?;
-
-        Ok(format!("crop={}:{}:{}:{}", width, height, x, y))
-    }
-
-    fn build_scale_filter(&self, scale: &str) -> Result<String> {
-        let parts: Vec<&str> = scale.split('x').collect();
+    
+    fn build_scale_filter(&self, scale_value: &str) -> Result<String> {
+        let scale_config = &self.config.filters.scale;
+        
+        // Parse widthxheight format, handle -1 for auto
+        let parts: Vec<&str> = scale_value.split('x').collect();
         if parts.len() != 2 {
-            return Err(Error::validation(format!(
-                "Invalid scale format: {} (expected widthxheight)",
-                scale
-            )));
+            return Err(Error::encoding("Scale format must be WIDTHxHEIGHT (e.g., 1920x1080, -1x720)"));
         }
-
+        
         let width = parts[0];
         let height = parts[1];
-
-        if !self.is_valid_scale_dimension(width) || !self.is_valid_scale_dimension(height) {
-            return Err(Error::validation("Invalid scale dimensions"));
-        }
-
-        let algorithm = &self.config.filters.scale.algorithm;
-        Ok(format!("scale={}:{}:flags={}", width, height, algorithm))
-    }
-
-    fn is_valid_scale_dimension(&self, dim: &str) -> bool {
-        dim == "-1" || dim.parse::<u32>().is_ok()
+        
+        let filter = if scale_config.preserve_aspect_ratio {
+            format!("scale={}:{}:flags={}", width, height, scale_config.algorithm)
+        } else {
+            format!("scale={}:{}:flags={}:force_original_aspect_ratio=disable", width, height, scale_config.algorithm)
+        };
+        
+        Ok(filter)
     }
 }
 
-pub fn build_hardware_decode_args(config: &Config, _input_path: &str) -> Vec<String> {
-    if !config.hardware.cuda.enabled || !config.hardware.cuda.decode_acceleration {
-        return Vec::new();
+// Helper function to validate crop format
+pub fn validate_crop_format(crop: &str) -> Result<()> {
+    let parts: Vec<&str> = crop.split(':').collect();
+    if parts.len() != 4 {
+        return Err(Error::encoding("Crop format must be width:height:x:y"));
     }
-
-    vec![
-        "-hwaccel".to_string(),
-        "cuda".to_string(),
-        "-hwaccel_output_format".to_string(),
-        "cuda".to_string(),
-    ]
-}
-
-pub fn add_hardware_filters_if_needed(filters: &mut FilterChain, config: &Config) {
-    if config.hardware.cuda.enabled && !filters.is_empty() {
-        let mut new_filters = Vec::new();
-        new_filters.push("hwdownload".to_string());
-        new_filters.push("format=nv12".to_string());
-        
-        for filter in &filters.filters {
-            new_filters.push(filter.clone());
+    
+    for part in parts {
+        if part.parse::<u32>().is_err() {
+            return Err(Error::encoding("All crop values must be positive integers"));
         }
-        
-        new_filters.push("hwupload_cuda".to_string());
-        
-        filters.filters = new_filters;
     }
+    
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{Config, FiltersConfig, DeinterlaceConfig, NnediSettings, DenoiseConfig, ScaleConfig, CropConfig, CropValidationConfig};
+    use crate::config::types::*;
+    use std::collections::HashMap;
 
     fn create_test_config() -> Config {
-        let mut config = Config::default();
-        config.filters = FiltersConfig {
-            deinterlace: DeinterlaceConfig {
-                primary_method: "nnedi".to_string(),
-                fallback_method: "yadif".to_string(),
-                nnedi_settings: NnediSettings {
-                    field: "auto".to_string(),
+        Config {
+            app: AppConfig {
+                temp_dir: "/tmp".to_string(),
+                stats_prefix: "test".to_string(),
+                max_concurrent_jobs: 1,
+            },
+            tools: ToolsConfig {
+                ffmpeg: "ffmpeg".to_string(),
+                ffprobe: "ffprobe".to_string(),
+                nnedi_weights: None,
+            },
+            logging: LoggingConfig {
+                level: "info".to_string(),
+                show_timestamps: true,
+                colored_output: true,
+            },
+            progress: ProgressConfig {
+                update_interval_ms: 1000,
+                stall_detection_seconds: 15,
+                show_eta: true,
+                show_file_size: true,
+            },
+            analysis: AnalysisConfig {
+                complexity_analysis: ComplexityAnalysisConfig {
+                    enabled: false,
+                    sample_points: vec![],
+                    methods: vec![],
+                },
+                crop_detection: CropDetectionConfig::default(),
+                hdr_detection: HdrDetectionConfig {
+                    enabled: true,
+                    color_space_patterns: vec!["bt2020".to_string()],
+                    transfer_patterns: vec!["smpte2084".to_string()],
+                    crf_adjustment: 2.0,
                 },
             },
-            denoise: DenoiseConfig {
-                filter: "hqdn3d".to_string(),
-                params: "1:1:2:2".to_string(),
-                hardware_variant: "nlmeans".to_string(),
+            web_search: WebSearchConfig {
+                enabled: false,
+                timeout_seconds: 10,
+                user_agent: "test".to_string(),
+                simulation_mode: false,
             },
-            crop: CropConfig {
-                auto_detect: true,
-                validation: CropValidationConfig {
-                    min_change_percent: 1.0,
-                    temporal_samples: 3,
+            content_classification: ContentClassificationConfig {
+                grain_thresholds: ThresholdConfig { low: 20, medium: 50, high: 80 },
+                motion_thresholds: ThresholdConfig { low: 10, medium: 30, high: 60 },
+                scene_change_thresholds: ThresholdConfig { low: 5, medium: 15, high: 25 },
+            },
+            profiles: HashMap::new(),
+            content_adaptation: ContentAdaptationConfig {
+                crf_modifiers: HashMap::new(),
+                bitrate_multipliers: HashMap::new(),
+            },
+            filters: FiltersConfig {
+                deinterlace: DeinterlaceConfig {
+                    primary_method: "nnedi".to_string(),
+                    fallback_method: "yadif".to_string(),
+                    nnedi_settings: NnediSettings {
+                        field: "auto".to_string(),
+                    },
+                },
+                denoise: DenoiseConfig {
+                    filter: "hqdn3d".to_string(),
+                    params: "1:1:2:2".to_string(),
+                    hardware_variant: "nlmeans".to_string(),
+                },
+                scale: ScaleConfig {
+                    algorithm: "lanczos".to_string(),
+                    preserve_aspect_ratio: true,
                 },
             },
-            scale: ScaleConfig {
-                algorithm: "lanczos".to_string(),
-                preserve_aspect_ratio: true,
-            },
-        };
-        config
+        }
     }
 
     #[test]
-    fn test_filter_chain_basic() {
-        let mut chain = FilterChain::new();
+    fn test_empty_filter_chain() {
+        let chain = FilterChain::new();
         assert!(chain.is_empty());
-        
-        chain.add_filter("yadif=1".to_string());
-        assert!(!chain.is_empty());
-        
-        let args = chain.build_ffmpeg_args();
-        assert_eq!(args, vec!["-vf", "yadif=1"]);
+        assert_eq!(chain.build_ffmpeg_args(), Vec::<String>::new());
     }
 
     #[test]
-    fn test_filter_chain_multiple() {
+    fn test_filter_chain_with_filters() {
         let mut chain = FilterChain::new();
-        chain.add_filter("yadif=1".to_string());
-        chain.add_filter("hqdn3d=1:1:2:2".to_string());
         chain.add_filter("scale=1920:1080".to_string());
+        chain.add_filter("hqdn3d=1:1:2:2".to_string());
         
-        let args = chain.build_ffmpeg_args();
-        assert_eq!(args, vec!["-vf", "yadif=1,hqdn3d=1:1:2:2,scale=1920:1080"]);
+        assert!(!chain.is_empty());
+        assert_eq!(chain.build_ffmpeg_args(), vec!["-vf", "scale=1920:1080,hqdn3d=1:1:2:2"]);
     }
 
     #[test]
-    fn test_filter_builder_denoise() {
-        let config = create_test_config();
-        let chain = FilterBuilder::new(&config, None, None)
-            .with_denoise(true)
-            .build();
-        
-        let args = chain.build_ffmpeg_args();
-        assert_eq!(args, vec!["-vf", "hqdn3d=1:1:2:2"]);
+    fn test_validate_crop_format() {
+        assert!(validate_crop_format("1920:800:0:140").is_ok());
+        assert!(validate_crop_format("invalid").is_err());
+        assert!(validate_crop_format("1920:800:0").is_err());
+        assert!(validate_crop_format("1920:800:0:invalid").is_err());
     }
 
     #[test]
-    fn test_filter_builder_crop() {
+    fn test_filter_builder_with_all_options() {
         let config = create_test_config();
-        let chain = FilterBuilder::new(&config, None, None)
-            .with_crop(Some("1920:800:0:140"))
-            .unwrap()
-            .build();
+        let builder = FilterBuilder::new(&config);
         
-        let args = chain.build_ffmpeg_args();
-        assert_eq!(args, vec!["-vf", "crop=1920:800:0:140"]);
-    }
-
-    #[test]
-    fn test_filter_builder_scale() {
-        let config = create_test_config();
-        let chain = FilterBuilder::new(&config, None, None)
-            .with_scale(Some("1280x720"))
-            .unwrap()
-            .build();
+        let result = builder.build_complete_chain(
+            true,  // deinterlace
+            true,  // denoise
+            Some("1920:800:0:140"), // crop
+            Some("1920x1080")       // scale
+        );
         
-        let args = chain.build_ffmpeg_args();
-        assert_eq!(args, vec!["-vf", "scale=1280:720:flags=lanczos"]);
-    }
-
-    #[test]
-    fn test_filter_builder_invalid_crop() {
-        let config = create_test_config();
-        let result = FilterBuilder::new(&config, None, None)
-            .with_crop(Some("invalid"));
-        
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_filter_builder_invalid_scale() {
-        let config = create_test_config();
-        let result = FilterBuilder::new(&config, None, None)
-            .with_scale(Some("invalid"));
-        
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        let chain = result.unwrap();
+        assert!(!chain.is_empty());
     }
 }

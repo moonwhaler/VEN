@@ -7,7 +7,6 @@ use ffmpeg_autoencoder::{
     utils::{setup_logging, find_video_files, generate_uuid_filename, FfmpegWrapper, Result, Error, FileLogger, ProgressMonitor},
     encoding::{EncodingMode, FilterBuilder, CrfEncoder, AbrEncoder, CbrEncoder, modes::Encoder},
     stream::preservation::StreamPreservation,
-    hardware::cuda::{CudaAccelerator, HardwareAcceleration},
 };
 
 #[tokio::main]
@@ -60,13 +59,6 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
     ffmpeg.check_availability().await
         .map_err(|e| Error::ffmpeg(format!("FFmpeg tools not available: {}", e)))?;
 
-    // Initialize hardware acceleration
-    let cuda_accelerator = if args.hardware {
-        Some(CudaAccelerator::new(config.hardware.cuda.fallback_to_software).await?)
-    } else {
-        None
-    };
-
     // Initialize stream preservation
     let stream_preservation = StreamPreservation::new(ffmpeg.clone());
 
@@ -104,7 +96,6 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
         process_single_file(
             &ffmpeg, 
             &stream_preservation,
-            cuda_accelerator.as_ref(),
             args, 
             config, 
             &mut profile_manager, 
@@ -119,7 +110,6 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
 async fn process_single_file(
     ffmpeg: &FfmpegWrapper,
     stream_preservation: &StreamPreservation,
-    cuda_accelerator: Option<&CudaAccelerator>,
     args: &CliArgs,
     config: &Config,
     profile_manager: &mut ProfileManager,
@@ -172,13 +162,7 @@ async fn process_single_file(
         (None, vec![], None)
     };
 
-    let hardware_acceleration = if args.hardware {
-        cuda_accelerator.map(|_| HardwareAcceleration::CudaFull)
-    } else {
-        None
-    };
-
-    let filter_chain = FilterBuilder::new(config, hardware_acceleration, cuda_accelerator)
+    let filter_chain = FilterBuilder::new(config)
         .with_deinterlace(args.deinterlace)?
         .with_denoise(args.denoise)
         .with_crop(crop_values.as_deref())?
