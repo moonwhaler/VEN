@@ -189,13 +189,6 @@ impl Default for Config {
                     params: "1:1:2:2".to_string(),
                     hardware_variant: "nlmeans".to_string(),
                 },
-                crop: CropConfig {
-                    auto_detect: true,
-                    validation: CropValidationConfig {
-                        min_change_percent: 1.0,
-                        temporal_samples: 3,
-                    },
-                },
                 scale: ScaleConfig {
                     algorithm: "lanczos".to_string(),
                     preserve_aspect_ratio: true,

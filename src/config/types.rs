@@ -180,17 +180,6 @@ pub struct DenoiseConfig {
     pub hardware_variant: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CropConfig {
-    pub auto_detect: bool,
-    pub validation: CropValidationConfig,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CropValidationConfig {
-    pub min_change_percent: f32,
-    pub temporal_samples: u32,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ScaleConfig {
@@ -202,7 +191,6 @@ pub struct ScaleConfig {
 pub struct FiltersConfig {
     pub deinterlace: DeinterlaceConfig,
     pub denoise: DenoiseConfig,
-    pub crop: CropConfig,
     pub scale: ScaleConfig,
 }
 
