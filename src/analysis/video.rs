@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::config::ContentType;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VideoAnalysis {
@@ -24,12 +24,7 @@ pub struct VideoAnalysis {
 }
 
 impl VideoAnalysis {
-    pub fn new(
-        width: u32,
-        height: u32,
-        duration: f64,
-        fps: f32,
-    ) -> Self {
+    pub fn new(width: u32, height: u32, duration: f64, fps: f32) -> Self {
         Self {
             width,
             height,
@@ -88,7 +83,12 @@ impl VideoAnalysis {
         self
     }
 
-    pub fn with_hdr_info(mut self, is_hdr: bool, color_space: Option<String>, transfer_function: Option<String>) -> Self {
+    pub fn with_hdr_info(
+        mut self,
+        is_hdr: bool,
+        color_space: Option<String>,
+        transfer_function: Option<String>,
+    ) -> Self {
         self.is_hdr = is_hdr;
         self.color_space = color_space;
         self.transfer_function = transfer_function;
@@ -109,7 +109,6 @@ impl VideoAnalysis {
         self.scene_changes = scene_changes;
         self
     }
-
 
     pub fn with_content_type(mut self, content_type: Option<ContentType>) -> Self {
         self.content_type = content_type;
@@ -153,7 +152,7 @@ mod tests {
     #[test]
     fn test_video_analysis_calculations() {
         let analysis = VideoAnalysis::new(1920, 1080, 3600.0, 30.0);
-        
+
         assert_eq!(analysis.pixel_count(), 2_073_600);
         assert_eq!(analysis.frame_count(), 108_000);
     }
@@ -163,7 +162,11 @@ mod tests {
         let analysis = VideoAnalysis::new(1920, 1080, 3600.0, 24.0)
             .with_bitrate(Some(5000))
             .with_codec(Some("h264".to_string()))
-            .with_hdr_info(true, Some("bt2020".to_string()), Some("smpte2084".to_string()))
+            .with_hdr_info(
+                true,
+                Some("bt2020".to_string()),
+                Some("smpte2084".to_string()),
+            )
             .with_grain_level(45)
             .with_motion_level(25)
             .with_scene_changes(150)

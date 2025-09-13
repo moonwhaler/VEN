@@ -1,7 +1,7 @@
-use crate::utils::{Result, FfmpegWrapper, Error};
+use crate::utils::{Error, FfmpegWrapper, Result};
+use serde_json::{from_str, Value};
 use std::path::Path;
-use serde_json::{Value, from_str};
-use tracing::{info, warn, debug};
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone)]
 pub struct StreamInfo {
@@ -59,31 +59,35 @@ impl StreamPreservation {
 
     pub async fn analyze_streams<P: AsRef<Path>>(&self, input_path: P) -> Result<StreamMapping> {
         let input_path = input_path.as_ref();
-        
+
         info!("Analyzing stream structure: {}", input_path.display());
-        
+
         // Get comprehensive stream information
         let streams = self.get_stream_info(input_path).await?;
         let chapters = self.get_chapter_info(input_path).await?;
         let metadata = self.get_global_metadata(input_path).await?;
-        
+
         // Categorize streams
-        let video_streams: Vec<StreamInfo> = streams.iter()
+        let video_streams: Vec<StreamInfo> = streams
+            .iter()
             .filter(|s| s.codec_type == "video")
             .cloned()
             .collect();
-        
-        let audio_streams: Vec<StreamInfo> = streams.iter()
+
+        let audio_streams: Vec<StreamInfo> = streams
+            .iter()
             .filter(|s| s.codec_type == "audio")
             .cloned()
             .collect();
-        
-        let subtitle_streams: Vec<StreamInfo> = streams.iter()
+
+        let subtitle_streams: Vec<StreamInfo> = streams
+            .iter()
             .filter(|s| s.codec_type == "subtitle")
             .cloned()
             .collect();
-            
-        let data_streams: Vec<StreamInfo> = streams.iter()
+
+        let data_streams: Vec<StreamInfo> = streams
+            .iter()
             .filter(|s| s.codec_type == "data" || s.codec_type == "attachment")
             .cloned()
             .collect();
@@ -91,9 +95,14 @@ impl StreamPreservation {
         // Build mapping arguments
         let mapping_args = self.build_mapping_arguments(&streams)?;
 
-        info!("Stream analysis complete: {} video, {} audio, {} subtitle, {} data, {} chapters", 
-              video_streams.len(), audio_streams.len(), subtitle_streams.len(), 
-              data_streams.len(), chapters.len());
+        info!(
+            "Stream analysis complete: {} video, {} audio, {} subtitle, {} data, {} chapters",
+            video_streams.len(),
+            audio_streams.len(),
+            subtitle_streams.len(),
+            data_streams.len(),
+            chapters.len()
+        );
 
         Ok(StreamMapping {
             video_streams,
@@ -108,19 +117,29 @@ impl StreamPreservation {
 
     async fn get_stream_info<P: AsRef<Path>>(&self, input_path: P) -> Result<Vec<StreamInfo>> {
         let input_path = input_path.as_ref();
-        
+
         // Use the integrated FFmpeg wrapper for better performance
-        debug!("Using FFmpeg wrapper for stream analysis: {}", input_path.display());
-        
-        let output = self.ffmpeg.run_ffprobe(&[
-            "-v", "quiet",
-            "-analyzeduration", "5M",  // Optimized for faster analysis
-            "-probesize", "5M",        // Optimized for faster analysis
-            "-print_format", "json", 
-            "-show_streams",
-            "-show_format",
-            &input_path.to_string_lossy()
-        ]).await?;
+        debug!(
+            "Using FFmpeg wrapper for stream analysis: {}",
+            input_path.display()
+        );
+
+        let output = self
+            .ffmpeg
+            .run_ffprobe(&[
+                "-v",
+                "quiet",
+                "-analyzeduration",
+                "5M", // Optimized for faster analysis
+                "-probesize",
+                "5M", // Optimized for faster analysis
+                "-print_format",
+                "json",
+                "-show_streams",
+                "-show_format",
+                &input_path.to_string_lossy(),
+            ])
+            .await?;
 
         let json: Value = from_str(&output)?;
 
@@ -128,8 +147,14 @@ impl StreamPreservation {
 
         if let Some(stream_array) = json["streams"].as_array() {
             for (index, stream) in stream_array.iter().enumerate() {
-                let codec_type = stream["codec_type"].as_str().unwrap_or("unknown").to_string();
-                let codec_name = stream["codec_name"].as_str().unwrap_or("unknown").to_string();
+                let codec_type = stream["codec_type"]
+                    .as_str()
+                    .unwrap_or("unknown")
+                    .to_string();
+                let codec_name = stream["codec_name"]
+                    .as_str()
+                    .unwrap_or("unknown")
+                    .to_string();
                 let language = stream["tags"]["language"].as_str().map(|s| s.to_string());
                 let title = stream["tags"]["title"].as_str().map(|s| s.to_string());
 
@@ -169,12 +194,14 @@ impl StreamPreservation {
                     disposition,
                 });
 
-                debug!("Stream {}: {} ({}) - Lang: {:?}, Title: {:?}", 
-                       index, 
-                       streams.last().unwrap().codec_type,
-                       streams.last().unwrap().codec_name,
-                       streams.last().unwrap().language,
-                       streams.last().unwrap().title);
+                debug!(
+                    "Stream {}: {} ({}) - Lang: {:?}, Title: {:?}",
+                    index,
+                    streams.last().unwrap().codec_type,
+                    streams.last().unwrap().codec_name,
+                    streams.last().unwrap().language,
+                    streams.last().unwrap().title
+                );
             }
         }
 
@@ -183,16 +210,25 @@ impl StreamPreservation {
 
     async fn get_chapter_info<P: AsRef<Path>>(&self, input_path: P) -> Result<Vec<ChapterInfo>> {
         let input_path = input_path.as_ref();
-        
+
         // Use the integrated FFmpeg wrapper
-        debug!("Using FFmpeg wrapper for chapter analysis: {}", input_path.display());
-        
-        let output = match self.ffmpeg.run_ffprobe(&[
-            "-v", "quiet",
-            "-print_format", "json",
-            "-show_chapters",
-            &input_path.to_string_lossy()
-        ]).await {
+        debug!(
+            "Using FFmpeg wrapper for chapter analysis: {}",
+            input_path.display()
+        );
+
+        let output = match self
+            .ffmpeg
+            .run_ffprobe(&[
+                "-v",
+                "quiet",
+                "-print_format",
+                "json",
+                "-show_chapters",
+                &input_path.to_string_lossy(),
+            ])
+            .await
+        {
             Ok(output) => output,
             Err(_) => {
                 // Chapters are optional - don't fail if they don't exist
@@ -208,13 +244,18 @@ impl StreamPreservation {
         if let Some(chapter_array) = json["chapters"].as_array() {
             for chapter in chapter_array {
                 let id = chapter["id"].as_u64().unwrap_or(0) as u32;
-                let time_base = chapter["time_base"].as_str().unwrap_or("1/1000").to_string();
+                let time_base = chapter["time_base"]
+                    .as_str()
+                    .unwrap_or("1/1000")
+                    .to_string();
                 let start = chapter["start"].as_u64().unwrap_or(0);
-                let start_time = chapter["start_time"].as_str()
+                let start_time = chapter["start_time"]
+                    .as_str()
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(0.0);
                 let end = chapter["end"].as_u64().unwrap_or(0);
-                let end_time = chapter["end_time"].as_str()
+                let end_time = chapter["end_time"]
+                    .as_str()
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(0.0);
                 let title = chapter["tags"]["title"].as_str().map(|s| s.to_string());
@@ -229,26 +270,40 @@ impl StreamPreservation {
                     title: title.clone(),
                 });
 
-                debug!("Chapter {}: {:.2}s - {:.2}s - {:?}", 
-                       id, start_time, end_time, title);
+                debug!(
+                    "Chapter {}: {:.2}s - {:.2}s - {:?}",
+                    id, start_time, end_time, title
+                );
             }
         }
 
         Ok(chapters)
     }
 
-    async fn get_global_metadata<P: AsRef<Path>>(&self, input_path: P) -> Result<Vec<(String, String)>> {
+    async fn get_global_metadata<P: AsRef<Path>>(
+        &self,
+        input_path: P,
+    ) -> Result<Vec<(String, String)>> {
         let input_path = input_path.as_ref();
-        
+
         // Use the integrated FFmpeg wrapper
-        debug!("Using FFmpeg wrapper for metadata analysis: {}", input_path.display());
-        
-        let output = match self.ffmpeg.run_ffprobe(&[
-            "-v", "quiet",
-            "-print_format", "json",
-            "-show_format",
-            &input_path.to_string_lossy()
-        ]).await {
+        debug!(
+            "Using FFmpeg wrapper for metadata analysis: {}",
+            input_path.display()
+        );
+
+        let output = match self
+            .ffmpeg
+            .run_ffprobe(&[
+                "-v",
+                "quiet",
+                "-print_format",
+                "json",
+                "-show_format",
+                &input_path.to_string_lossy(),
+            ])
+            .await
+        {
             Ok(output) => output,
             Err(_) => {
                 debug!("Failed to extract global metadata");
@@ -308,13 +363,19 @@ impl StreamPreservation {
         }
 
         // Map data/attachment streams (fonts, images, etc.)
-        for data_stream in streams.iter().filter(|s| s.codec_type == "data" || s.codec_type == "attachment") {
+        for data_stream in streams
+            .iter()
+            .filter(|s| s.codec_type == "data" || s.codec_type == "attachment")
+        {
             args.push("-map".to_string());
             args.push(format!("0:{}", data_stream.index));
         }
 
         // Data codec settings - lossless copy
-        if streams.iter().any(|s| s.codec_type == "data" || s.codec_type == "attachment") {
+        if streams
+            .iter()
+            .any(|s| s.codec_type == "data" || s.codec_type == "attachment")
+        {
             args.push("-c:d".to_string());
             args.push("copy".to_string());
             args.push("-c:t".to_string());
@@ -324,7 +385,11 @@ impl StreamPreservation {
         Ok(args)
     }
 
-    pub fn get_metadata_args(&self, mapping: &StreamMapping, custom_title: Option<&str>) -> Vec<String> {
+    pub fn get_metadata_args(
+        &self,
+        mapping: &StreamMapping,
+        custom_title: Option<&str>,
+    ) -> Vec<String> {
         let mut args = Vec::new();
 
         // Preserve all existing metadata first
@@ -352,7 +417,7 @@ impl StreamPreservation {
                 args.push(format!("-metadata:s:v:{}", stream_index));
                 args.push(format!("title={}", title));
             }
-            
+
             // Preserve dispositions
             if video_stream.disposition.default {
                 args.push(format!("-disposition:v:{}", stream_index));
@@ -362,7 +427,7 @@ impl StreamPreservation {
                 args.push(format!("-disposition:v:{}", stream_index));
                 args.push("forced".to_string());
             }
-            
+
             stream_index += 1;
         }
 
@@ -377,7 +442,7 @@ impl StreamPreservation {
                 args.push(format!("-metadata:s:a:{}", stream_index));
                 args.push(format!("title={}", title));
             }
-            
+
             // Preserve dispositions
             if audio_stream.disposition.default {
                 args.push(format!("-disposition:a:{}", stream_index));
@@ -391,7 +456,7 @@ impl StreamPreservation {
                 args.push(format!("-disposition:a:{}", stream_index));
                 args.push("dub".to_string());
             }
-            
+
             stream_index += 1;
         }
 
@@ -406,7 +471,7 @@ impl StreamPreservation {
                 args.push(format!("-metadata:s:s:{}", stream_index));
                 args.push(format!("title={}", title));
             }
-            
+
             // Preserve dispositions
             if subtitle_stream.disposition.default {
                 args.push(format!("-disposition:s:{}", stream_index));
@@ -420,7 +485,7 @@ impl StreamPreservation {
                 args.push(format!("-disposition:s:{}", stream_index));
                 args.push("hearing_impaired".to_string());
             }
-            
+
             stream_index += 1;
         }
 
@@ -449,7 +514,10 @@ impl StreamPreservation {
         if mapping.subtitle_streams.is_empty() {
             debug!("No subtitle streams found");
         } else {
-            info!("Preserving {} subtitle streams", mapping.subtitle_streams.len());
+            info!(
+                "Preserving {} subtitle streams",
+                mapping.subtitle_streams.len()
+            );
         }
 
         if mapping.chapters.is_empty() {
@@ -471,7 +539,7 @@ mod tests {
     async fn test_stream_preservation_creation() {
         let ffmpeg = FfmpegWrapper::new("ffmpeg".to_string(), "ffprobe".to_string());
         let _preservation = StreamPreservation::new(ffmpeg);
-        
+
         // Test basic functionality
         // Placeholder test - would need actual test files to verify functionality
     }
@@ -480,7 +548,7 @@ mod tests {
     fn test_mapping_arguments_construction() {
         let ffmpeg = FfmpegWrapper::new("ffmpeg".to_string(), "ffprobe".to_string());
         let preservation = StreamPreservation::new(ffmpeg);
-        
+
         let streams = vec![
             // Sample video stream
             StreamInfo {
@@ -519,11 +587,11 @@ mod tests {
                     visual_impaired: false,
                     hearing_impaired: false,
                 },
-            }
+            },
         ];
-        
+
         let mapping_args = preservation.build_mapping_arguments(&streams).unwrap();
-        
+
         assert!(mapping_args.contains(&"-map".to_string()));
         assert!(mapping_args.contains(&"0:0".to_string()));
         assert!(mapping_args.contains(&"0:1".to_string()));

@@ -1,7 +1,7 @@
+pub mod filters;
 pub mod modes;
 pub mod options;
-pub mod filters;
 
-pub use modes::{EncodingMode, CrfEncoder, AbrEncoder, CbrEncoder};
+pub use filters::{FilterBuilder, FilterChain};
+pub use modes::{AbrEncoder, CbrEncoder, CrfEncoder, EncodingMode};
 pub use options::EncodingOptions;
-pub use filters::{FilterChain, FilterBuilder};

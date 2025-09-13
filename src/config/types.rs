@@ -75,7 +75,6 @@ pub struct ProgressConfig {
     pub show_file_size: bool,
 }
 
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CropDetectionConfig {
     pub enabled: bool,
@@ -112,10 +111,6 @@ pub struct AnalysisConfig {
     pub hdr_detection: HdrDetectionConfig,
 }
 
-
-
-
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NnediSettings {
     pub field: String,
@@ -133,8 +128,6 @@ pub struct DenoiseConfig {
     pub filter: String,
     pub params: String,
 }
-
-
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FiltersConfig {

@@ -1,8 +1,8 @@
+use super::types::*;
+use crate::utils::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
-use crate::utils::{Result, Error};
-use super::types::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Config {
@@ -29,11 +29,15 @@ impl Config {
 
     fn validate(&self) -> Result<()> {
         if self.progress.update_interval_ms == 0 {
-            return Err(Error::validation("update_interval_ms must be greater than 0"));
+            return Err(Error::validation(
+                "update_interval_ms must be greater than 0",
+            ));
         }
 
         if self.progress.stall_detection_seconds == 0 {
-            return Err(Error::validation("stall_detection_seconds must be greater than 0"));
+            return Err(Error::validation(
+                "stall_detection_seconds must be greater than 0",
+            ));
         }
 
         if self.profiles.is_empty() {
@@ -65,7 +69,6 @@ impl Config {
 
         Ok(())
     }
-
 }
 
 impl Default for Config {
@@ -109,15 +112,21 @@ impl Default for Config {
             profiles: {
                 let mut profiles = HashMap::new();
                 let mut x265_params = HashMap::new();
-                x265_params.insert("preset".to_string(), serde_yaml::Value::String("medium".to_string()));
-                profiles.insert("default".to_string(), RawProfile {
-                    title: "Default Profile".to_string(),
-                    base_crf: 23.0,
-                    base_bitrate: 5000,
-                    hdr_bitrate: 6000,
-                    content_type: "film".to_string(),
-                    x265_params,
-                });
+                x265_params.insert(
+                    "preset".to_string(),
+                    serde_yaml::Value::String("medium".to_string()),
+                );
+                profiles.insert(
+                    "default".to_string(),
+                    RawProfile {
+                        title: "Default Profile".to_string(),
+                        base_crf: 23.0,
+                        base_bitrate: 5000,
+                        hdr_bitrate: 6000,
+                        content_type: "film".to_string(),
+                        x265_params,
+                    },
+                );
                 profiles
             },
             filters: FiltersConfig {
@@ -146,11 +155,11 @@ mod tests {
     fn test_config_validation() {
         let mut config = Config::default();
         match config.validate() {
-            Ok(()) => {},
-            Err(e) => panic!("Config validation failed: {}", e)
+            Ok(()) => {}
+            Err(e) => panic!("Config validation failed: {}", e),
         }
 
-        // Test validation with invalid update_interval_ms  
+        // Test validation with invalid update_interval_ms
         config.progress.update_interval_ms = 0;
         assert!(config.validate().is_err());
     }

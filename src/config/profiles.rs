@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
-use crate::utils::{Result, Error};
 use super::types::{ContentType, RawProfile};
+use crate::utils::{Error, Result};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EncodingProfile {
@@ -26,7 +26,13 @@ impl EncodingProfile {
                 let value_str = match v {
                     serde_yaml::Value::String(s) => s,
                     serde_yaml::Value::Number(n) => n.to_string(),
-                    serde_yaml::Value::Bool(b) => if b { "1".to_string() } else { "0".to_string() },
+                    serde_yaml::Value::Bool(b) => {
+                        if b {
+                            "1".to_string()
+                        } else {
+                            "0".to_string()
+                        }
+                    }
                     _ => {
                         return Err(Error::profile(format!(
                             "Unsupported parameter value type for {}: {:?}",
@@ -49,7 +55,12 @@ impl EncodingProfile {
         })
     }
 
-    pub fn calculate_adaptive_crf(&self, crf_modifier: f32, is_hdr: bool, hdr_crf_adjustment: f32) -> f32 {
+    pub fn calculate_adaptive_crf(
+        &self,
+        crf_modifier: f32,
+        is_hdr: bool,
+        hdr_crf_adjustment: f32,
+    ) -> f32 {
         let mut crf = self.base_crf + crf_modifier;
         if is_hdr {
             crf += hdr_crf_adjustment;
@@ -58,27 +69,42 @@ impl EncodingProfile {
     }
 
     pub fn calculate_adaptive_bitrate(&self, bitrate_multiplier: f32, is_hdr: bool) -> u32 {
-        let base = if is_hdr { self.hdr_bitrate } else { self.base_bitrate };
+        let base = if is_hdr {
+            self.hdr_bitrate
+        } else {
+            self.base_bitrate
+        };
         (base as f32 * bitrate_multiplier) as u32
     }
 
-    pub fn build_x265_params_string(&self, mode_specific_params: Option<&HashMap<String, String>>) -> String {
-        self.build_x265_params_string_with_hdr(mode_specific_params, None, None, None, None, None, None)
+    pub fn build_x265_params_string(
+        &self,
+        mode_specific_params: Option<&HashMap<String, String>>,
+    ) -> String {
+        self.build_x265_params_string_with_hdr(
+            mode_specific_params,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn build_x265_params_string_with_hdr(
-        &self, 
+        &self,
         mode_specific_params: Option<&HashMap<String, String>>,
         is_hdr: Option<bool>,
         color_space: Option<&String>,
         transfer_function: Option<&String>,
         color_primaries: Option<&String>,
         master_display: Option<&String>,
-        max_cll: Option<&String>
+        max_cll: Option<&String>,
     ) -> String {
         let mut params = self.x265_params.clone();
-        
+
         if let Some(mode_params) = mode_specific_params {
             for (key, value) in mode_params {
                 params.insert(key.clone(), value.clone());
@@ -126,8 +152,6 @@ impl EncodingProfile {
             .map(|(key, value)| {
                 if value.is_empty() || value == "true" || value == "1" {
                     key
-                } else if value == "false" || value == "0" {
-                    format!("no-{}", key)
                 } else {
                     format!("{}={}", key, value)
                 }
@@ -151,12 +175,12 @@ impl ProfileManager {
 
     pub fn load_profiles(&mut self, raw_profiles: HashMap<String, RawProfile>) -> Result<()> {
         self.profiles.clear();
-        
+
         for (name, raw_profile) in raw_profiles {
             let profile = EncodingProfile::from_raw(name.clone(), raw_profile)?;
             self.profiles.insert(name, profile);
         }
-        
+
         Ok(())
     }
 
@@ -175,22 +199,23 @@ impl ProfileManager {
             .collect()
     }
 
-    pub fn recommend_profile_for_resolution(&self, width: u32, height: u32, content_type: ContentType) -> Option<&EncodingProfile> {
+    pub fn recommend_profile_for_resolution(
+        &self,
+        width: u32,
+        height: u32,
+        content_type: ContentType,
+    ) -> Option<&EncodingProfile> {
         let profiles = self.get_profiles_by_content_type(content_type);
-        
+
         if profiles.is_empty() {
             return None;
         }
 
         let is_4k = width >= 3840 || height >= 2160;
-        
+
         match content_type {
-            ContentType::Anime => {
-                self.get_profile("anime")
-            }
-            ContentType::ClassicAnime => {
-                self.get_profile("classic_anime")
-            }
+            ContentType::Anime => self.get_profile("anime"),
+            ContentType::ClassicAnime => self.get_profile("classic_anime"),
             ContentType::Animation3D => {
                 if is_4k {
                     self.get_profile("3d_complex")
@@ -207,13 +232,10 @@ impl ProfileManager {
                         .or_else(|| self.get_profile("movie"))
                 }
             }
-            ContentType::HeavyGrain => {
-                self.get_profile("heavy_grain")
-            }
-            ContentType::LightGrain => {
-                self.get_profile("movie_mid_grain")
-                    .or_else(|| self.get_profile("movie"))
-            }
+            ContentType::HeavyGrain => self.get_profile("heavy_grain"),
+            ContentType::LightGrain => self
+                .get_profile("movie_mid_grain")
+                .or_else(|| self.get_profile("movie")),
             ContentType::Action | ContentType::CleanDigital => {
                 if is_4k {
                     self.get_profile("movie")
@@ -224,8 +246,7 @@ impl ProfileManager {
             }
             ContentType::Mixed => {
                 if is_4k {
-                    self.get_profile("4k")
-                        .or_else(|| self.get_profile("movie"))
+                    self.get_profile("4k").or_else(|| self.get_profile("movie"))
                 } else {
                     self.get_profile("movie")
                 }
@@ -248,7 +269,10 @@ mod tests {
     fn create_test_raw_profile() -> RawProfile {
         let mut x265_params = HashMap::new();
         x265_params.insert("preset".to_string(), Value::String("slow".to_string()));
-        x265_params.insert("crf".to_string(), Value::Number(serde_yaml::Number::from(22)));
+        x265_params.insert(
+            "crf".to_string(),
+            Value::Number(serde_yaml::Number::from(22)),
+        );
         x265_params.insert("weightb".to_string(), Value::Bool(true));
         x265_params.insert("no-sao".to_string(), Value::Bool(false));
 
@@ -308,7 +332,7 @@ mod tests {
         assert!(params_str.contains("preset=slow"));
         assert!(params_str.contains("crf=22"));
         assert!(params_str.contains("weightb"));
-        assert!(params_str.contains("no-no-sao"));
+        assert!(params_str.contains("no-sao=0"));
     }
 
     #[test]
@@ -319,7 +343,9 @@ mod tests {
         let color_space = Some("bt2020nc".to_string());
         let transfer_function = Some("smpte2084".to_string());
         let color_primaries = Some("bt2020".to_string());
-        let master_display = Some("G(0.17,0.797)B(0.131,0.046)R(0.708,0.292)WP(0.3127,0.329)L(1000,0.01)".to_string());
+        let master_display = Some(
+            "G(0.17,0.797)B(0.131,0.046)R(0.708,0.292)WP(0.3127,0.329)L(1000,0.01)".to_string(),
+        );
         let max_cll = Some("1000".to_string());
 
         let params_str = profile.build_x265_params_string_with_hdr(
@@ -336,7 +362,9 @@ mod tests {
         assert!(params_str.contains("colormatrix=bt2020nc"));
         assert!(params_str.contains("transfer=smpte2084"));
         assert!(params_str.contains("colorprim=bt2020"));
-        assert!(params_str.contains("master-display=G(0.17,0.797)B(0.131,0.046)R(0.708,0.292)WP(0.3127,0.329)L(1000,0.01)"));
+        assert!(params_str.contains(
+            "master-display=G(0.17,0.797)B(0.131,0.046)R(0.708,0.292)WP(0.3127,0.329)L(1000,0.01)"
+        ));
         assert!(params_str.contains("max-cll=1000,400"));
     }
 

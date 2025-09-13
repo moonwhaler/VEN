@@ -1,18 +1,22 @@
+use chrono::Utc;
+use console::Style;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use tracing::Level;
 use tracing_subscriber::{
     fmt::{self, time::ChronoUtc},
     layer::SubscriberExt,
     util::SubscriberInitExt,
     EnvFilter, Layer,
 };
-use tracing::Level;
-use console::Style;
-use std::fs::File;
-use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-use chrono::Utc;
 
-pub fn setup_logging(level: &str, show_timestamps: bool, colored: bool) -> crate::utils::Result<()> {
+pub fn setup_logging(
+    level: &str,
+    show_timestamps: bool,
+    colored: bool,
+) -> crate::utils::Result<()> {
     let level = match level.to_lowercase().as_str() {
         "trace" => Level::TRACE,
         "debug" => Level::DEBUG,
@@ -101,13 +105,13 @@ impl FileLogger {
     pub fn new<P: AsRef<Path>>(output_path: P) -> crate::utils::Result<Self> {
         let output_path = output_path.as_ref();
         let log_path = output_path.with_extension("log");
-        
+
         let file = File::create(&log_path)?;
         let writer = Arc::new(Mutex::new(BufWriter::new(file)));
-        
+
         Ok(Self { writer, log_path })
     }
-    
+
     #[allow(clippy::too_many_arguments)]
     pub fn log_encoding_settings(
         &self,
@@ -122,73 +126,92 @@ impl FileLogger {
         stream_mapping: &str,
     ) -> crate::utils::Result<()> {
         let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        
+
         let mut writer = self.writer.lock().unwrap();
-        
+
         writeln!(writer, "FFmpeg Encoder - Encoding Log")?;
         writeln!(writer, "Generated: {}", timestamp)?;
         writeln!(writer, "========================================\n")?;
-        
+
         writeln!(writer, "INPUT/OUTPUT:")?;
         writeln!(writer, "  Input:  {}", input_path.display())?;
         writeln!(writer, "  Output: {}", output_path.display())?;
         writeln!(writer)?;
-        
+
         writeln!(writer, "ENCODING SETTINGS:")?;
         writeln!(writer, "  Mode: {}", mode.to_uppercase())?;
-        writeln!(writer, "  Profile: {} - {}", profile_name, profile_settings.title)?;
-        writeln!(writer, "  Content Type: {:?}", profile_settings.content_type)?;
+        writeln!(
+            writer,
+            "  Profile: {} - {}",
+            profile_name, profile_settings.title
+        )?;
+        writeln!(
+            writer,
+            "  Content Type: {:?}",
+            profile_settings.content_type
+        )?;
         writeln!(writer, "  Adaptive CRF: {}", adaptive_crf)?;
         writeln!(writer, "  Adaptive Bitrate: {} kbps", adaptive_bitrate)?;
         writeln!(writer)?;
-        
+
         if let Some(filters) = filter_chain {
             writeln!(writer, "VIDEO FILTERS:")?;
             writeln!(writer, "  {}", filters)?;
             writeln!(writer)?;
         }
-        
+
         writeln!(writer, "STREAM MAPPING:")?;
         writeln!(writer, "  {}", stream_mapping)?;
         writeln!(writer)?;
-        
+
         writeln!(writer, "x265 PARAMETERS:")?;
         for (key, value) in &profile_settings.x265_params {
             writeln!(writer, "  {}: {}", key, value)?;
         }
         writeln!(writer)?;
-        
+
         writer.flush()?;
         Ok(())
     }
-    
+
     pub fn log_analysis_results(
         &self,
         metadata: &crate::utils::ffmpeg::VideoMetadata,
         grain_level: Option<u8>,
     ) -> crate::utils::Result<()> {
         let mut writer = self.writer.lock().unwrap();
-        
+
         writeln!(writer, "VIDEO ANALYSIS:")?;
-        writeln!(writer, "  Resolution: {}x{}", metadata.width, metadata.height)?;
+        writeln!(
+            writer,
+            "  Resolution: {}x{}",
+            metadata.width, metadata.height
+        )?;
         writeln!(writer, "  Duration: {:.2}s", metadata.duration)?;
         writeln!(writer, "  Framerate: {:.2} fps", metadata.fps)?;
-        writeln!(writer, "  Codec: {}", metadata.codec.as_deref().unwrap_or("Unknown"))?;
+        writeln!(
+            writer,
+            "  Codec: {}",
+            metadata.codec.as_deref().unwrap_or("Unknown")
+        )?;
         if let Some(bitrate) = metadata.bitrate {
             writeln!(writer, "  Bitrate: {} kbps", bitrate)?;
         }
-        writeln!(writer, "  HDR: {}", if metadata.is_hdr { "Yes" } else { "No" })?;
-        
-        
+        writeln!(
+            writer,
+            "  HDR: {}",
+            if metadata.is_hdr { "Yes" } else { "No" }
+        )?;
+
         if let Some(grain) = grain_level {
             writeln!(writer, "  Grain Level: {}", grain)?;
         }
-        
+
         writeln!(writer)?;
         writer.flush()?;
         Ok(())
     }
-    
+
     #[allow(clippy::too_many_arguments)]
     pub fn log_crop_detection_results(
         &self,
@@ -202,18 +225,18 @@ impl FileLogger {
         is_hdr: bool,
     ) -> crate::utils::Result<()> {
         let mut writer = self.writer.lock().unwrap();
-        
+
         writeln!(writer, "CROP DETECTION:")?;
         writeln!(writer, "  Enabled: {}", if enabled { "Yes" } else { "No" })?;
-        
+
         if !enabled {
             writeln!(writer)?;
             writer.flush()?;
             return Ok(());
         }
-        
+
         writeln!(writer, "  Sample Count: {}", sample_count)?;
-        
+
         // Format timestamps for display
         let timestamp_display = if sample_timestamps.len() == 1 && sample_timestamps[0] == -1.0 {
             "Manual Override".to_string()
@@ -226,15 +249,20 @@ impl FileLogger {
         };
         writeln!(writer, "  Sample Timestamps: {}", timestamp_display)?;
         writeln!(writer, "  Detection Method: {}", detection_method)?;
-        
+
         let used_limit = if is_hdr { hdr_limit } else { sdr_limit };
-        writeln!(writer, "  Crop Threshold: {} ({} content)", used_limit, if is_hdr { "HDR" } else { "SDR" })?;
-        
+        writeln!(
+            writer,
+            "  Crop Threshold: {} ({} content)",
+            used_limit,
+            if is_hdr { "HDR" } else { "SDR" }
+        )?;
+
         match crop_result {
             Some(crop) => {
                 writeln!(writer, "  Result: CROP DETECTED")?;
                 writeln!(writer, "  Crop Values: {}", crop)?;
-                
+
                 // Parse and calculate crop statistics
                 if let Some(stats) = self.parse_crop_statistics(crop) {
                     writeln!(writer, "  Original Resolution: {}x{}", stats.0, stats.1)?;
@@ -244,27 +272,30 @@ impl FileLogger {
             }
             None => {
                 writeln!(writer, "  Result: NO CROP DETECTED")?;
-                writeln!(writer, "  Reason: No consistent black bars found across sample points")?;
+                writeln!(
+                    writer,
+                    "  Reason: No consistent black bars found across sample points"
+                )?;
             }
         }
-        
+
         writeln!(writer)?;
         writer.flush()?;
         Ok(())
     }
-    
+
     fn parse_crop_statistics(&self, crop_str: &str) -> Option<(u32, u32, u32, u32, f32)> {
-        // Parse crop string like "1920:800:0:140" 
+        // Parse crop string like "1920:800:0:140"
         let parts: Vec<&str> = crop_str.split(':').collect();
         if parts.len() != 4 {
             return None;
         }
-        
+
         let width: u32 = parts[0].parse().ok()?;
         let height: u32 = parts[1].parse().ok()?;
         let _x: u32 = parts[2].parse().ok()?;
         let _y: u32 = parts[3].parse().ok()?;
-        
+
         // For statistics, we need to calculate based on common resolutions
         // This is a simple heuristic - in practice, we'd pass the original resolution
         let (orig_width, orig_height) = if width <= 1920 && height <= 1080 {
@@ -275,14 +306,14 @@ impl FileLogger {
             // Estimate based on crop dimensions
             (width, height + 280) // Common letterbox height
         };
-        
+
         let orig_pixels = (orig_width * orig_height) as f32;
         let crop_pixels = (width * height) as f32;
         let removed_percent = ((orig_pixels - crop_pixels) / orig_pixels) * 100.0;
-        
+
         Some((orig_width, orig_height, width, height, removed_percent))
     }
-    
+
     pub fn log_encoding_progress(&self, message: &str) -> crate::utils::Result<()> {
         let mut writer = self.writer.lock().unwrap();
         let timestamp = Utc::now().format("%H:%M:%S");
@@ -290,7 +321,7 @@ impl FileLogger {
         writer.flush()?;
         Ok(())
     }
-    
+
     pub fn log_encoding_complete(
         &self,
         success: bool,
@@ -299,27 +330,31 @@ impl FileLogger {
         exit_code: Option<i32>,
     ) -> crate::utils::Result<()> {
         let mut writer = self.writer.lock().unwrap();
-        
+
         writeln!(writer, "ENCODING RESULT:")?;
-        writeln!(writer, "  Status: {}", if success { "SUCCESS" } else { "FAILED" })?;
+        writeln!(
+            writer,
+            "  Status: {}",
+            if success { "SUCCESS" } else { "FAILED" }
+        )?;
         writeln!(writer, "  Duration: {:.2}s", duration.as_secs_f64())?;
-        
+
         if let Some(size) = output_size {
             writeln!(writer, "  Output Size: {:.2} MB", size as f64 / 1_048_576.0)?;
         }
-        
+
         if let Some(code) = exit_code {
             writeln!(writer, "  Exit Code: {}", code)?;
         }
-        
+
         let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
         writeln!(writer, "  Completed: {}", timestamp)?;
         writeln!(writer)?;
-        
+
         writer.flush()?;
         Ok(())
     }
-    
+
     pub fn get_log_path(&self) -> &Path {
         &self.log_path
     }
