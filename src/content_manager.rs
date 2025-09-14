@@ -68,6 +68,7 @@ impl UnifiedContentManager {
         hdr_config: UnifiedHdrConfig,
         dv_config: Option<DolbyVisionConfig>,
         _hdr10plus_config: Option<Hdr10PlusConfig>,
+        hdr10plus_tool_config: Option<crate::hdr10plus::Hdr10PlusToolConfig>,
     ) -> Self {
         let hdr_manager = HdrManager::new(hdr_config);
         let dv_detector = dv_config
@@ -84,7 +85,7 @@ impl UnifiedContentManager {
                     .as_deref()
                     .map(std::path::PathBuf::from)
                     .unwrap_or_else(|| std::path::PathBuf::from("/tmp"));
-                Hdr10PlusManager::new(temp_dir, Some(config.tool.clone()))
+                Hdr10PlusManager::new(temp_dir, hdr10plus_tool_config.clone())
             });
 
         Self {
@@ -271,8 +272,8 @@ impl UnifiedContentManager {
                         bitrate_multiplier: 1.8,
                         encoding_complexity: 1.5,
                         requires_vbv: true,
-                        vbv_bufsize: Some(160000),
-                        vbv_maxrate: Some(160000),
+                        vbv_bufsize: Some(160_000),
+                        vbv_maxrate: Some(160_000),
                         recommended_crf_range: (16.0, 20.0), // Conservative DV range
                     }
                 }
@@ -303,8 +304,8 @@ impl UnifiedContentManager {
                         bitrate_multiplier: 2.2,  // High bitrate for dual metadata
                         encoding_complexity: 2.0, // High complexity
                         requires_vbv: true,
-                        vbv_bufsize: Some(160000),
-                        vbv_maxrate: Some(160000),
+                        vbv_bufsize: Some(160_000),
+                        vbv_maxrate: Some(160_000),
                         recommended_crf_range: (15.0, 18.0), // Very conservative range
                     }
                 }
@@ -390,8 +391,8 @@ impl UnifiedContentManager {
     pub fn get_vbv_settings(&self, result: &ContentAnalysisResult) -> Option<(u32, u32)> {
         if result.encoding_adjustments.requires_vbv {
             Some((
-                result.encoding_adjustments.vbv_bufsize.unwrap_or(160000),
-                result.encoding_adjustments.vbv_maxrate.unwrap_or(160000),
+                result.encoding_adjustments.vbv_bufsize.unwrap_or(160_000),
+                result.encoding_adjustments.vbv_maxrate.unwrap_or(160_000),
             ))
         } else {
             None
@@ -407,7 +408,7 @@ mod tests {
     #[test]
     fn test_sdr_content_adjustments() {
         let hdr_config = UnifiedHdrConfig::default();
-        let manager = UnifiedContentManager::new(hdr_config, None, None);
+        let manager = UnifiedContentManager::new(hdr_config, None, None, None);
 
         let hdr_analysis = HdrAnalysisResult {
             metadata: HdrMetadata::sdr_default(),
@@ -435,7 +436,7 @@ mod tests {
     fn test_dolby_vision_profile_specific_adjustments() {
         let hdr_config = UnifiedHdrConfig::default();
         let dv_config = DolbyVisionConfig::default();
-        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config.clone()), None);
+        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config.clone()), None, None);
 
         // Test Profile 7 (more conservative)
         let (crf_range_p7, complexity_p7) = manager.get_profile_specific_adjustments(
@@ -464,7 +465,7 @@ mod tests {
     fn test_vbv_constraints_for_dolby_vision() {
         let hdr_config = UnifiedHdrConfig::default();
         let dv_config = DolbyVisionConfig::default();
-        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config), None);
+        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config), None, None);
 
         let dv_info = DolbyVisionInfo {
             profile: DolbyVisionProfile::Profile81,
@@ -484,8 +485,8 @@ mod tests {
             manager.calculate_encoding_adjustments(&approach, &hdr_analysis, &dv_info);
 
         assert!(adjustments.requires_vbv);
-        assert_eq!(adjustments.vbv_bufsize, Some(160000));
-        assert_eq!(adjustments.vbv_maxrate, Some(160000));
+        assert_eq!(adjustments.vbv_bufsize, Some(160_000));
+        assert_eq!(adjustments.vbv_maxrate, Some(160_000));
         assert_eq!(adjustments.crf_adjustment, 1.0); // Lower than HDR's 2.0
         assert_eq!(adjustments.bitrate_multiplier, 1.8); // Higher than HDR's 1.3
     }

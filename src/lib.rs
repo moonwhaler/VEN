@@ -1,3 +1,16 @@
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::struct_excessive_bools)]
+#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::match_same_arms)]
+
 pub mod analysis;
 pub mod cli;
 pub mod color;

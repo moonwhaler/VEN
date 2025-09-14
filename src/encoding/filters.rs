@@ -171,6 +171,7 @@ mod tests {
                 ffprobe: "ffprobe".to_string(),
                 nnedi_weights: None,
                 dovi_tool: None,
+                hdr10plus_tool: None,
             },
             logging: LoggingConfig {
                 level: "info".to_string(),

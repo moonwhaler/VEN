@@ -77,6 +77,7 @@ impl Default for Config {
                 ffprobe: "ffprobe".to_string(),
                 nnedi_weights: None,
                 dovi_tool: None,
+                hdr10plus_tool: Some(crate::hdr10plus::Hdr10PlusToolConfig::default()),
             },
             logging: LoggingConfig {
                 level: "info".to_string(),
