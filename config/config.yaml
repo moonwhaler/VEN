@@ -11,6 +11,9 @@ tools:
   ffmpeg: "ffmpeg"
   ffprobe: "ffprobe"
   nnedi_weights: "/home/christian/Documents/source/ffmpeg_autoencoder/neural/nnedi3_weights.bin"
+  dovi_tool:                          # NEW: Dolby Vision tool
+    path: "dovi_tool"                 # Path to dovi_tool binary
+    timeout_seconds: 300              # Tool operation timeout (5 minutes)
 
 # Logging Configuration
 logging:
@@ -46,6 +49,16 @@ analysis:
     # See paper https://openaccess.thecvf.com/content/CVPR2024/papers/
     # Cao_Perceptual_Assessment_and_Optimization_of_HDR_Image_Rendering_C
     # VPR_2024_paper.pdf  
+
+  # NEW: Dolby Vision configuration
+  dolby_vision:
+    enabled: true                     # Enable Dolby Vision processing
+    preserve_profile_7: true          # Convert Profile 7 to 8.1
+    target_profile: "8.1"             # Default target profile (8.1 or 8.2)
+    require_dovi_tool: false          # Fail if dovi_tool missing (graceful fallback)
+    temp_dir: "/tmp"                  # RPU temporary storage location
+    auto_profile_conversion: true     # Auto convert profiles for compatibility
+    fallback_to_hdr10: true          # Fallback to HDR10 if DV processing fails
 
 # Content-Aware Parameter Adaptation
 # Video Filter Settings

@@ -77,6 +77,7 @@ impl Default for Config {
                 ffmpeg: "ffmpeg".to_string(),
                 ffprobe: "ffprobe".to_string(),
                 nnedi_weights: None,
+                dovi_tool: None,
             },
             logging: LoggingConfig {
                 level: "info".to_string(),
@@ -101,6 +102,7 @@ impl Default for Config {
                     crf_adjustment: 2.0,
                 },
                 hdr: Some(UnifiedHdrConfig::default()),
+                dolby_vision: Some(DolbyVisionConfig::default()),
             },
             profiles: {
                 let mut profiles = HashMap::new();
