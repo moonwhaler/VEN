@@ -100,6 +100,7 @@ impl Default for Config {
                     transfer_patterns: vec!["smpte2084".to_string(), "arib-std-b67".to_string()],
                     crf_adjustment: 2.0,
                 },
+                hdr: Some(UnifiedHdrConfig::default()),
             },
             profiles: {
                 let mut profiles = HashMap::new();
