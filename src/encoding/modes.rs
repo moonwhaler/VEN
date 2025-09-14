@@ -47,6 +47,7 @@ pub trait Encoder {
         adaptive_crf: f32,
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
+        file_logger: Option<&crate::utils::logging::FileLogger>,
     ) -> Result<tokio::process::Child>;
 }
 
@@ -65,6 +66,7 @@ impl Encoder for CrfEncoder {
         adaptive_crf: f32,
         _adaptive_bitrate: u32,
         custom_title: Option<&str>,
+        file_logger: Option<&crate::utils::logging::FileLogger>,
     ) -> Result<tokio::process::Child> {
         let input_path_str = input_path.as_ref().to_string_lossy();
         let output_path_str = output_path.as_ref().to_string_lossy();
@@ -129,6 +131,13 @@ impl Encoder for CrfEncoder {
                 + stream_mapping.data_streams.len()
         );
 
+        // Log the raw ffmpeg command to the log file
+        if let Some(logger) = file_logger {
+            if let Err(e) = logger.log_ffmpeg_command(ffmpeg.get_ffmpeg_path(), &args) {
+                tracing::warn!("Failed to log ffmpeg command: {}", e);
+            }
+        }
+
         ffmpeg.start_encoding(input_path, output_path, args).await
     }
 }
@@ -148,6 +157,7 @@ impl Encoder for AbrEncoder {
         adaptive_crf: f32,
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
+        file_logger: Option<&crate::utils::logging::FileLogger>,
     ) -> Result<tokio::process::Child> {
         self.run_two_pass_encoding(
             ffmpeg,
@@ -160,6 +170,7 @@ impl Encoder for AbrEncoder {
             adaptive_crf,
             adaptive_bitrate,
             custom_title,
+            file_logger,
             false,
         )
         .await
@@ -180,6 +191,7 @@ impl AbrEncoder {
         adaptive_crf: f32,
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
+        file_logger: Option<&crate::utils::logging::FileLogger>,
         is_cbr: bool,
     ) -> Result<tokio::process::Child> {
         let input_path_str = input_path.as_ref().to_string_lossy();
@@ -222,6 +234,7 @@ impl AbrEncoder {
                 adaptive_crf,
                 adaptive_bitrate,
                 custom_title,
+                file_logger,
                 &stats_file,
                 is_cbr,
             )
@@ -307,6 +320,7 @@ impl AbrEncoder {
         _adaptive_crf: f32,
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
+        file_logger: Option<&crate::utils::logging::FileLogger>,
         stats_file: &str,
         is_cbr: bool,
     ) -> Result<tokio::process::Child> {
@@ -371,6 +385,14 @@ impl AbrEncoder {
         ]);
 
         tracing::info!("Running pass 2/2...");
+
+        // Log the raw ffmpeg command to the log file
+        if let Some(logger) = file_logger {
+            if let Err(e) = logger.log_ffmpeg_command(ffmpeg.get_ffmpeg_path(), &args) {
+                tracing::warn!("Failed to log ffmpeg command: {}", e);
+            }
+        }
+
         ffmpeg.start_encoding(input_path, output_path, args).await
     }
 
@@ -420,6 +442,7 @@ impl Encoder for CbrEncoder {
         adaptive_crf: f32,
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
+        file_logger: Option<&crate::utils::logging::FileLogger>,
     ) -> Result<tokio::process::Child> {
         tracing::info!(
             "Starting CBR encoding (constant bitrate={}kbps)",
@@ -438,6 +461,7 @@ impl Encoder for CbrEncoder {
                 adaptive_crf,
                 adaptive_bitrate,
                 custom_title,
+                file_logger,
                 true,
             )
             .await

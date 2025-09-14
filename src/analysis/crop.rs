@@ -1,13 +1,13 @@
 use crate::config::CropDetectionConfig;
 use crate::utils::Result;
-use once_cell::sync::Lazy;
 use regex::Regex;
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::LazyLock;
 use tokio::process::Command;
 use tracing::{debug, info};
 
-static CROP_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"crop=(\d+):(\d+):(\d+):(\d+)").unwrap());
+static CROP_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"crop=(\d+):(\d+):(\d+):(\d+)").unwrap());
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CropValues {
