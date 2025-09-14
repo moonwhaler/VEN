@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tracing::{debug, info, warn};
 
+use crate::config::DolbyVisionConfig;
 use crate::utils::{FfmpegWrapper, Result, Error};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,30 +88,6 @@ impl DolbyVisionInfo {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DolbyVisionConfig {
-    pub enabled: bool,
-    pub preserve_profile_7: bool,          // Convert P7 to P8.1
-    pub target_profile: String,            // "8.1" or "8.2"  
-    pub require_dovi_tool: bool,           // Fail if dovi_tool missing
-    pub temp_dir: Option<String>,          // RPU temporary storage
-    pub auto_profile_conversion: bool,     // Auto convert profiles for compatibility
-    pub fallback_to_hdr10: bool,          // Fallback to HDR10 if DV processing fails
-}
-
-impl Default for DolbyVisionConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            preserve_profile_7: true,
-            target_profile: "8.1".to_string(),
-            require_dovi_tool: false,
-            temp_dir: None,
-            auto_profile_conversion: true,
-            fallback_to_hdr10: true,
-        }
-    }
-}
 
 pub struct DolbyVisionDetector {
     config: DolbyVisionConfig,

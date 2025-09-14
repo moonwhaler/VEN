@@ -168,6 +168,13 @@ pub struct DolbyVisionConfig {
     pub temp_dir: Option<String>,          // RPU temporary storage
     pub auto_profile_conversion: bool,     // Auto convert profiles for compatibility
     pub fallback_to_hdr10: bool,          // Fallback to HDR10 if DV processing fails
+    
+    // NEW: Dolby Vision-specific encoding adjustments
+    pub crf_adjustment: f32,               // CRF adjustment for DV content (+0.5 to +1.0)
+    pub bitrate_multiplier: f32,           // Bitrate multiplier for DV (1.5-2.0x)
+    pub vbv_bufsize: u32,                  // VBV buffer size (mandatory for DV)
+    pub vbv_maxrate: u32,                  // VBV max rate (mandatory for DV)
+    pub profile_specific_adjustments: bool, // Different settings per profile
 }
 
 impl Default for DolbyVisionConfig {
@@ -180,6 +187,13 @@ impl Default for DolbyVisionConfig {
             temp_dir: None,
             auto_profile_conversion: true,
             fallback_to_hdr10: true,
+            
+            // Dolby Vision encoding adjustments based on research
+            crf_adjustment: 1.0,        // Lower than HDR10's +2.0, use +1.0 for DV
+            bitrate_multiplier: 1.8,    // Higher than HDR10's 1.3x, use 1.8x for DV
+            vbv_bufsize: 160000,        // Required for Level 5.1 High Tier DV
+            vbv_maxrate: 160000,        // Mandatory VBV constraint for DV compliance
+            profile_specific_adjustments: true,
         }
     }
 }
