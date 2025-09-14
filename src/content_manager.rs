@@ -115,7 +115,10 @@ impl UnifiedContentManager {
 
         // Process HDR10+ dynamic metadata if enabled and detected
         let hdr10plus_result = if let Some(ref manager) = self.hdr10plus_manager {
-            if hdr_analysis.metadata.format == HdrFormat::HDR10Plus {
+            // Try HDR10+ analysis for any HDR content (might be dual DV+HDR10+)
+            if hdr_analysis.metadata.format == HdrFormat::HDR10Plus || 
+               hdr_analysis.metadata.format == HdrFormat::HDR10 ||
+               dv_info.is_dolby_vision() {
                 info!("HDR10+ content detected - extracting dynamic metadata");
                 if dv_info.is_dolby_vision() {
                     // Dual format processing
@@ -139,7 +142,7 @@ impl UnifiedContentManager {
         }
 
         // Determine the recommended encoding approach with all metadata
-        let approach = self.determine_encoding_approach(&hdr_analysis, &dv_info);
+        let approach = self.determine_encoding_approach(&hdr_analysis, &dv_info, hdr10plus_result.as_ref());
         info!("Recommended encoding approach: {:?}", approach);
 
         // Calculate encoding adjustments based on the approach
@@ -158,6 +161,7 @@ impl UnifiedContentManager {
         &self,
         hdr: &HdrAnalysisResult,
         dv: &DolbyVisionInfo,
+        hdr10plus_result: Option<&Hdr10PlusProcessingResult>,
     ) -> ContentEncodingApproach {
         // Enhanced priority logic: DV+HDR10+ > DV > HDR10+ > HDR10 > SDR
         if dv.is_dolby_vision() {
@@ -166,7 +170,11 @@ impl UnifiedContentManager {
                     if let Some(ref detector) = self.dv_detector {
                         if detector.should_preserve_dolby_vision(dv) {
                             // Check if we also have HDR10+ for dual encoding
-                            if hdr.metadata.format == HdrFormat::HDR10Plus {
+                            // We check both the HDR format and if we successfully extracted HDR10+ metadata
+                            let has_hdr10plus = hdr.metadata.format == HdrFormat::HDR10Plus || 
+                                              hdr10plus_result.is_some();
+                            
+                            if has_hdr10plus {
                                 info!("Dual format detected: Dolby Vision + HDR10+");
                                 return ContentEncodingApproach::DolbyVisionWithHDR10Plus(
                                     dv.clone(), 
@@ -379,7 +387,7 @@ mod tests {
         };
         
         let dv_info = DolbyVisionInfo::none();
-        let approach = manager.determine_encoding_approach(&hdr_analysis, &dv_info);
+        let approach = manager.determine_encoding_approach(&hdr_analysis, &dv_info, None);
         
         match approach {
             ContentEncodingApproach::SDR => {
@@ -440,7 +448,7 @@ mod tests {
             encoding_complexity: 1.2,
         };
         
-        let approach = manager.determine_encoding_approach(&hdr_analysis, &dv_info);
+        let approach = manager.determine_encoding_approach(&hdr_analysis, &dv_info, None);
         let adjustments = manager.calculate_encoding_adjustments(&approach, &hdr_analysis, &dv_info);
         
         assert!(adjustments.requires_vbv);

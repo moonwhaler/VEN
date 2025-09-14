@@ -10,6 +10,7 @@ use ffmpeg_autoencoder::{
         find_video_files, generate_uuid_filename, setup_logging, Error, FfmpegWrapper, FileLogger,
         ProgressMonitor, Result,
     },
+    UnifiedContentManager, ContentEncodingApproach,
 };
 
 #[tokio::main]
@@ -129,20 +130,57 @@ async fn process_single_file(
     info!("Getting video metadata for: {}", input_path.display());
     let metadata = ffmpeg.get_video_metadata(input_path).await?;
     
-    // Log HDR detection results prominently
-    if metadata.is_hdr {
-        info!("HDR CONTENT DETECTED");
-        if let Some(ref color_space) = metadata.color_space {
-            info!("  Color Space: {}", color_space);
+    // Comprehensive content analysis using UnifiedContentManager
+    info!("Running comprehensive content analysis...");
+    let content_manager = UnifiedContentManager::new(
+        config.analysis.hdr.clone().unwrap_or_default(),
+        config.analysis.dolby_vision.clone(),
+        config.analysis.hdr10_plus.clone(),
+    );
+    
+    let content_analysis = content_manager.analyze_content(
+        ffmpeg,
+        input_path,
+    ).await?;
+    
+    // Log comprehensive analysis results
+    match &content_analysis.recommended_approach {
+        ContentEncodingApproach::SDR => {
+            info!("SDR CONTENT DETECTED");
         }
-        if let Some(ref transfer) = metadata.transfer_function {
-            info!("  Transfer Function: {}", transfer);
+        ContentEncodingApproach::HDR(hdr_result) => {
+            info!("HDR CONTENT DETECTED");
+            info!("  Format: {:?}", hdr_result.metadata.format);
+            if let Some(ref color_space) = metadata.color_space {
+                info!("  Color Space: {}", color_space);
+            }
+            if let Some(ref transfer) = metadata.transfer_function {
+                info!("  Transfer Function: {}", transfer);
+            }
+            if let Some(ref primaries) = metadata.color_primaries {
+                info!("  Color Primaries: {}", primaries);
+            }
         }
-        if let Some(ref primaries) = metadata.color_primaries {
-            info!("  Color Primaries: {}", primaries);
+        ContentEncodingApproach::DolbyVision(dv_info) => {
+            info!("DOLBY VISION CONTENT DETECTED");
+            info!("  Profile: {}", dv_info.profile.as_str());
+            info!("  RPU Present: {}", dv_info.rpu_present);
+            if let Some(ref color_space) = metadata.color_space {
+                info!("  Color Space: {}", color_space);
+            }
         }
-    } else {
-        info!("SDR content detected");
+        ContentEncodingApproach::DolbyVisionWithHDR10Plus(dv_info, hdr_result) => {
+            info!("DUAL FORMAT CONTENT DETECTED: DOLBY VISION + HDR10+");
+            info!("  Dolby Vision Profile: {}", dv_info.profile.as_str());
+            info!("  RPU Present: {}", dv_info.rpu_present);
+            info!("  HDR10+ Format: {:?}", hdr_result.metadata.format);
+            if let Some(ref color_space) = metadata.color_space {
+                info!("  Color Space: {}", color_space);
+            }
+            if let Some(ref transfer) = metadata.transfer_function {
+                info!("  Transfer Function: {}", transfer);
+            }
+        }
     }
 
     let selected_profile = if args.profile == "auto" {
@@ -163,30 +201,44 @@ async fn process_single_file(
     // Create per-file logger
     let file_logger = FileLogger::new(output_path)?;
 
-    let adaptive_crf = selected_profile.calculate_adaptive_crf(
-        0.0,
-        metadata.is_hdr,
-        config.analysis.hdr_detection.crf_adjustment,
-    );
-    let adaptive_bitrate = selected_profile.calculate_adaptive_bitrate(1.0, metadata.is_hdr);
+    // Use adjustments from comprehensive content analysis
+    let adaptive_crf = selected_profile.base_crf + content_analysis.encoding_adjustments.crf_adjustment;
+    let adaptive_bitrate = ((selected_profile.base_bitrate as f32) * content_analysis.encoding_adjustments.bitrate_multiplier) as u32;
     
-    // Log HDR-specific parameter adjustments
-    if metadata.is_hdr {
-        info!("HDR PARAMETER ADJUSTMENTS:");
-        info!("  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})", 
-              selected_profile.base_crf, adaptive_crf, config.analysis.hdr_detection.crf_adjustment);
-        info!("  Base Bitrate: {} -> HDR Bitrate: {} (+{:.0}%)", 
-              selected_profile.base_bitrate, adaptive_bitrate,
-              ((adaptive_bitrate as f32 / selected_profile.base_bitrate as f32) - 1.0) * 100.0);
-    } else {
-        info!("Using standard encoding parameters (SDR): CRF={:.1}, Bitrate={}kbps", 
-              adaptive_crf, adaptive_bitrate);
+    // Log content-specific parameter adjustments
+    match &content_analysis.recommended_approach {
+        ContentEncodingApproach::SDR => {
+            info!("Using standard encoding parameters (SDR): CRF={:.1}, Bitrate={}kbps", 
+                  adaptive_crf, adaptive_bitrate);
+        }
+        ContentEncodingApproach::HDR(_) => {
+            info!("HDR PARAMETER ADJUSTMENTS:");
+            info!("  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})", 
+                  selected_profile.base_crf, adaptive_crf, content_analysis.encoding_adjustments.crf_adjustment);
+            info!("  Base Bitrate: {} -> HDR Bitrate: {} ({:.1}x multiplier)", 
+                  selected_profile.base_bitrate, adaptive_bitrate, content_analysis.encoding_adjustments.bitrate_multiplier);
+        }
+        ContentEncodingApproach::DolbyVision(_) => {
+            info!("DOLBY VISION PARAMETER ADJUSTMENTS:");
+            info!("  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})", 
+                  selected_profile.base_crf, adaptive_crf, content_analysis.encoding_adjustments.crf_adjustment);
+            info!("  Base Bitrate: {} -> DV Bitrate: {} ({:.1}x multiplier)", 
+                  selected_profile.base_bitrate, adaptive_bitrate, content_analysis.encoding_adjustments.bitrate_multiplier);
+        }
+        ContentEncodingApproach::DolbyVisionWithHDR10Plus(_, _) => {
+            info!("DUAL FORMAT PARAMETER ADJUSTMENTS (ULTRA-CONSERVATIVE):");
+            info!("  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})", 
+                  selected_profile.base_crf, adaptive_crf, content_analysis.encoding_adjustments.crf_adjustment);
+            info!("  Base Bitrate: {} -> Dual Format Bitrate: {} ({:.1}x multiplier)", 
+                  selected_profile.base_bitrate, adaptive_bitrate, content_analysis.encoding_adjustments.bitrate_multiplier);
+        }
     }
     
-    // Show x265 parameter preview with HDR-specific injections
+    // Show x265 parameter preview based on content analysis
+    let is_advanced_content = !matches!(content_analysis.recommended_approach, ContentEncodingApproach::SDR);
     let x265_params_preview = selected_profile.build_x265_params_string_with_hdr(
         None, // No mode-specific params for preview
-        Some(metadata.is_hdr),
+        Some(is_advanced_content),
         metadata.color_space.as_ref(),
         metadata.transfer_function.as_ref(),
         metadata.color_primaries.as_ref(),
@@ -194,21 +246,34 @@ async fn process_single_file(
         metadata.max_cll.as_ref(),
     );
     
-    if metadata.is_hdr {
-        info!("HDR x265 parameters injected:");
+    if is_advanced_content {
+        match &content_analysis.recommended_approach {
+            ContentEncodingApproach::HDR(_) => {
+                info!("HDR x265 parameters injected:");
+            }
+            ContentEncodingApproach::DolbyVision(_) => {
+                info!("Dolby Vision x265 parameters injected:");
+            }
+            ContentEncodingApproach::DolbyVisionWithHDR10Plus(_, _) => {
+                info!("Dual format (DV+HDR10+) x265 parameters injected:");
+            }
+            _ => {}
+        }
+        
         let params: Vec<&str> = x265_params_preview.split(':').collect();
-        let hdr_params: Vec<&str> = params.iter()
+        let special_params: Vec<&str> = params.iter()
             .filter(|p| p.contains("colormatrix") || p.contains("transfer") || 
                        p.contains("colorprim") || p.contains("master-display") || 
-                       p.contains("max-cll"))
+                       p.contains("max-cll") || p.contains("dolby-vision") || 
+                       p.contains("dhdr10-info"))
             .copied()
             .collect();
-        if !hdr_params.is_empty() {
-            for param in hdr_params {
+        if !special_params.is_empty() {
+            for param in special_params {
                 info!("  -> {}", param);
             }
         } else {
-            info!("  -> No HDR-specific parameters added (using profile defaults)");
+            info!("  -> No advanced format parameters added (using profile defaults)");
         }
     }
 
@@ -226,7 +291,7 @@ async fn process_single_file(
                 metadata.duration,
                 metadata.width,
                 metadata.height,
-                metadata.is_hdr,
+                is_advanced_content,
             )
             .await?;
 
@@ -299,7 +364,7 @@ async fn process_single_file(
         detection_method,
         config.analysis.crop_detection.sdr_crop_limit,
         config.analysis.crop_detection.hdr_crop_limit,
-        metadata.is_hdr,
+        is_advanced_content,
     )?;
 
     // Log additional crop analysis details if available
