@@ -247,9 +247,25 @@ impl DolbyVisionDetector {
     
     fn parse_side_data(&self, dv_info: &mut DolbyVisionInfo, side_data: &serde_json::Value) -> Result<()> {
         // Parse Dolby Vision specific side data
-        if let Some(dv_profile_str) = side_data["dv_profile"].as_str() {
+        // First try numeric dv_profile (more common)
+        if let Some(dv_profile_num) = side_data["dv_profile"].as_u64() {
+            let profile = match dv_profile_num {
+                5 => DolbyVisionProfile::Profile5,
+                7 => DolbyVisionProfile::Profile7,
+                8 => DolbyVisionProfile::Profile81, // Profile 8 typically maps to 8.1
+                _ => {
+                    debug!("Unknown Dolby Vision profile number: {}", dv_profile_num);
+                    DolbyVisionProfile::None
+                }
+            };
+            dv_info.profile = profile;
+            debug!("Detected Dolby Vision profile {} from numeric value", dv_profile_num);
+        }
+        // Fallback to string parsing
+        else if let Some(dv_profile_str) = side_data["dv_profile"].as_str() {
             if let Some(profile) = DolbyVisionProfile::from_string(dv_profile_str) {
                 dv_info.profile = profile;
+                debug!("Detected Dolby Vision profile from string: {}", dv_profile_str);
             }
         }
         
@@ -257,14 +273,28 @@ impl DolbyVisionDetector {
             dv_info.bl_compatible_id = Some(bl_compatible_id as u8);
         }
         
+        // Handle el_present_flag (can be bool or int)
         if let Some(el_present) = side_data["el_present_flag"].as_bool() {
             dv_info.el_present = el_present;
             dv_info.has_enhancement_layer = el_present;
+            debug!("Enhancement Layer present flag (bool): {}", el_present);
+        } else if let Some(el_present_int) = side_data["el_present_flag"].as_u64() {
+            let el_present = el_present_int != 0;
+            dv_info.el_present = el_present;
+            dv_info.has_enhancement_layer = el_present;
+            debug!("Enhancement Layer present flag (int): {} -> {}", el_present_int, el_present);
         }
         
+        // Handle rpu_present_flag (can be bool or int)
         if let Some(rpu_present) = side_data["rpu_present_flag"].as_bool() {
             dv_info.rpu_present = rpu_present;
             dv_info.has_rpu = rpu_present;
+            debug!("RPU present flag (bool): {}", rpu_present);
+        } else if let Some(rpu_present_int) = side_data["rpu_present_flag"].as_u64() {
+            let rpu_present = rpu_present_int != 0;
+            dv_info.rpu_present = rpu_present;
+            dv_info.has_rpu = rpu_present;
+            debug!("RPU present flag (int): {} -> {}", rpu_present_int, rpu_present);
         }
         
         Ok(())
