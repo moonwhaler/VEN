@@ -1,4 +1,4 @@
-use crate::utils::{Result, Error};
+use crate::utils::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -36,8 +36,11 @@ impl Hdr10PlusTool {
 
     /// Check if hdr10plus_tool is available
     pub async fn check_availability(&self) -> Result<bool> {
-        debug!("Checking hdr10plus_tool availability at: {}", self.config.path);
-        
+        debug!(
+            "Checking hdr10plus_tool availability at: {}",
+            self.config.path
+        );
+
         let output = TokioCommand::new(&self.config.path)
             .arg("--help")
             .stdout(Stdio::piped())
@@ -70,8 +73,11 @@ impl Hdr10PlusTool {
     ) -> Result<()> {
         let input_path = input_video.as_ref().to_string_lossy();
         let output_path = output_json.as_ref().to_string_lossy();
-        
-        info!("Extracting HDR10+ metadata: {} -> {}", input_path, output_path);
+
+        info!(
+            "Extracting HDR10+ metadata: {} -> {}",
+            input_path, output_path
+        );
 
         let mut args = vec![
             "extract".to_string(),
@@ -91,24 +97,25 @@ impl Hdr10PlusTool {
             .stderr(Stdio::piped())
             .output()
             .await
-            .map_err(|e| Error::encoding(format!(
-                "Failed to execute hdr10plus_tool extract: {}", e
-            )))?;
+            .map_err(|e| {
+                Error::encoding(format!("Failed to execute hdr10plus_tool extract: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(Error::encoding(format!(
-                "hdr10plus_tool extract failed: {}", stderr
+                "hdr10plus_tool extract failed: {}",
+                stderr
             )));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         debug!("hdr10plus_tool extract output: {}", stdout);
-        
+
         // Verify the JSON file was created
         if !output_json.as_ref().exists() {
             return Err(Error::encoding(
-                "HDR10+ metadata extraction failed - no JSON file created".to_string()
+                "HDR10+ metadata extraction failed - no JSON file created".to_string(),
             ));
         }
 
@@ -126,9 +133,11 @@ impl Hdr10PlusTool {
         let input_path = input_video.as_ref().to_string_lossy();
         let json_path = metadata_json.as_ref().to_string_lossy();
         let output_path = output_video.as_ref().to_string_lossy();
-        
-        info!("Injecting HDR10+ metadata: {} + {} -> {}", 
-              input_path, json_path, output_path);
+
+        info!(
+            "Injecting HDR10+ metadata: {} + {} -> {}",
+            input_path, json_path, output_path
+        );
 
         let mut args = vec![
             "inject".to_string(),
@@ -151,20 +160,21 @@ impl Hdr10PlusTool {
             .stderr(Stdio::piped())
             .output()
             .await
-            .map_err(|e| Error::encoding(format!(
-                "Failed to execute hdr10plus_tool inject: {}", e
-            )))?;
+            .map_err(|e| {
+                Error::encoding(format!("Failed to execute hdr10plus_tool inject: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(Error::encoding(format!(
-                "hdr10plus_tool inject failed: {}", stderr
+                "hdr10plus_tool inject failed: {}",
+                stderr
             )));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         debug!("hdr10plus_tool inject output: {}", stdout);
-        
+
         info!("Successfully injected HDR10+ metadata into {}", output_path);
         Ok(())
     }
@@ -177,8 +187,11 @@ impl Hdr10PlusTool {
     ) -> Result<()> {
         let input_path = input_video.as_ref().to_string_lossy();
         let output_path = output_video.as_ref().to_string_lossy();
-        
-        info!("Removing HDR10+ metadata: {} -> {}", input_path, output_path);
+
+        info!(
+            "Removing HDR10+ metadata: {} -> {}",
+            input_path, output_path
+        );
 
         let args = vec![
             "remove".to_string(),
@@ -194,14 +207,15 @@ impl Hdr10PlusTool {
             .stderr(Stdio::piped())
             .output()
             .await
-            .map_err(|e| Error::encoding(format!(
-                "Failed to execute hdr10plus_tool remove: {}", e
-            )))?;
+            .map_err(|e| {
+                Error::encoding(format!("Failed to execute hdr10plus_tool remove: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(Error::encoding(format!(
-                "hdr10plus_tool remove failed: {}", stderr
+                "hdr10plus_tool remove failed: {}",
+                stderr
             )));
         }
 
@@ -217,7 +231,7 @@ impl Hdr10PlusTool {
     ) -> Result<()> {
         let json_path = metadata_json.as_ref().to_string_lossy();
         let image_path = output_image.as_ref().to_string_lossy();
-        
+
         info!("Plotting HDR10+ metadata: {} -> {}", json_path, image_path);
 
         let args = vec![
@@ -233,14 +247,15 @@ impl Hdr10PlusTool {
             .stderr(Stdio::piped())
             .output()
             .await
-            .map_err(|e| Error::encoding(format!(
-                "Failed to execute hdr10plus_tool plot: {}", e
-            )))?;
+            .map_err(|e| {
+                Error::encoding(format!("Failed to execute hdr10plus_tool plot: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(Error::encoding(format!(
-                "hdr10plus_tool plot failed: {}", stderr
+                "hdr10plus_tool plot failed: {}",
+                stderr
             )));
         }
 
@@ -249,18 +264,15 @@ impl Hdr10PlusTool {
     }
 
     /// Validate HDR10+ metadata JSON file
-    pub async fn validate_metadata<P: AsRef<Path>>(
-        &self,
-        metadata_json: P,
-    ) -> Result<bool> {
+    pub async fn validate_metadata<P: AsRef<Path>>(&self, metadata_json: P) -> Result<bool> {
         let json_path = metadata_json.as_ref().to_string_lossy();
-        
+
         debug!("Validating HDR10+ metadata: {}", json_path);
 
         // hdr10plus_tool doesn't have a separate validation command,
         // but we can try to plot it to verify it's valid
         let temp_plot = PathBuf::from("/tmp/hdr10plus_validation_plot.png");
-        
+
         match self.plot_metadata(&metadata_json, &temp_plot).await {
             Ok(_) => {
                 // Clean up temp file

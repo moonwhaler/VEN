@@ -1,13 +1,13 @@
-pub mod types;
 pub mod detection;
-pub mod metadata;
 pub mod encoding;
 pub mod formats;
+pub mod metadata;
+pub mod types;
 
-pub use types::*;
 pub use detection::*;
-pub use metadata::*;
 pub use encoding::*;
+pub use metadata::*;
+pub use types::*;
 
 use crate::config::UnifiedHdrConfig;
 use crate::utils::{FfmpegWrapper, Result};
@@ -51,9 +51,9 @@ impl HdrManager {
 
         match hdr_result.metadata.format {
             HdrFormat::None => 1.0,
-            HdrFormat::HDR10 => 1.2,  // 20% complexity increase
-            HdrFormat::HDR10Plus => 1.4,  // 40% complexity increase
-            HdrFormat::HLG => 1.15,  // 15% complexity increase
+            HdrFormat::HDR10 => 1.2,     // 20% complexity increase
+            HdrFormat::HDR10Plus => 1.4, // 40% complexity increase
+            HdrFormat::HLG => 1.15,      // 15% complexity increase
         }
     }
 

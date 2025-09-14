@@ -77,7 +77,7 @@ impl HdrFormatRegistry {
                 handler.validate_metadata(metadata)?;
                 // Build parameters
                 Ok(handler.build_encoding_params(metadata, base_params))
-            },
+            }
             None => Err(format!("No handler registered for HDR format {:?}", format)),
         }
     }

@@ -5,8 +5,8 @@ pub struct TransferFunctionInfo {
     pub name: &'static str,
     pub display_name: &'static str,
     pub description: &'static str,
-    pub gamma_approximation: f32,  // Approximate gamma value for display
-    pub peak_luminance: f32,       // Peak luminance in nits
+    pub gamma_approximation: f32, // Approximate gamma value for display
+    pub peak_luminance: f32,      // Peak luminance in nits
     pub is_hdr: bool,
 }
 
@@ -70,7 +70,8 @@ impl TransferFunction {
 
     /// Get HDR transfer functions
     pub fn hdr_functions() -> Vec<TransferFunction> {
-        Self::all().into_iter()
+        Self::all()
+            .into_iter()
             .filter(|tf| tf.info().is_hdr)
             .collect()
     }
@@ -95,7 +96,7 @@ impl TransferFunction {
     pub fn minimum_bit_depth(&self) -> u8 {
         match self {
             TransferFunction::Bt709 => 8,
-            TransferFunction::Smpte2084 => 10,  // PQ requires at least 10-bit
+            TransferFunction::Smpte2084 => 10, // PQ requires at least 10-bit
             TransferFunction::AribStdB67 => 10, // HLG requires at least 10-bit
             TransferFunction::Bt2020_10 => 10,
             TransferFunction::Bt2020_12 => 12,
@@ -122,8 +123,8 @@ impl TransferFunction {
     pub fn encoding_complexity_factor(&self) -> f32 {
         match self {
             TransferFunction::Bt709 => 1.0,
-            TransferFunction::Smpte2084 => 1.3,      // PQ encoding is more complex
-            TransferFunction::AribStdB67 => 1.2,     // HLG encoding is moderately complex
+            TransferFunction::Smpte2084 => 1.3, // PQ encoding is more complex
+            TransferFunction::AribStdB67 => 1.2, // HLG encoding is moderately complex
             TransferFunction::Bt2020_10 => 1.1,
             TransferFunction::Bt2020_12 => 1.15,
         }
@@ -134,9 +135,9 @@ impl TransferFunction {
         if peak_luminance <= 100.0 {
             TransferFunction::Bt709
         } else if peak_luminance <= 1000.0 {
-            TransferFunction::AribStdB67  // HLG is good for moderate HDR
+            TransferFunction::AribStdB67 // HLG is good for moderate HDR
         } else {
-            TransferFunction::Smpte2084   // PQ for high luminance HDR
+            TransferFunction::Smpte2084 // PQ for high luminance HDR
         }
     }
 
@@ -223,7 +224,9 @@ impl TransferFunctionUtils {
         if !tf.is_bit_depth_sufficient(bit_depth) {
             return Err(format!(
                 "Bit depth {} insufficient for {:?}, minimum required: {}",
-                bit_depth, tf, tf.minimum_bit_depth()
+                bit_depth,
+                tf,
+                tf.minimum_bit_depth()
             ));
         }
 
