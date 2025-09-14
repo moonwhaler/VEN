@@ -248,12 +248,14 @@ impl EncodingProfile {
                     _ => {} // Skip profile 7 and others not directly supported by x265
                 }
 
-                // Ensure appropriate VBV settings for Dolby Vision
+                // Ensure mandatory VBV settings for Dolby Vision compliance
+                // Based on "docs/Dolby Vision CRF Requirements.md" - VBV is MANDATORY for DV
                 if !params.contains_key("vbv-bufsize") {
-                    params.insert("vbv-bufsize".to_string(), "20000".to_string());
+                    // Use proper Level 5.1 High Tier values (160,000 kbps) instead of 20,000
+                    params.insert("vbv-bufsize".to_string(), "160000".to_string());
                 }
                 if !params.contains_key("vbv-maxrate") {
-                    params.insert("vbv-maxrate".to_string(), "20000".to_string());
+                    params.insert("vbv-maxrate".to_string(), "160000".to_string());
                 }
 
                 // Force 10-bit output for Dolby Vision

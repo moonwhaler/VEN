@@ -1,7 +1,8 @@
 // Integration tests for Dolby Vision functionality
 // This file demonstrates the complete Dolby Vision workflow
 
-use crate::analysis::dolby_vision::{DolbyVisionDetector, DolbyVisionConfig, DolbyVisionInfo, DolbyVisionProfile};
+use crate::analysis::dolby_vision::{DolbyVisionDetector, DolbyVisionInfo, DolbyVisionProfile};
+use crate::config::DolbyVisionConfig;
 use crate::config::profiles::EncodingProfile;
 use crate::config::types::RawProfile;
 use crate::dolby_vision::{DoviTool, DoviToolConfig, RpuManager, RpuMetadata};
@@ -155,11 +156,11 @@ mod tests {
             Some(&rpu_metadata), // rpu_metadata
         );
         
-        // Verify Dolby Vision parameters are included
+        // Verify Dolby Vision parameters are included with proper Level 5.1 High Tier VBV values
         assert!(params_str.contains("dolby-vision-rpu=/tmp/test.rpu"));
         assert!(params_str.contains("dolby-vision-profile=8.1"));
-        assert!(params_str.contains("vbv-bufsize=20000"));
-        assert!(params_str.contains("vbv-maxrate=20000"));
+        assert!(params_str.contains("vbv-bufsize=160000")); // Updated from 20000 to proper DV values
+        assert!(params_str.contains("vbv-maxrate=160000")); // Updated from 20000 to proper DV values
         assert!(params_str.contains("output-depth=10"));
         assert!(params_str.contains("colorprim=bt2020"));
         assert!(params_str.contains("transfer=smpte2084"));
@@ -173,10 +174,7 @@ mod tests {
     #[test]
     fn test_dolby_vision_profile_conversion_logic() {
         let config = DolbyVisionConfig {
-            enabled: true,
-            preserve_profile_7: true,
             target_profile: "8.2".to_string(), // Target 8.2 instead of default 8.1
-            auto_profile_conversion: true,
             ..Default::default()
         };
         
@@ -211,15 +209,13 @@ mod tests {
         assert!(!detector.should_preserve_dolby_vision(&dv_info));
         
         // Test with require_dovi_tool but no tool available
-        let strict_config = DolbyVisionConfig {
-            enabled: true,
+        let _strict_config = DolbyVisionConfig {
             require_dovi_tool: true,
-            fallback_to_hdr10: true,
             ..Default::default()
         };
         
         // Create manager without dovi_tool
-        let manager = RpuManager::new(PathBuf::from("/tmp"), None);
+        let _manager = RpuManager::new(PathBuf::from("/tmp"), None);
         
         // The manager should handle the missing tool gracefully
         // (This is tested in the async test below)
@@ -252,15 +248,7 @@ pub async fn demo_dolby_vision_workflow() -> Result<(), Box<dyn std::error::Erro
     println!("=== Dolby Vision Implementation Demo ===");
     
     // 1. Configuration
-    let dv_config = DolbyVisionConfig {
-        enabled: true,
-        preserve_profile_7: true,
-        target_profile: "8.1".to_string(),
-        require_dovi_tool: false,
-        temp_dir: Some("/tmp".to_string()),
-        auto_profile_conversion: true,
-        fallback_to_hdr10: true,
-    };
+    let dv_config = DolbyVisionConfig::default();
     println!("✓ Dolby Vision configuration loaded");
     
     // 2. Detection (would be called with real ffprobe data)
@@ -338,6 +326,11 @@ pub async fn demo_dolby_vision_workflow() -> Result<(), Box<dyn std::error::Erro
     
     println!("✓ Final x265 parameters with Dolby Vision support:");
     println!("  {}", final_params);
+    
+    // Verify that proper Level 5.1 High Tier VBV constraints are applied
+    assert!(final_params.contains("vbv-bufsize=160000"));
+    assert!(final_params.contains("vbv-maxrate=160000"));
+    println!("✓ Verified Level 5.1 High Tier VBV constraints (160,000 kbps)");
     
     // 9. Processing overhead estimation
     let overhead = rpu_manager.estimate_processing_overhead(&dv_info);

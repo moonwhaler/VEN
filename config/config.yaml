@@ -59,6 +59,13 @@ analysis:
     temp_dir: "/tmp"                  # RPU temporary storage location
     auto_profile_conversion: true     # Auto convert profiles for compatibility
     fallback_to_hdr10: true          # Fallback to HDR10 if DV processing fails
+    
+    # Encoding adjustments based on "docs/Dolby Vision CRF Requirements.md"
+    crf_adjustment: 1.0               # Lower than HDR10's +2.0 (DV needs conservative encoding)
+    bitrate_multiplier: 1.8           # Higher than HDR10's 1.3x (DV requires more bitrate)
+    vbv_bufsize: 160000               # Mandatory VBV buffer size for Level 5.1 High Tier
+    vbv_maxrate: 160000               # Mandatory VBV max rate (required for DV compliance)
+    profile_specific_adjustments: true # Different settings per DV profile
 
 # Content-Aware Parameter Adaptation
 # Video Filter Settings
