@@ -70,9 +70,6 @@ pub struct LoggingConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProgressConfig {
     pub update_interval_ms: u64,
-    pub stall_detection_seconds: u64,
-    pub show_eta: bool,
-    pub show_file_size: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

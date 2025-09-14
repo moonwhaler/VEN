@@ -178,9 +178,6 @@ mod tests {
             },
             progress: ProgressConfig {
                 update_interval_ms: 1000,
-                stall_detection_seconds: 15,
-                show_eta: true,
-                show_file_size: true,
             },
             analysis: AnalysisConfig {
                 crop_detection: CropDetectionConfig::default(),
