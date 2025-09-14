@@ -11,16 +11,22 @@ pub struct ContentClassification {
 pub struct ContentAnalyzer;
 
 impl ContentAnalyzer {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
+    /// Classify video content type based on bitrate per pixel heuristics
+    ///
+    /// # Errors
+    ///
+    /// Returns error if content classification fails
     pub async fn classify_content(
         &self,
         metadata: &crate::utils::ffmpeg::VideoMetadata,
     ) -> Result<ContentClassification> {
         let bitrate_per_pixel =
-            metadata.bitrate.unwrap_or(0) as f64 / (metadata.width as f64 * metadata.height as f64);
+            f64::from(metadata.bitrate.unwrap_or(0)) / (f64::from(metadata.width) * f64::from(metadata.height));
 
         let content_type = if bitrate_per_pixel > 0.02 {
             ContentType::HeavyGrain

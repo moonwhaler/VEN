@@ -78,6 +78,7 @@ pub struct ToolsConfig {
     pub ffprobe: String,
     pub nnedi_weights: Option<String>,
     pub dovi_tool: Option<DoviToolConfig>, // NEW: Dolby Vision tool
+    pub hdr10plus_tool: Option<crate::hdr10plus::Hdr10PlusToolConfig>, // NEW: HDR10+ tool
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -191,8 +192,8 @@ impl Default for DolbyVisionConfig {
             // Dolby Vision encoding adjustments based on research
             crf_adjustment: 1.0,     // Lower than HDR10's +2.0, use +1.0 for DV
             bitrate_multiplier: 1.8, // Higher than HDR10's 1.3x, use 1.8x for DV
-            vbv_bufsize: 160000,     // Required for Level 5.1 High Tier DV
-            vbv_maxrate: 160000,     // Mandatory VBV constraint for DV compliance
+            vbv_bufsize: 160_000,     // Required for Level 5.1 High Tier DV
+            vbv_maxrate: 160_000,     // Mandatory VBV constraint for DV compliance
             profile_specific_adjustments: true,
         }
     }
@@ -203,8 +204,6 @@ pub struct Hdr10PlusConfig {
     /// Enable HDR10+ dynamic metadata processing
     pub enabled: bool,
 
-    /// HDR10+ tool configuration
-    pub tool: crate::hdr10plus::Hdr10PlusToolConfig,
 
     /// Temporary directory for metadata files
     pub temp_dir: Option<String>,
@@ -231,7 +230,6 @@ impl Default for Hdr10PlusConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            tool: crate::hdr10plus::Hdr10PlusToolConfig::default(),
             temp_dir: None,
             require_tool: false, // Graceful fallback by default
             fallback_to_hdr10: true,

@@ -1,5 +1,4 @@
 # FFmpeg Autoencoder Configuration
-# Modern YAML-based configuration replacing the bash config.sh
 
 # Application Settings
 app:
@@ -14,6 +13,11 @@ tools:
   dovi_tool:                          # NEW: Dolby Vision tool
     path: "dovi_tool"                 # Path to dovi_tool binary
     timeout_seconds: 300              # Tool operation timeout (5 minutes)
+  hdr10plus_tool:                     # NEW: HDR10+ tool
+    path: "hdr10plus_tool"            # Path to hdr10plus_tool binary
+    timeout_seconds: 300              # Tool operation timeout (5 minutes)
+    # extract_args: ["--verbose"]     # Optional custom extraction arguments
+    # inject_args: ["--force"]        # Optional custom injection arguments
 
 # Logging Configuration
 logging:
@@ -32,7 +36,7 @@ analysis:
     sample_count: 10 # Number of evenly distributed sample points across video duration 
     sdr_crop_limit: 24 # Crop detection threshold for SDR content
     hdr_crop_limit: 64 # Crop detection threshold for HDR content  
-    min_pixel_change_percent: 2.0  # Only apply crops that remove >1% of pixels
+    min_pixel_change_percent: 2.0  # Only apply crops that remove >n% of pixels
   
   hdr_detection:
     enabled: true
@@ -70,13 +74,7 @@ analysis:
     crf_adjustment: 2.5               # Higher than HDR10's +2.0 (complexity of dynamic metadata)
     bitrate_multiplier: 1.4           # 40% bitrate increase for dynamic metadata preservation
     encoding_complexity: 1.4          # Processing complexity multiplier
-    # max_scenes: 100                 # Optional maximum scenes for Samsung compatibility
-    
-    tool:
-      path: "hdr10plus_tool"          # Path to hdr10plus_tool binary
-      timeout_seconds: 300            # Tool operation timeout (5 minutes)
-      # extract_args: ["--verbose"]   # Optional custom extraction arguments
-      # inject_args: ["--force"]      # Optional custom injection arguments    
+    # max_scenes: 100                 # Optional maximum scenes for Samsung compatibility    
 
 # Video Filter Settings
 filters:

@@ -19,6 +19,7 @@ pub struct CropValues {
 }
 
 impl CropValues {
+    #[must_use]
     pub fn new(width: u32, height: u32, x: u32, y: u32) -> Self {
         Self {
             width,
@@ -28,17 +29,22 @@ impl CropValues {
         }
     }
 
+    #[must_use]
     pub fn to_ffmpeg_string(&self) -> String {
         format!("{}:{}:{}:{}", self.width, self.height, self.x, self.y)
     }
 
+    #[must_use]
     pub fn calculate_pixel_change(&self, original_width: u32, original_height: u32) -> f32 {
+        #[allow(clippy::cast_precision_loss)]
         let original_pixels = (original_width * original_height) as f32;
+        #[allow(clippy::cast_precision_loss)]
         let cropped_pixels = (self.width * self.height) as f32;
 
         ((original_pixels - cropped_pixels) / original_pixels) * 100.0
     }
 
+    #[must_use]
     pub fn is_significant_crop(
         &self,
         original_width: u32,

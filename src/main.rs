@@ -136,6 +136,7 @@ async fn process_single_file(
         config.analysis.hdr.clone().unwrap_or_default(),
         config.analysis.dolby_vision.clone(),
         config.analysis.hdr10_plus.clone(),
+        config.tools.hdr10plus_tool.clone(),
     );
 
     let content_analysis = content_manager.analyze_content(ffmpeg, input_path).await?;

@@ -357,9 +357,9 @@ pub async fn demo_dolby_vision_workflow() -> Result<(), Box<dyn std::error::Erro
     let mock_rpu = RpuMetadata {
         temp_file: PathBuf::from("/tmp/extracted.rpu"),
         profile: target_profile,
-        frame_count: Some(143892), // ~1 hour at 24fps
+        frame_count: Some(143_892), // ~1 hour at 24fps
         extracted_successfully: true,
-        file_size: Some(2048576), // 2MB RPU file
+        file_size: Some(2_048_576), // 2MB RPU file
     };
     println!("✓ Mock RPU metadata created");
     println!("  - Frames: {:?}", mock_rpu.frame_count);
