@@ -1,3 +1,4 @@
+use crate::hdr::HdrAnalysisResult;
 use crate::utils::{Error, Result};
 use regex::Regex;
 use std::path::Path;
@@ -31,7 +32,8 @@ pub struct VideoMetadata {
     pub fps: f32,
     pub bitrate: Option<u32>,
     pub codec: Option<String>,
-    pub is_hdr: bool,
+    pub is_hdr: bool,  // Legacy - kept for backward compatibility
+    pub hdr_analysis: Option<HdrAnalysisResult>,  // New comprehensive HDR analysis
     pub color_space: Option<String>,
     pub transfer_function: Option<String>,
     pub color_primaries: Option<String>,
@@ -312,6 +314,7 @@ impl FfmpegWrapper {
             bitrate,
             codec,
             is_hdr,
+            hdr_analysis: None,  // Will be filled by HDR analysis
             color_space,
             transfer_function,
             color_primaries,
@@ -468,6 +471,34 @@ impl FfmpegWrapper {
         }
 
         Err(Error::parse("Could not extract duration from raw output"))
+    }
+
+    /// Perform comprehensive HDR analysis using the new modular system
+    pub async fn analyze_hdr<P: AsRef<Path>>(
+        &self, 
+        input_path: P, 
+        hdr_manager: &crate::hdr::HdrManager
+    ) -> Result<HdrAnalysisResult> {
+        hdr_manager.analyze_content(self, input_path).await
+    }
+
+    /// Update VideoMetadata with comprehensive HDR analysis
+    pub async fn enrich_with_hdr_analysis<P: AsRef<Path>>(
+        &self,
+        mut metadata: VideoMetadata,
+        input_path: P,
+        hdr_manager: &crate::hdr::HdrManager,
+    ) -> Result<VideoMetadata> {
+        // Perform comprehensive HDR analysis
+        let hdr_analysis = self.analyze_hdr(&input_path, hdr_manager).await?;
+        
+        // Update legacy is_hdr field for backward compatibility
+        metadata.is_hdr = hdr_analysis.metadata.format != crate::hdr::HdrFormat::None;
+        
+        // Store comprehensive HDR analysis
+        metadata.hdr_analysis = Some(hdr_analysis);
+        
+        Ok(metadata)
     }
 }
 

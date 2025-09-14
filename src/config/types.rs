@@ -94,6 +94,7 @@ impl Default for CropDetectionConfig {
     }
 }
 
+// Legacy HDR detection config - replaced by UnifiedHdrConfig in hdr module
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HdrDetectionConfig {
     pub enabled: bool,
@@ -103,9 +104,46 @@ pub struct HdrDetectionConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ToneMappingConfig {
+    pub enabled: bool,
+    pub target_max_nits: u32,
+    pub algorithm: String,  // "hable", "reinhard", "mobius", etc.
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UnifiedHdrConfig {
+    pub enabled: bool,
+    pub auto_detect_format: bool,           // Auto-detect HDR10/HLG/etc
+    pub preserve_metadata: bool,            // Preserve all HDR metadata
+    pub fallback_to_sdr: bool,             // Fallback if HDR processing fails  
+    pub encoding_optimization: bool,        // Use HDR-optimized encoding
+    pub crf_adjustment: f32,               // CRF adjustment for HDR
+    pub bitrate_multiplier: f32,           // Bitrate multiplier for HDR
+    pub force_10bit: bool,                 // Force 10-bit output for HDR
+    pub tone_mapping: Option<ToneMappingConfig>, // Future tone mapping
+}
+
+impl Default for UnifiedHdrConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            auto_detect_format: true,
+            preserve_metadata: true,
+            fallback_to_sdr: true,
+            encoding_optimization: true,
+            crf_adjustment: 2.0,
+            bitrate_multiplier: 1.3,
+            force_10bit: true,
+            tone_mapping: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AnalysisConfig {
     pub crop_detection: CropDetectionConfig,
-    pub hdr_detection: HdrDetectionConfig,
+    pub hdr_detection: HdrDetectionConfig,  // Legacy - kept for backward compatibility
+    pub hdr: Option<UnifiedHdrConfig>,      // New unified HDR config
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

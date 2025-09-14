@@ -187,6 +187,7 @@ mod tests {
                     transfer_patterns: vec!["smpte2084".to_string()],
                     crf_adjustment: 2.0,
                 },
+                hdr: Some(crate::config::UnifiedHdrConfig::default()),
             },
             profiles: HashMap::new(),
             filters: FiltersConfig {
