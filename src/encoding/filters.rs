@@ -170,6 +170,7 @@ mod tests {
                 ffmpeg: "ffmpeg".to_string(),
                 ffprobe: "ffprobe".to_string(),
                 nnedi_weights: None,
+                dovi_tool: None,
             },
             logging: LoggingConfig {
                 level: "info".to_string(),
@@ -188,6 +189,7 @@ mod tests {
                     crf_adjustment: 2.0,
                 },
                 hdr: Some(crate::config::UnifiedHdrConfig::default()),
+                dolby_vision: Some(crate::config::DolbyVisionConfig::default()),
             },
             profiles: HashMap::new(),
             filters: FiltersConfig {

@@ -54,10 +54,30 @@ pub struct AppConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DoviToolConfig {
+    pub path: String,                      // Path to dovi_tool binary
+    pub timeout_seconds: u64,              // Tool operation timeout
+    pub extract_args: Option<Vec<String>>, // Custom extraction arguments
+    pub inject_args: Option<Vec<String>>,  // Custom injection arguments
+}
+
+impl Default for DoviToolConfig {
+    fn default() -> Self {
+        Self {
+            path: "dovi_tool".to_string(),
+            timeout_seconds: 300,
+            extract_args: None,
+            inject_args: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ToolsConfig {
     pub ffmpeg: String,
     pub ffprobe: String,
     pub nnedi_weights: Option<String>,
+    pub dovi_tool: Option<DoviToolConfig>, // NEW: Dolby Vision tool
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -140,10 +160,36 @@ impl Default for UnifiedHdrConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DolbyVisionConfig {
+    pub enabled: bool,
+    pub preserve_profile_7: bool,          // Convert P7 to P8.1
+    pub target_profile: String,            // "8.1" or "8.2"  
+    pub require_dovi_tool: bool,           // Fail if dovi_tool missing
+    pub temp_dir: Option<String>,          // RPU temporary storage
+    pub auto_profile_conversion: bool,     // Auto convert profiles for compatibility
+    pub fallback_to_hdr10: bool,          // Fallback to HDR10 if DV processing fails
+}
+
+impl Default for DolbyVisionConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            preserve_profile_7: true,
+            target_profile: "8.1".to_string(),
+            require_dovi_tool: false,
+            temp_dir: None,
+            auto_profile_conversion: true,
+            fallback_to_hdr10: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AnalysisConfig {
     pub crop_detection: CropDetectionConfig,
     pub hdr_detection: HdrDetectionConfig,  // Legacy - kept for backward compatibility
     pub hdr: Option<UnifiedHdrConfig>,      // New unified HDR config
+    pub dolby_vision: Option<DolbyVisionConfig>, // NEW: Dolby Vision configuration
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
