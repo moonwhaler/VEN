@@ -1,9 +1,8 @@
 /// Unified content manager for HDR and Dolby Vision
-/// 
+///
 /// This module provides a high-level interface that coordinates HDR and Dolby Vision
 /// detection, analysis, and parameter adjustments based on the requirements documented
 /// in "docs/Dolby Vision CRF Requirements.md"
-
 use crate::analysis::dolby_vision::{DolbyVisionDetector, DolbyVisionInfo, DolbyVisionProfile};
 use crate::config::{DolbyVisionConfig, Hdr10PlusConfig};
 use crate::config::UnifiedHdrConfig;
@@ -61,21 +60,21 @@ pub struct UnifiedContentManager {
     dv_detector: Option<DolbyVisionDetector>,
     dv_config: Option<DolbyVisionConfig>,
     hdr10plus_manager: Option<Hdr10PlusManager>,
-    hdr10plus_config: Option<Hdr10PlusConfig>,
+    _hdr10plus_config: Option<Hdr10PlusConfig>,
 }
 
 impl UnifiedContentManager {
     pub fn new(
         hdr_config: UnifiedHdrConfig, 
         dv_config: Option<DolbyVisionConfig>,
-        hdr10plus_config: Option<Hdr10PlusConfig>
+        _hdr10plus_config: Option<Hdr10PlusConfig>
     ) -> Self {
         let hdr_manager = HdrManager::new(hdr_config);
         let dv_detector = dv_config.as_ref()
             .filter(|config| config.enabled)
             .map(|config| DolbyVisionDetector::new(config.clone()));
         
-        let hdr10plus_manager = hdr10plus_config.as_ref()
+        let hdr10plus_manager = _hdr10plus_config.as_ref()
             .filter(|config| config.enabled)
             .map(|config| {
                 let temp_dir = config.temp_dir.as_deref()
@@ -89,7 +88,7 @@ impl UnifiedContentManager {
             dv_detector,
             dv_config,
             hdr10plus_manager,
-            hdr10plus_config,
+            _hdr10plus_config,
         }
     }
 
@@ -203,8 +202,8 @@ impl UnifiedContentManager {
     fn calculate_encoding_adjustments(
         &self,
         approach: &ContentEncodingApproach,
-        hdr: &HdrAnalysisResult,
-        dv: &DolbyVisionInfo,
+        _hdr: &HdrAnalysisResult,
+        _dv: &DolbyVisionInfo,
     ) -> EncodingAdjustments {
         match approach {
             ContentEncodingApproach::SDR => {
@@ -377,7 +376,7 @@ mod tests {
     #[test]
     fn test_sdr_content_adjustments() {
         let hdr_config = UnifiedHdrConfig::default();
-        let manager = UnifiedContentManager::new(hdr_config, None);
+        let manager = UnifiedContentManager::new(hdr_config, None, None);
         
         let hdr_analysis = HdrAnalysisResult {
             metadata: HdrMetadata::sdr_default(),
@@ -404,7 +403,7 @@ mod tests {
     fn test_dolby_vision_profile_specific_adjustments() {
         let hdr_config = UnifiedHdrConfig::default();
         let dv_config = DolbyVisionConfig::default();
-        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config.clone()));
+        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config.clone()), None);
         
         // Test Profile 7 (more conservative)
         let (crf_range_p7, complexity_p7) = manager.get_profile_specific_adjustments(
@@ -433,7 +432,7 @@ mod tests {
     fn test_vbv_constraints_for_dolby_vision() {
         let hdr_config = UnifiedHdrConfig::default();
         let dv_config = DolbyVisionConfig::default();
-        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config));
+        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config), None);
         
         let dv_info = DolbyVisionInfo {
             profile: DolbyVisionProfile::Profile81,

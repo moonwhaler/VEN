@@ -232,7 +232,7 @@ impl Drop for RpuManager {
                 move || {
                     let rt = tokio::runtime::Handle::try_current();
                     if let Ok(handle) = rt {
-                        let _ = handle.block_on(async {
+                        handle.block_on(async {
                             let mut dir = match tokio::fs::read_dir(&temp_dir).await {
                                 Ok(dir) => dir,
                                 Err(_) => return,

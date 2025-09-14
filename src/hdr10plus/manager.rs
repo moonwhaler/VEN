@@ -11,7 +11,7 @@ use uuid::Uuid;
 pub struct Hdr10PlusManager {
     tool: Option<Hdr10PlusTool>,
     temp_dir: PathBuf,
-    config: Hdr10PlusToolConfig,
+    _config: Hdr10PlusToolConfig,
 }
 
 impl Hdr10PlusManager {
@@ -23,7 +23,7 @@ impl Hdr10PlusManager {
         Self {
             tool,
             temp_dir,
-            config,
+            _config: config,
         }
     }
 
@@ -165,41 +165,41 @@ impl Hdr10PlusManager {
             ));
         }
 
-        let mut params = Vec::new();
+        let params = vec![
+            // Core HDR10+ parameter - path to the JSON metadata file
+            (
+                "dhdr10-info".to_string(),
+                hdr10plus_result.metadata_file.to_string_lossy().to_string(),
+            ),
 
-        // Core HDR10+ parameter - path to the JSON metadata file
-        params.push((
-            "dhdr10-info".to_string(),
-            hdr10plus_result.metadata_file.to_string_lossy().to_string(),
-        ));
+            // HDR10+ specific optimizations
+            ("hdr10plus-opt".to_string(), "1".to_string()),
 
-        // HDR10+ specific optimizations
-        params.push(("hdr10plus-opt".to_string(), "1".to_string()));
-        
-        // Enhanced rate control for dynamic metadata
-        params.push(("rc-lookahead".to_string(), "60".to_string())); // Longer lookahead
-        params.push(("bframes".to_string(), "8".to_string())); // More B-frames for better compression
-        params.push(("b-adapt".to_string(), "2".to_string()));
+            // Enhanced rate control for dynamic metadata
+            ("rc-lookahead".to_string(), "60".to_string()), // Longer lookahead
+            ("bframes".to_string(), "8".to_string()), // More B-frames for better compression
+            ("b-adapt".to_string(), "2".to_string()),
 
-        // Quality optimizations for HDR10+ content
-        params.push(("psy-rd".to_string(), "2.5".to_string())); // Higher psychovisual optimization
-        params.push(("psy-rdoq".to_string(), "1.0".to_string()));
-        params.push(("aq-mode".to_string(), "3".to_string())); // Adaptive quantization mode 3
-        params.push(("aq-strength".to_string(), "1.0".to_string()));
+            // Quality optimizations for HDR10+ content
+            ("psy-rd".to_string(), "2.5".to_string()), // Higher psychovisual optimization
+            ("psy-rdoq".to_string(), "1.0".to_string()),
+            ("aq-mode".to_string(), "3".to_string()), // Adaptive quantization mode 3
+            ("aq-strength".to_string(), "1.0".to_string()),
 
-        // Enhanced motion estimation for dynamic content
-        params.push(("me".to_string(), "umh".to_string()));
-        params.push(("subme".to_string(), "5".to_string()));
-        params.push(("merange".to_string(), "64".to_string()));
+            // Enhanced motion estimation for dynamic content
+            ("me".to_string(), "umh".to_string()),
+            ("subme".to_string(), "5".to_string()),
+            ("merange".to_string(), "64".to_string()),
 
-        // Transform optimizations
-        params.push(("rect".to_string(), "".to_string()));
-        params.push(("amp".to_string(), "".to_string()));
+            // Transform optimizations
+            ("rect".to_string(), "".to_string()),
+            ("amp".to_string(), "".to_string()),
 
-        // Additional quality enhancements
-        params.push(("strong-intra-smoothing".to_string(), "".to_string()));
-        params.push(("weightb".to_string(), "".to_string()));
-        params.push(("weightp".to_string(), "2".to_string()));
+            // Additional quality enhancements
+            ("strong-intra-smoothing".to_string(), "".to_string()),
+            ("weightb".to_string(), "".to_string()),
+            ("weightp".to_string(), "2".to_string()),
+        ];
 
         info!("Generated {} HDR10+ x265 parameters", params.len());
         Ok(params)

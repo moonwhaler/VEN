@@ -211,8 +211,8 @@ impl DolbyVisionDetector {
         }
         
         // Check codec tag for Dolby Vision indicators
-        if codec_tag.contains("dvh") || codec_tag.contains("dvhe") {
-            if dv_info.profile == DolbyVisionProfile::None {
+        if (codec_tag.contains("dvh") || codec_tag.contains("dvhe"))
+            && dv_info.profile == DolbyVisionProfile::None {
                 // Try to extract profile from codec tag
                 if let Some(dv_profile) = DolbyVisionProfile::from_string(codec_tag) {
                     dv_info.profile = dv_profile;
@@ -223,7 +223,6 @@ impl DolbyVisionDetector {
                 dv_info.has_rpu = true;
                 dv_info.rpu_present = true;
             }
-        }
         
         Ok(dv_info)
     }

@@ -146,7 +146,7 @@ impl Hdr10PlusMetadata {
     /// Load HDR10+ metadata from JSON file
     pub async fn from_json_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
         let content = tokio::fs::read_to_string(&path).await
-            .map_err(|e| Error::Io(e))?;
+            .map_err(Error::Io)?;
 
         let metadata: Hdr10PlusMetadata = serde_json::from_str(&content)
             .map_err(|e| Error::Parse { message: format!(
@@ -164,7 +164,7 @@ impl Hdr10PlusMetadata {
             ) })?;
 
         tokio::fs::write(&path, json).await
-            .map_err(|e| Error::Io(e))?;
+            .map_err(Error::Io)?;
 
         Ok(())
     }
@@ -204,7 +204,7 @@ impl Hdr10PlusMetadata {
     pub fn has_tone_mapping_curves(&self) -> bool {
         self.frames.iter().any(|frame| 
             frame.tone_mapping.is_some() && 
-            frame.tone_mapping.as_ref().unwrap().anchors.len() > 0
+            !frame.tone_mapping.as_ref().unwrap().anchors.is_empty()
         )
     }
 
