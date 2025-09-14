@@ -14,7 +14,9 @@ impl ColorManager {
     pub fn normalize_color_space_name(raw_name: &str) -> ColorSpace {
         match raw_name.to_lowercase().as_str() {
             "bt709" | "rec709" | "bt.709" | "rec.709" => ColorSpace::Bt709,
-            "bt2020" | "rec2020" | "bt.2020" | "rec.2020" | "bt2020nc" | "bt2020-ncl" => ColorSpace::Bt2020,
+            "bt2020" | "rec2020" | "bt.2020" | "rec.2020" | "bt2020nc" | "bt2020-ncl" => {
+                ColorSpace::Bt2020
+            }
             "dci-p3" | "dcip3" | "p3-dci" => ColorSpace::DciP3,
             "display-p3" | "displayp3" | "p3-display" => ColorSpace::DisplayP3,
             _ => {
@@ -33,7 +35,10 @@ impl ColorManager {
             "bt2020-10" | "bt.2020-10" | "rec2020-10" => TransferFunction::Bt2020_10,
             "bt2020-12" | "bt.2020-12" | "rec2020-12" => TransferFunction::Bt2020_12,
             _ => {
-                tracing::warn!("Unknown transfer function '{}', defaulting to Bt709", raw_name);
+                tracing::warn!(
+                    "Unknown transfer function '{}', defaulting to Bt709",
+                    raw_name
+                );
                 TransferFunction::Bt709
             }
         }
@@ -44,19 +49,19 @@ impl ColorManager {
         match (color_space, transfer_function) {
             // SDR combinations
             (ColorSpace::Bt709, TransferFunction::Bt709) => true,
-            
+
             // HDR10 combinations
             (ColorSpace::Bt2020, TransferFunction::Smpte2084) => true,
             (ColorSpace::Bt2020, TransferFunction::Bt2020_10) => true,
             (ColorSpace::Bt2020, TransferFunction::Bt2020_12) => true,
-            
+
             // HLG combinations
             (ColorSpace::Bt2020, TransferFunction::AribStdB67) => true,
-            
+
             // P3 combinations (typically SDR or tone-mapped HDR)
             (ColorSpace::DciP3, TransferFunction::Bt709) => true,
             (ColorSpace::DisplayP3, TransferFunction::Bt709) => true,
-            
+
             // Cross-format combinations that might work but aren't standard
             _ => false,
         }
@@ -122,7 +127,8 @@ impl ColorManager {
         if color_space != color_primaries {
             tracing::warn!(
                 "Color space {:?} differs from color primaries {:?}",
-                color_space, color_primaries
+                color_space,
+                color_primaries
             );
             // This is not necessarily an error, just unusual
         }
@@ -136,7 +142,7 @@ impl ColorManager {
                         transfer_function
                     ));
                 }
-            },
+            }
             _ => {}
         }
 

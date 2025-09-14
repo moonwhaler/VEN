@@ -7,7 +7,8 @@ use std::sync::LazyLock;
 use tokio::process::Command;
 use tracing::{debug, info};
 
-static CROP_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"crop=(\d+):(\d+):(\d+):(\d+)").unwrap());
+static CROP_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"crop=(\d+):(\d+):(\d+):(\d+)").unwrap());
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CropValues {

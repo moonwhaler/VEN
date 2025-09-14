@@ -1,6 +1,6 @@
-use super::{HdrFormatHandler, EncodingRecommendations};
-use crate::hdr::types::{HdrFormat, HdrMetadata, TransferFunction, ColorSpace};
+use super::{EncodingRecommendations, HdrFormatHandler};
 use crate::hdr::metadata::HdrMetadataExtractor;
+use crate::hdr::types::{ColorSpace, HdrFormat, HdrMetadata, TransferFunction};
 use std::collections::HashMap;
 use tracing::warn;
 
@@ -26,13 +26,15 @@ impl HdrFormatHandler for Hdr10PlusHandler {
 
         // HDR10+ inherits all HDR10 parameters
         self.add_hdr10_base_params(&mut params, metadata);
-        
+
         // Add HDR10+ specific optimizations
         self.add_hdr10_plus_optimizations(&mut params);
 
         // Note: Dynamic metadata injection would require additional processing
         // that's typically handled by external tools or specialized encoders
-        warn!("HDR10+ dynamic metadata requires external processing - only static metadata applied");
+        warn!(
+            "HDR10+ dynamic metadata requires external processing - only static metadata applied"
+        );
 
         params
     }
@@ -96,7 +98,7 @@ impl HdrFormatHandler for Hdr10PlusHandler {
 
     fn get_encoding_recommendations(&self) -> EncodingRecommendations {
         let mut special_params = HashMap::new();
-        
+
         // HDR10+ specific encoding parameters (more aggressive than HDR10)
         special_params.insert("psy-rd".to_string(), "2.2".to_string());
         special_params.insert("psy-rdoq".to_string(), "1.2".to_string());
@@ -106,8 +108,8 @@ impl HdrFormatHandler for Hdr10PlusHandler {
         special_params.insert("rc-lookahead".to_string(), "40".to_string());
 
         EncodingRecommendations {
-            crf_adjustment: 2.5,  // HDR10+ needs higher CRF due to complexity
-            bitrate_multiplier: 1.4,  // 40% bitrate increase
+            crf_adjustment: 2.5,     // HDR10+ needs higher CRF due to complexity
+            bitrate_multiplier: 1.4, // 40% bitrate increase
             minimum_bit_depth: 10,
             recommended_preset: Some("slower".to_string()), // Slower preset for better quality
             special_params,
@@ -144,15 +146,19 @@ impl Hdr10PlusHandler {
         // HDR optimization flags
         params.insert("hdr".to_string(), "".to_string());
         params.insert("hdr-opt".to_string(), "".to_string());
-        
+
         // Force 10-bit output
         params.insert("output-depth".to_string(), "10".to_string());
     }
 
     fn add_hdr10_plus_optimizations(&self, params: &mut HashMap<String, String>) {
         // Enhanced psychovisual optimizations for HDR10+
-        params.entry("psy-rd".to_string()).or_insert("2.2".to_string());
-        params.entry("psy-rdoq".to_string()).or_insert("1.2".to_string());
+        params
+            .entry("psy-rd".to_string())
+            .or_insert("2.2".to_string());
+        params
+            .entry("psy-rdoq".to_string())
+            .or_insert("1.2".to_string());
 
         // More aggressive rate-distortion optimization
         params.entry("rd".to_string()).or_insert("4".to_string());
@@ -162,11 +168,17 @@ impl Hdr10PlusHandler {
         params.entry("subme".to_string()).or_insert("4".to_string()); // Higher subme for better quality
 
         // Stronger adaptive quantization
-        params.entry("aq-mode".to_string()).or_insert("3".to_string());
-        params.entry("aq-strength".to_string()).or_insert("0.9".to_string());
+        params
+            .entry("aq-mode".to_string())
+            .or_insert("3".to_string());
+        params
+            .entry("aq-strength".to_string())
+            .or_insert("0.9".to_string());
 
         // Deblocking filter optimization
-        params.entry("deblock".to_string()).or_insert("1,1".to_string());
+        params
+            .entry("deblock".to_string())
+            .or_insert("1,1".to_string());
 
         // Sample Adaptive Offset
         params.entry("sao".to_string()).or_insert("".to_string());
@@ -176,27 +188,49 @@ impl Hdr10PlusHandler {
         params.entry("amp".to_string()).or_insert("".to_string());
 
         // Enhanced rate control for dynamic metadata
-        params.entry("rc-lookahead".to_string()).or_insert("40".to_string()); // Longer lookahead
-        params.entry("bframes".to_string()).or_insert("6".to_string()); // More B-frames
-        params.entry("b-adapt".to_string()).or_insert("2".to_string());
-        params.entry("b-pyramid".to_string()).or_insert("".to_string());
+        params
+            .entry("rc-lookahead".to_string())
+            .or_insert("40".to_string()); // Longer lookahead
+        params
+            .entry("bframes".to_string())
+            .or_insert("6".to_string()); // More B-frames
+        params
+            .entry("b-adapt".to_string())
+            .or_insert("2".to_string());
+        params
+            .entry("b-pyramid".to_string())
+            .or_insert("".to_string());
 
         // Quality optimizations for HDR10+
-        params.entry("nr-intra".to_string()).or_insert("0".to_string());
-        params.entry("nr-inter".to_string()).or_insert("0".to_string());
-        
+        params
+            .entry("nr-intra".to_string())
+            .or_insert("0".to_string());
+        params
+            .entry("nr-inter".to_string())
+            .or_insert("0".to_string());
+
         // Enhanced analysis
-        params.entry("strong-intra-smoothing".to_string()).or_insert("".to_string());
-        params.entry("constrained-intra".to_string()).or_insert("".to_string());
-        
+        params
+            .entry("strong-intra-smoothing".to_string())
+            .or_insert("".to_string());
+        params
+            .entry("constrained-intra".to_string())
+            .or_insert("".to_string());
+
         // Temporal optimizations for dynamic metadata
-        params.entry("weightb".to_string()).or_insert("".to_string());
-        params.entry("weightp".to_string()).or_insert("2".to_string());
+        params
+            .entry("weightb".to_string())
+            .or_insert("".to_string());
+        params
+            .entry("weightp".to_string())
+            .or_insert("2".to_string());
 
         // HDR10+ specific quality preservation
         params.entry("cutree".to_string()).or_insert("".to_string());
-        params.entry("no-open-gop".to_string()).or_insert("".to_string());
-        
+        params
+            .entry("no-open-gop".to_string())
+            .or_insert("".to_string());
+
         // Future HDR10+ dynamic metadata support placeholder
         // Note: This would require external tools like hdr10plus_tool
         // params.insert("dhdr10-info".to_string(), "metadata.json".to_string());

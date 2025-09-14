@@ -17,7 +17,8 @@ static FRAME_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"frame=\s*(\d
 
 static SPEED_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"speed=\s*([0-9.]+)x").unwrap());
 
-static SIZE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:size|Lsize)=\s*(\d+)k?iB").unwrap());
+static SIZE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?:size|Lsize)=\s*(\d+)k?iB").unwrap());
 
 static BITRATE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"bitrate=\s*([0-9.]+)kbits/s").unwrap());
@@ -32,8 +33,8 @@ pub struct VideoMetadata {
     pub fps: f32,
     pub bitrate: Option<u32>,
     pub codec: Option<String>,
-    pub is_hdr: bool,  // Legacy - kept for backward compatibility
-    pub hdr_analysis: Option<HdrAnalysisResult>,  // New comprehensive HDR analysis
+    pub is_hdr: bool, // Legacy - kept for backward compatibility
+    pub hdr_analysis: Option<HdrAnalysisResult>, // New comprehensive HDR analysis
     pub color_space: Option<String>,
     pub transfer_function: Option<String>,
     pub color_primaries: Option<String>,
@@ -254,14 +255,18 @@ impl FfmpegWrapper {
             .map(|s| s.to_string());
 
         let is_hdr = self.detect_hdr(&color_space, &transfer_function);
-        
+
         // Log HDR detection details for debugging
         if is_hdr {
-            debug!("HDR content detected with color_space: {:?}, transfer_function: {:?}", 
-                   color_space, transfer_function);
+            debug!(
+                "HDR content detected with color_space: {:?}, transfer_function: {:?}",
+                color_space, transfer_function
+            );
         } else {
-            debug!("SDR content detected with color_space: {:?}, transfer_function: {:?}", 
-                   color_space, transfer_function);
+            debug!(
+                "SDR content detected with color_space: {:?}, transfer_function: {:?}",
+                color_space, transfer_function
+            );
         }
 
         // Extract HDR metadata if HDR is detected (optimized to skip for faster analysis)
@@ -314,7 +319,7 @@ impl FfmpegWrapper {
             bitrate,
             codec,
             is_hdr,
-            hdr_analysis: None,  // Will be filled by HDR analysis
+            hdr_analysis: None, // Will be filled by HDR analysis
             color_space,
             transfer_function,
             color_primaries,
@@ -344,30 +349,31 @@ impl FfmpegWrapper {
         let hdr_color_spaces = ["bt2020", "rec2020"];
         let hdr_transfers = ["smpte2084", "arib-std-b67"];
 
-        let has_hdr_color_space = color_space
-            .as_ref()
-            .is_some_and(|cs| {
-                let matched = hdr_color_spaces.iter().any(|&hdr_cs| cs.contains(hdr_cs));
-                if matched {
-                    debug!("HDR color space detected: {} (matches HDR patterns)", cs);
-                }
-                matched
-            });
+        let has_hdr_color_space = color_space.as_ref().is_some_and(|cs| {
+            let matched = hdr_color_spaces.iter().any(|&hdr_cs| cs.contains(hdr_cs));
+            if matched {
+                debug!("HDR color space detected: {} (matches HDR patterns)", cs);
+            }
+            matched
+        });
 
-        let has_hdr_transfer = transfer_function
-            .as_ref()
-            .is_some_and(|tf| {
-                let matched = hdr_transfers.iter().any(|&hdr_tf| tf.contains(hdr_tf));
-                if matched {
-                    debug!("HDR transfer function detected: {} (matches HDR patterns)", tf);
-                }
-                matched
-            });
+        let has_hdr_transfer = transfer_function.as_ref().is_some_and(|tf| {
+            let matched = hdr_transfers.iter().any(|&hdr_tf| tf.contains(hdr_tf));
+            if matched {
+                debug!(
+                    "HDR transfer function detected: {} (matches HDR patterns)",
+                    tf
+                );
+            }
+            matched
+        });
 
         let is_hdr = has_hdr_color_space && has_hdr_transfer;
-        debug!("HDR detection result: {} (color_space: {}, transfer: {})", 
-               is_hdr, has_hdr_color_space, has_hdr_transfer);
-        
+        debug!(
+            "HDR detection result: {} (color_space: {}, transfer: {})",
+            is_hdr, has_hdr_color_space, has_hdr_transfer
+        );
+
         is_hdr
     }
 
@@ -475,9 +481,9 @@ impl FfmpegWrapper {
 
     /// Perform comprehensive HDR analysis using the new modular system
     pub async fn analyze_hdr<P: AsRef<Path>>(
-        &self, 
-        input_path: P, 
-        hdr_manager: &crate::hdr::HdrManager
+        &self,
+        input_path: P,
+        hdr_manager: &crate::hdr::HdrManager,
     ) -> Result<HdrAnalysisResult> {
         hdr_manager.analyze_content(self, input_path).await
     }
@@ -491,13 +497,13 @@ impl FfmpegWrapper {
     ) -> Result<VideoMetadata> {
         // Perform comprehensive HDR analysis
         let hdr_analysis = self.analyze_hdr(&input_path, hdr_manager).await?;
-        
+
         // Update legacy is_hdr field for backward compatibility
         metadata.is_hdr = hdr_analysis.metadata.format != crate::hdr::HdrFormat::None;
-        
+
         // Store comprehensive HDR analysis
         metadata.hdr_analysis = Some(hdr_analysis);
-        
+
         Ok(metadata)
     }
 }

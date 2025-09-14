@@ -235,16 +235,16 @@ impl EncodingProfile {
                 match rpu_meta.profile {
                     DolbyVisionProfile::Profile5 => {
                         params.insert("dolby-vision-profile".to_string(), "5".to_string());
-                    },
+                    }
                     DolbyVisionProfile::Profile81 => {
                         params.insert("dolby-vision-profile".to_string(), "8.1".to_string());
-                    },
+                    }
                     DolbyVisionProfile::Profile82 => {
                         params.insert("dolby-vision-profile".to_string(), "8.2".to_string());
-                    },
+                    }
                     DolbyVisionProfile::Profile84 => {
                         params.insert("dolby-vision-profile".to_string(), "8.4".to_string());
-                    },
+                    }
                     _ => {} // Skip profile 7 and others not directly supported by x265
                 }
 
@@ -260,7 +260,7 @@ impl EncodingProfile {
 
                 // Force 10-bit output for Dolby Vision
                 params.insert("output-depth".to_string(), "10".to_string());
-                
+
                 // Ensure proper color parameters for Dolby Vision
                 params.insert("colorprim".to_string(), "bt2020".to_string());
                 params.insert("transfer".to_string(), "smpte2084".to_string());
@@ -286,14 +286,20 @@ impl EncodingProfile {
     /// Check if this profile is compatible with Dolby Vision encoding
     pub fn is_dolby_vision_compatible(&self) -> bool {
         // Check if the profile has 10-bit output and appropriate color settings
-        let has_10bit = self.x265_params.get("output-depth")
+        let has_10bit = self
+            .x265_params
+            .get("output-depth")
             .map(|d| d == "10")
-            .unwrap_or(false) || 
-            self.x265_params.get("pix_fmt")
+            .unwrap_or(false)
+            || self
+                .x265_params
+                .get("pix_fmt")
                 .map(|pf| pf.contains("10le"))
                 .unwrap_or(false);
 
-        let has_main10_profile = self.x265_params.get("profile")
+        let has_main10_profile = self
+            .x265_params
+            .get("profile")
             .map(|p| p == "main10")
             .unwrap_or(false);
 

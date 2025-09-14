@@ -1,5 +1,5 @@
 use super::types::*;
-use crate::utils::{Result, Error};
+use crate::utils::{Error, Result};
 
 pub struct HdrMetadataExtractor;
 
@@ -13,7 +13,8 @@ impl HdrMetadataExtractor {
 
         if let Some(captures) = re.captures(raw) {
             let parse_float = |i: usize| -> Result<f32> {
-                captures.get(i)
+                captures
+                    .get(i)
                     .ok_or_else(|| Error::parse(format!("Missing capture group {}", i)))?
                     .as_str()
                     .parse()
@@ -21,7 +22,8 @@ impl HdrMetadataExtractor {
             };
 
             let parse_u32 = |i: usize| -> Result<u32> {
-                captures.get(i)
+                captures
+                    .get(i)
                     .ok_or_else(|| Error::parse(format!("Missing capture group {}", i)))?
                     .as_str()
                     .parse()
@@ -45,11 +47,16 @@ impl HdrMetadataExtractor {
     pub fn format_master_display_for_x265(md: &MasteringDisplayColorVolume) -> String {
         format!(
             "G({:.4},{:.4})B({:.4},{:.4})R({:.4},{:.4})WP({:.4},{:.4})L({},{:.4})",
-            md.green_primary.0, md.green_primary.1,
-            md.blue_primary.0, md.blue_primary.1,
-            md.red_primary.0, md.red_primary.1,
-            md.white_point.0, md.white_point.1,
-            md.max_luminance, md.min_luminance
+            md.green_primary.0,
+            md.green_primary.1,
+            md.blue_primary.0,
+            md.blue_primary.1,
+            md.red_primary.0,
+            md.red_primary.1,
+            md.white_point.0,
+            md.white_point.1,
+            md.max_luminance,
+            md.min_luminance
         )
     }
 
@@ -58,26 +65,31 @@ impl HdrMetadataExtractor {
         // Expected format: "1000,400" (max_cll, max_fall)
         let parts: Vec<&str> = raw.split(',').collect();
         if parts.len() >= 2 {
-            let max_cll = parts[0].trim().parse()
+            let max_cll = parts[0]
+                .trim()
+                .parse()
                 .map_err(|e| Error::parse(format!("Failed to parse max_cll: {}", e)))?;
-            let max_fall = parts[1].trim().parse()
+            let max_fall = parts[1]
+                .trim()
+                .parse()
                 .map_err(|e| Error::parse(format!("Failed to parse max_fall: {}", e)))?;
-            
-            Ok(ContentLightLevelInfo {
-                max_cll,
-                max_fall,
-            })
+
+            Ok(ContentLightLevelInfo { max_cll, max_fall })
         } else if parts.len() == 1 {
             // Only max_cll provided
-            let max_cll = parts[0].trim().parse()
+            let max_cll = parts[0]
+                .trim()
+                .parse()
                 .map_err(|e| Error::parse(format!("Failed to parse max_cll: {}", e)))?;
-            
+
             Ok(ContentLightLevelInfo {
                 max_cll,
                 max_fall: 400, // Default reasonable value
             })
         } else {
-            Err(Error::parse("Invalid content light level format".to_string()))
+            Err(Error::parse(
+                "Invalid content light level format".to_string(),
+            ))
         }
     }
 
@@ -92,18 +104,24 @@ impl HdrMetadataExtractor {
             HdrFormat::None => {
                 // SDR should not have HDR metadata
                 if metadata.master_display.is_some() || metadata.content_light_level.is_some() {
-                    return Err(Error::validation("SDR content should not have HDR metadata".to_string()));
+                    return Err(Error::validation(
+                        "SDR content should not have HDR metadata".to_string(),
+                    ));
                 }
-            },
+            }
             HdrFormat::HDR10 | HdrFormat::HDR10Plus => {
                 // HDR10 should have proper transfer function
                 if !matches!(metadata.transfer_function, TransferFunction::Smpte2084) {
-                    return Err(Error::validation("HDR10 content should use SMPTE-2084 transfer function".to_string()));
+                    return Err(Error::validation(
+                        "HDR10 content should use SMPTE-2084 transfer function".to_string(),
+                    ));
                 }
 
                 // Validate color space
                 if !matches!(metadata.color_space, ColorSpace::Bt2020) {
-                    return Err(Error::validation("HDR10 content should use BT.2020 color space".to_string()));
+                    return Err(Error::validation(
+                        "HDR10 content should use BT.2020 color space".to_string(),
+                    ));
                 }
 
                 // Validate mastering display metadata if present
@@ -115,18 +133,22 @@ impl HdrMetadataExtractor {
                 if let Some(ref cll) = metadata.content_light_level {
                     Self::validate_content_light_level(cll)?;
                 }
-            },
+            }
             HdrFormat::HLG => {
                 // HLG should have proper transfer function
                 if !matches!(metadata.transfer_function, TransferFunction::AribStdB67) {
-                    return Err(Error::validation("HLG content should use ARIB STD-B67 transfer function".to_string()));
+                    return Err(Error::validation(
+                        "HLG content should use ARIB STD-B67 transfer function".to_string(),
+                    ));
                 }
 
                 // Validate color space
                 if !matches!(metadata.color_space, ColorSpace::Bt2020) {
-                    return Err(Error::validation("HLG content should use BT.2020 color space".to_string()));
+                    return Err(Error::validation(
+                        "HLG content should use BT.2020 color space".to_string(),
+                    ));
                 }
-            },
+            }
         }
 
         Ok(())
@@ -135,40 +157,55 @@ impl HdrMetadataExtractor {
     fn validate_mastering_display(md: &MasteringDisplayColorVolume) -> Result<()> {
         // Validate chromaticity coordinates (should be between 0 and 1)
         let coords = [
-            md.red_primary.0, md.red_primary.1,
-            md.green_primary.0, md.green_primary.1,
-            md.blue_primary.0, md.blue_primary.1,
-            md.white_point.0, md.white_point.1,
+            md.red_primary.0,
+            md.red_primary.1,
+            md.green_primary.0,
+            md.green_primary.1,
+            md.blue_primary.0,
+            md.blue_primary.1,
+            md.white_point.0,
+            md.white_point.1,
         ];
 
         for (i, coord) in coords.iter().enumerate() {
             if *coord < 0.0 || *coord > 1.0 {
                 return Err(Error::validation(format!(
-                    "Chromaticity coordinate {} out of range [0.0, 1.0]: {}", i, coord
+                    "Chromaticity coordinate {} out of range [0.0, 1.0]: {}",
+                    i, coord
                 )));
             }
         }
 
         // Validate luminance values
         if md.max_luminance == 0 {
-            return Err(Error::validation("Max luminance must be greater than 0".to_string()));
+            return Err(Error::validation(
+                "Max luminance must be greater than 0".to_string(),
+            ));
         }
 
         if md.min_luminance < 0.0 {
-            return Err(Error::validation("Min luminance must be non-negative".to_string()));
+            return Err(Error::validation(
+                "Min luminance must be non-negative".to_string(),
+            ));
         }
 
         if md.min_luminance >= md.max_luminance as f32 {
-            return Err(Error::validation("Min luminance must be less than max luminance".to_string()));
+            return Err(Error::validation(
+                "Min luminance must be less than max luminance".to_string(),
+            ));
         }
 
         // Check for reasonable HDR range
         if md.max_luminance < 100 {
-            return Err(Error::validation("Max luminance too low for HDR content".to_string()));
+            return Err(Error::validation(
+                "Max luminance too low for HDR content".to_string(),
+            ));
         }
 
         if md.max_luminance > 10000 {
-            return Err(Error::validation("Max luminance unreasonably high".to_string()));
+            return Err(Error::validation(
+                "Max luminance unreasonably high".to_string(),
+            ));
         }
 
         Ok(())
@@ -176,20 +213,28 @@ impl HdrMetadataExtractor {
 
     fn validate_content_light_level(cll: &ContentLightLevelInfo) -> Result<()> {
         if cll.max_cll == 0 {
-            return Err(Error::validation("Max CLL must be greater than 0".to_string()));
+            return Err(Error::validation(
+                "Max CLL must be greater than 0".to_string(),
+            ));
         }
 
         if cll.max_fall == 0 {
-            return Err(Error::validation("Max FALL must be greater than 0".to_string()));
+            return Err(Error::validation(
+                "Max FALL must be greater than 0".to_string(),
+            ));
         }
 
         if cll.max_fall > cll.max_cll {
-            return Err(Error::validation("Max FALL cannot exceed Max CLL".to_string()));
+            return Err(Error::validation(
+                "Max FALL cannot exceed Max CLL".to_string(),
+            ));
         }
 
         // Check for reasonable HDR range
         if cll.max_cll < 100 {
-            return Err(Error::validation("Max CLL too low for HDR content".to_string()));
+            return Err(Error::validation(
+                "Max CLL too low for HDR content".to_string(),
+            ));
         }
 
         if cll.max_cll > 10000 {
@@ -228,25 +273,17 @@ impl HdrMetadataExtractor {
         };
 
         let color_info = format!(
-            "{:?}/{:?}", 
-            metadata.color_space, 
-            metadata.transfer_function
+            "{:?}/{:?}",
+            metadata.color_space, metadata.transfer_function
         );
 
         let metadata_info = match (&metadata.master_display, &metadata.content_light_level) {
             (Some(md), Some(cll)) => format!(
-                " | MD: L({}-{:.2}) | CLL: {}/{}", 
-                md.max_luminance, md.min_luminance,
-                cll.max_cll, cll.max_fall
+                " | MD: L({}-{:.2}) | CLL: {}/{}",
+                md.max_luminance, md.min_luminance, cll.max_cll, cll.max_fall
             ),
-            (Some(md), None) => format!(
-                " | MD: L({}-{:.2})", 
-                md.max_luminance, md.min_luminance
-            ),
-            (None, Some(cll)) => format!(
-                " | CLL: {}/{}", 
-                cll.max_cll, cll.max_fall
-            ),
+            (Some(md), None) => format!(" | MD: L({}-{:.2})", md.max_luminance, md.min_luminance),
+            (None, Some(cll)) => format!(" | CLL: {}/{}", cll.max_cll, cll.max_fall),
             (None, None) => String::new(),
         };
 

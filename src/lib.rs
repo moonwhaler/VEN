@@ -12,13 +12,17 @@ pub mod progress;
 pub mod stream;
 pub mod utils;
 
-pub use analysis::{ContentClassification, VideoAnalysis, DolbyVisionInfo, DolbyVisionProfile};
+pub use analysis::{ContentClassification, DolbyVisionInfo, DolbyVisionProfile, VideoAnalysis};
 pub use color::ColorManager;
-pub use config::{Config, ContentType, EncodingProfile, UnifiedHdrConfig, DolbyVisionConfig};
-pub use content_manager::{UnifiedContentManager, ContentAnalysisResult, ContentEncodingApproach, EncodingAdjustments};
+pub use config::{Config, ContentType, DolbyVisionConfig, EncodingProfile, UnifiedHdrConfig};
+pub use content_manager::{
+    ContentAnalysisResult, ContentEncodingApproach, EncodingAdjustments, UnifiedContentManager,
+};
 pub use dolby_vision::{DoviTool, DoviToolConfig, RpuManager, RpuMetadata};
 pub use encoding::{EncodingMode, EncodingOptions};
-pub use hdr::{HdrFormat, HdrManager, HdrMetadata, ColorSpace, TransferFunction};
-pub use hdr10plus::{Hdr10PlusManager, Hdr10PlusMetadata, Hdr10PlusProcessingResult, Hdr10PlusToolConfig};
+pub use hdr::{ColorSpace, HdrFormat, HdrManager, HdrMetadata, TransferFunction};
+pub use hdr10plus::{
+    Hdr10PlusManager, Hdr10PlusMetadata, Hdr10PlusProcessingResult, Hdr10PlusToolConfig,
+};
 pub use stream::preservation::{StreamMapping, StreamPreservation};
 pub use utils::{Error, FfmpegWrapper, Result};

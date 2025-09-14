@@ -2,43 +2,43 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum HdrFormat {
-    None,        // SDR content
-    HDR10,       // Static HDR with SMPTE-2084 PQ
-    HDR10Plus,   // Dynamic HDR with ST 2094-40 metadata
-    HLG,         // Hybrid Log-Gamma (broadcast HDR)
+    None,      // SDR content
+    HDR10,     // Static HDR with SMPTE-2084 PQ
+    HDR10Plus, // Dynamic HDR with ST 2094-40 metadata
+    HLG,       // Hybrid Log-Gamma (broadcast HDR)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ColorSpace {
-    Bt709,       // Standard definition / HD
-    Bt2020,      // Ultra HD / HDR
-    DciP3,       // Digital cinema
-    DisplayP3,   // Apple/consumer displays
+    Bt709,     // Standard definition / HD
+    Bt2020,    // Ultra HD / HDR
+    DciP3,     // Digital cinema
+    DisplayP3, // Apple/consumer displays
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransferFunction {
-    Bt709,       // Standard gamma
-    Smpte2084,   // PQ (Perceptual Quantizer) - HDR10
-    AribStdB67,  // HLG (Hybrid Log-Gamma)
-    Bt2020_10,   // BT.2020 10-bit
-    Bt2020_12,   // BT.2020 12-bit
+    Bt709,      // Standard gamma
+    Smpte2084,  // PQ (Perceptual Quantizer) - HDR10
+    AribStdB67, // HLG (Hybrid Log-Gamma)
+    Bt2020_10,  // BT.2020 10-bit
+    Bt2020_12,  // BT.2020 12-bit
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MasteringDisplayColorVolume {
-    pub red_primary: (f32, f32),      // x, y chromaticity coordinates
+    pub red_primary: (f32, f32), // x, y chromaticity coordinates
     pub green_primary: (f32, f32),
     pub blue_primary: (f32, f32),
     pub white_point: (f32, f32),
-    pub max_luminance: u32,            // nits
-    pub min_luminance: f32,            // nits (fractional)
+    pub max_luminance: u32, // nits
+    pub min_luminance: f32, // nits (fractional)
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ContentLightLevelInfo {
-    pub max_cll: u32,    // Maximum Content Light Level (nits)
-    pub max_fall: u32,   // Maximum Frame Average Light Level (nits)
+    pub max_cll: u32,  // Maximum Content Light Level (nits)
+    pub max_fall: u32, // Maximum Frame Average Light Level (nits)
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -59,9 +59,9 @@ pub struct HdrMetadata {
 #[derive(Debug, Clone)]
 pub struct HdrAnalysisResult {
     pub metadata: HdrMetadata,
-    pub confidence_score: f32,        // Detection confidence (0.0-1.0)
+    pub confidence_score: f32, // Detection confidence (0.0-1.0)
     pub requires_tone_mapping: bool,
-    pub encoding_complexity: f32,     // Complexity multiplier for encoding
+    pub encoding_complexity: f32, // Complexity multiplier for encoding
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

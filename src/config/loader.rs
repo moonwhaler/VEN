@@ -34,7 +34,6 @@ impl Config {
             ));
         }
 
-
         if self.profiles.is_empty() {
             return Err(Error::validation("At least one profile must be defined"));
         }

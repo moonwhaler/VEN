@@ -1,8 +1,8 @@
-use super::tools::{Hdr10PlusTool, Hdr10PlusToolConfig};
 use super::metadata::{Hdr10PlusMetadata, Hdr10PlusProcessingResult};
-use crate::hdr::types::{HdrAnalysisResult, HdrFormat};
+use super::tools::{Hdr10PlusTool, Hdr10PlusToolConfig};
 use crate::analysis::dolby_vision::DolbyVisionInfo;
-use crate::utils::{Result, Error};
+use crate::hdr::types::{HdrAnalysisResult, HdrFormat};
+use crate::utils::{Error, Result};
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
@@ -42,7 +42,6 @@ impl Hdr10PlusManager {
         input_video: P,
         hdr_result: &HdrAnalysisResult,
     ) -> Result<Option<Hdr10PlusProcessingResult>> {
-        
         // Only process if this is HDR10+ content
         if hdr_result.metadata.format != HdrFormat::HDR10Plus {
             debug!("Skipping HDR10+ extraction - not HDR10+ content");
@@ -61,11 +60,16 @@ impl Hdr10PlusManager {
         }
 
         let input_path = input_video.as_ref();
-        info!("Extracting HDR10+ dynamic metadata from: {}", input_path.display());
+        info!(
+            "Extracting HDR10+ dynamic metadata from: {}",
+            input_path.display()
+        );
 
         // Generate unique filename for metadata
         let metadata_id = Uuid::new_v4().to_string();
-        let metadata_file = self.temp_dir.join(format!("hdr10plus_metadata_{}.json", metadata_id));
+        let metadata_file = self
+            .temp_dir
+            .join(format!("hdr10plus_metadata_{}.json", metadata_id));
 
         match tool.extract_metadata(input_path, &metadata_file).await {
             Ok(_) => {
@@ -78,7 +82,8 @@ impl Hdr10PlusManager {
                             return Ok(None);
                         }
 
-                        let file_size = tokio::fs::metadata(&metadata_file).await
+                        let file_size = tokio::fs::metadata(&metadata_file)
+                            .await
                             .map(|m| m.len())
                             .ok();
 
@@ -91,8 +96,10 @@ impl Hdr10PlusManager {
                             scene_count: 0, // Will be calculated in constructor
                         };
 
-                        info!("Successfully extracted HDR10+ metadata: {} frames, {} scenes",
-                              result.metadata.num_frames, result.scene_count);
+                        info!(
+                            "Successfully extracted HDR10+ metadata: {} frames, {} scenes",
+                            result.metadata.num_frames, result.scene_count
+                        );
 
                         Ok(Some(result))
                     }
@@ -118,31 +125,42 @@ impl Hdr10PlusManager {
         dv_info: &DolbyVisionInfo,
         hdr_result: &HdrAnalysisResult,
     ) -> Result<Option<Hdr10PlusProcessingResult>> {
-        
         if !dv_info.is_dolby_vision() || hdr_result.metadata.format != HdrFormat::HDR10Plus {
             debug!("Not dual DV+HDR10+ content - skipping dual processing");
-            return self.extract_hdr10plus_metadata(input_video, hdr_result).await;
+            return self
+                .extract_hdr10plus_metadata(input_video, hdr_result)
+                .await;
         }
 
         info!("Processing dual Dolby Vision + HDR10+ content");
-        
+
         // For dual format, we need to be extra careful about metadata preservation
-        match self.extract_hdr10plus_metadata(&input_video, hdr_result).await {
+        match self
+            .extract_hdr10plus_metadata(&input_video, hdr_result)
+            .await
+        {
             Ok(Some(mut result)) => {
                 // Enhance metadata with dual-format information
                 result.metadata.source = Some(super::metadata::SourceInfo {
-                    filename: Some(format!("DV+HDR10+ dual format: {}", 
-                                         input_video.as_ref().file_name()
-                                         .unwrap_or_default()
-                                         .to_string_lossy())),
+                    filename: Some(format!(
+                        "DV+HDR10+ dual format: {}",
+                        input_video
+                            .as_ref()
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                    )),
                     file_size: None,
                     created_at: Some(chrono::Utc::now().to_rfc3339()),
                     resolution: None,
                     frame_rate: None,
                 });
 
-                info!("Dual format processing complete: DV Profile {} + HDR10+ ({} frames)",
-                      dv_info.profile.as_str(), result.metadata.num_frames);
+                info!(
+                    "Dual format processing complete: DV Profile {} + HDR10+ ({} frames)",
+                    dv_info.profile.as_str(),
+                    result.metadata.num_frames
+                );
 
                 Ok(Some(result))
             }
@@ -161,7 +179,7 @@ impl Hdr10PlusManager {
     ) -> Result<Vec<(String, String)>> {
         if !hdr10plus_result.extraction_successful {
             return Err(Error::encoding(
-                "Cannot build x265 params - HDR10+ extraction failed".to_string()
+                "Cannot build x265 params - HDR10+ extraction failed".to_string(),
             ));
         }
 
@@ -171,30 +189,24 @@ impl Hdr10PlusManager {
                 "dhdr10-info".to_string(),
                 hdr10plus_result.metadata_file.to_string_lossy().to_string(),
             ),
-
             // HDR10+ specific optimizations
             ("hdr10plus-opt".to_string(), "1".to_string()),
-
             // Enhanced rate control for dynamic metadata
             ("rc-lookahead".to_string(), "60".to_string()), // Longer lookahead
-            ("bframes".to_string(), "8".to_string()), // More B-frames for better compression
+            ("bframes".to_string(), "8".to_string()),       // More B-frames for better compression
             ("b-adapt".to_string(), "2".to_string()),
-
             // Quality optimizations for HDR10+ content
             ("psy-rd".to_string(), "2.5".to_string()), // Higher psychovisual optimization
             ("psy-rdoq".to_string(), "1.0".to_string()),
             ("aq-mode".to_string(), "3".to_string()), // Adaptive quantization mode 3
             ("aq-strength".to_string(), "1.0".to_string()),
-
             // Enhanced motion estimation for dynamic content
             ("me".to_string(), "umh".to_string()),
             ("subme".to_string(), "5".to_string()),
             ("merange".to_string(), "64".to_string()),
-
             // Transform optimizations
             ("rect".to_string(), "".to_string()),
             ("amp".to_string(), "".to_string()),
-
             // Additional quality enhancements
             ("strong-intra-smoothing".to_string(), "".to_string()),
             ("weightb".to_string(), "".to_string()),
@@ -237,7 +249,7 @@ impl Hdr10PlusManager {
         // Ultra-conservative quality settings for dual metadata preservation
         params.push(("crf".to_string(), "16".to_string())); // Very low CRF
         params.push(("preset".to_string(), "veryslow".to_string())); // Highest quality preset
-        
+
         // Maximum rate-distortion optimization
         params.push(("rd".to_string(), "6".to_string())); // Highest RD level
         params.push(("rdoq-level".to_string(), "2".to_string()));
@@ -247,26 +259,35 @@ impl Hdr10PlusManager {
         params.push(("b-pyramid".to_string(), "".to_string()));
         params.push(("b-adapt".to_string(), "2".to_string()));
 
-        info!("Generated {} dual format (DV+HDR10+) x265 parameters", params.len());
+        info!(
+            "Generated {} dual format (DV+HDR10+) x265 parameters",
+            params.len()
+        );
         Ok(params)
     }
 
     /// Clean up temporary HDR10+ files
     pub async fn cleanup(&self) -> Result<()> {
-        debug!("Cleaning up HDR10+ temporary files in: {}", self.temp_dir.display());
-        
-        let mut dir = tokio::fs::read_dir(&self.temp_dir).await
+        debug!(
+            "Cleaning up HDR10+ temporary files in: {}",
+            self.temp_dir.display()
+        );
+
+        let mut dir = tokio::fs::read_dir(&self.temp_dir)
+            .await
             .map_err(Error::Io)?;
 
-        while let Some(entry) = dir.next_entry().await
-            .map_err(Error::Io)? {
-            
+        while let Some(entry) = dir.next_entry().await.map_err(Error::Io)? {
             let path = entry.path();
             if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
                 if filename.starts_with("hdr10plus_metadata_") && filename.ends_with(".json") {
                     debug!("Removing HDR10+ metadata file: {}", path.display());
                     if let Err(e) = tokio::fs::remove_file(&path).await {
-                        warn!("Failed to remove HDR10+ metadata file {}: {}", path.display(), e);
+                        warn!(
+                            "Failed to remove HDR10+ metadata file {}: {}",
+                            path.display(),
+                            e
+                        );
                     }
                 }
             }

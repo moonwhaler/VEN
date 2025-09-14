@@ -54,7 +54,6 @@ pub struct CliArgs {
     #[arg(short, long, default_value = "abr", value_parser = ["crf", "abr", "cbr"])]
     pub mode: String,
 
-
     /// Enable video denoising (hqdn3d=1:1:2:2)
     #[arg(long)]
     pub denoise: bool,
@@ -161,7 +160,6 @@ impl CliArgs {
             )));
         }
 
-
         // Validate profile name
         let valid_profiles = [
             "auto",
@@ -186,7 +184,6 @@ impl CliArgs {
 
         Ok(())
     }
-
 
     pub fn print_help_topic(&self, topic: &str) {
         match topic.to_lowercase().as_str() {

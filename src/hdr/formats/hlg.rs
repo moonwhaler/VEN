@@ -1,6 +1,6 @@
-use super::{HdrFormatHandler, EncodingRecommendations};
-use crate::hdr::types::{HdrFormat, HdrMetadata, TransferFunction, ColorSpace};
+use super::{EncodingRecommendations, HdrFormatHandler};
 use crate::hdr::metadata::HdrMetadataExtractor;
+use crate::hdr::types::{ColorSpace, HdrFormat, HdrMetadata, TransferFunction};
 use std::collections::HashMap;
 
 pub struct HlgHandler;
@@ -86,10 +86,14 @@ impl HdrFormatHandler for HlgHandler {
 
             // Validate chromaticity coordinates
             let coords = [
-                md.red_primary.0, md.red_primary.1,
-                md.green_primary.0, md.green_primary.1,
-                md.blue_primary.0, md.blue_primary.1,
-                md.white_point.0, md.white_point.1,
+                md.red_primary.0,
+                md.red_primary.1,
+                md.green_primary.0,
+                md.green_primary.1,
+                md.blue_primary.0,
+                md.blue_primary.1,
+                md.white_point.0,
+                md.white_point.1,
             ];
 
             for (i, coord) in coords.iter().enumerate() {
@@ -125,7 +129,7 @@ impl HdrFormatHandler for HlgHandler {
 
     fn get_encoding_recommendations(&self) -> EncodingRecommendations {
         let mut special_params = HashMap::new();
-        
+
         // HLG-specific encoding parameters (more conservative than HDR10)
         special_params.insert("psy-rd".to_string(), "1.8".to_string());
         special_params.insert("psy-rdoq".to_string(), "0.8".to_string());
@@ -134,8 +138,8 @@ impl HdrFormatHandler for HlgHandler {
         special_params.insert("deblock".to_string(), "0,0".to_string()); // Lighter deblocking
 
         EncodingRecommendations {
-            crf_adjustment: 1.5,  // HLG needs moderate CRF adjustment
-            bitrate_multiplier: 1.2,  // 20% bitrate increase
+            crf_adjustment: 1.5,     // HLG needs moderate CRF adjustment
+            bitrate_multiplier: 1.2, // 20% bitrate increase
             minimum_bit_depth: 10,
             recommended_preset: Some("medium".to_string()), // Balanced preset
             special_params,
@@ -146,8 +150,12 @@ impl HdrFormatHandler for HlgHandler {
 impl HlgHandler {
     fn add_hlg_optimizations(&self, params: &mut HashMap<String, String>) {
         // HLG has different perceptual characteristics than PQ
-        params.entry("psy-rd".to_string()).or_insert("1.8".to_string());
-        params.entry("psy-rdoq".to_string()).or_insert("0.8".to_string());
+        params
+            .entry("psy-rd".to_string())
+            .or_insert("1.8".to_string());
+        params
+            .entry("psy-rdoq".to_string())
+            .or_insert("0.8".to_string());
 
         // Rate-distortion optimization (moderate for HLG)
         params.entry("rd".to_string()).or_insert("3".to_string());
@@ -157,11 +165,17 @@ impl HlgHandler {
         params.entry("subme".to_string()).or_insert("2".to_string());
 
         // Adaptive quantization for HLG (less aggressive than HDR10)
-        params.entry("aq-mode".to_string()).or_insert("2".to_string());
-        params.entry("aq-strength".to_string()).or_insert("0.7".to_string());
+        params
+            .entry("aq-mode".to_string())
+            .or_insert("2".to_string());
+        params
+            .entry("aq-strength".to_string())
+            .or_insert("0.7".to_string());
 
         // Lighter deblocking for HLG content (HLG is more forgiving)
-        params.entry("deblock".to_string()).or_insert("0,0".to_string());
+        params
+            .entry("deblock".to_string())
+            .or_insert("0,0".to_string());
 
         // Sample Adaptive Offset (beneficial for HLG)
         params.entry("sao".to_string()).or_insert("".to_string());
@@ -170,37 +184,71 @@ impl HlgHandler {
         params.entry("rect".to_string()).or_insert("".to_string());
 
         // Rate control settings for HLG
-        params.entry("rc-lookahead".to_string()).or_insert("20".to_string());
-        params.entry("bframes".to_string()).or_insert("3".to_string());
-        params.entry("b-adapt".to_string()).or_insert("1".to_string());
+        params
+            .entry("rc-lookahead".to_string())
+            .or_insert("20".to_string());
+        params
+            .entry("bframes".to_string())
+            .or_insert("3".to_string());
+        params
+            .entry("b-adapt".to_string())
+            .or_insert("1".to_string());
 
         // HLG-specific quality settings
-        params.entry("nr-intra".to_string()).or_insert("0".to_string());
-        params.entry("nr-inter".to_string()).or_insert("0".to_string());
+        params
+            .entry("nr-intra".to_string())
+            .or_insert("0".to_string());
+        params
+            .entry("nr-inter".to_string())
+            .or_insert("0".to_string());
 
         // Conservative analysis settings for HLG
-        params.entry("strong-intra-smoothing".to_string()).or_insert("".to_string());
+        params
+            .entry("strong-intra-smoothing".to_string())
+            .or_insert("".to_string());
 
         // HLG benefits from weighted prediction
-        params.entry("weightp".to_string()).or_insert("2".to_string());
-        params.entry("weightb".to_string()).or_insert("".to_string());
+        params
+            .entry("weightp".to_string())
+            .or_insert("2".to_string());
+        params
+            .entry("weightb".to_string())
+            .or_insert("".to_string());
 
         // Conservative GOP structure for HLG
-        params.entry("keyint".to_string()).or_insert("250".to_string());
-        params.entry("min-keyint".to_string()).or_insert("25".to_string());
+        params
+            .entry("keyint".to_string())
+            .or_insert("250".to_string());
+        params
+            .entry("min-keyint".to_string())
+            .or_insert("25".to_string());
 
         // HLG-specific quality optimizations
-        params.entry("qcomp".to_string()).or_insert("0.6".to_string());
-        params.entry("ip-ratio".to_string()).or_insert("1.4".to_string());
-        params.entry("pb-ratio".to_string()).or_insert("1.3".to_string());
+        params
+            .entry("qcomp".to_string())
+            .or_insert("0.6".to_string());
+        params
+            .entry("ip-ratio".to_string())
+            .or_insert("1.4".to_string());
+        params
+            .entry("pb-ratio".to_string())
+            .or_insert("1.3".to_string());
 
         // Disable noise reduction for clean HLG content
-        params.entry("nr-intra".to_string()).or_insert("0".to_string());
-        params.entry("nr-inter".to_string()).or_insert("0".to_string());
+        params
+            .entry("nr-intra".to_string())
+            .or_insert("0".to_string());
+        params
+            .entry("nr-inter".to_string())
+            .or_insert("0".to_string());
 
         // HLG works well with moderate complexity settings
-        params.entry("max-merge".to_string()).or_insert("3".to_string());
-        params.entry("early-skip".to_string()).or_insert("".to_string());
+        params
+            .entry("max-merge".to_string())
+            .or_insert("3".to_string());
+        params
+            .entry("early-skip".to_string())
+            .or_insert("".to_string());
     }
 }
 

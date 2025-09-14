@@ -1,6 +1,6 @@
 use super::types::*;
 use crate::config::UnifiedHdrConfig;
-use crate::utils::{FfmpegWrapper, Result, Error};
+use crate::utils::{Error, FfmpegWrapper, Result};
 use std::path::Path;
 use tracing::{debug, warn};
 
@@ -28,16 +28,17 @@ impl HdrDetector {
         }
 
         // Enhanced metadata extraction
-        let enhanced_metadata = self.extract_enhanced_hdr_metadata(
-            ffmpeg,
-            &input_path,
-        ).await?;
+        let enhanced_metadata = self
+            .extract_enhanced_hdr_metadata(ffmpeg, &input_path)
+            .await?;
 
         let hdr_metadata = self.analyze_hdr_characteristics(&enhanced_metadata)?;
         let confidence = self.calculate_detection_confidence(&hdr_metadata);
 
-        debug!("HDR Analysis Result: {:?} (confidence: {:.2})",
-               hdr_metadata.format, confidence);
+        debug!(
+            "HDR Analysis Result: {:?} (confidence: {:.2})",
+            hdr_metadata.format, confidence
+        );
 
         Ok(HdrAnalysisResult {
             requires_tone_mapping: self.requires_tone_mapping(&hdr_metadata),
@@ -70,30 +71,33 @@ impl HdrDetector {
         self.parse_enhanced_metadata(&json)
     }
 
-    fn parse_enhanced_metadata(
-        &self,
-        json: &serde_json::Value,
-    ) -> Result<EnhancedVideoMetadata> {
-        let stream = json["streams"][0].as_object()
+    fn parse_enhanced_metadata(&self, json: &serde_json::Value) -> Result<EnhancedVideoMetadata> {
+        let stream = json["streams"][0]
+            .as_object()
             .ok_or_else(|| Error::parse("No video stream found".to_string()))?;
 
-        let color_space = stream.get("color_space")
+        let color_space = stream
+            .get("color_space")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let transfer_function = stream.get("color_transfer")
+        let transfer_function = stream
+            .get("color_transfer")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let color_primaries = stream.get("color_primaries")
+        let color_primaries = stream
+            .get("color_primaries")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let bit_depth = stream.get("bits_per_raw_sample")
+        let bit_depth = stream
+            .get("bits_per_raw_sample")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse::<u8>().ok());
 
-        let chroma_subsampling = stream.get("chroma_location")
+        let chroma_subsampling = stream
+            .get("chroma_location")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
@@ -105,30 +109,36 @@ impl HdrDetector {
 
         if let Some(side_data_array) = side_data {
             for side_data_entry in side_data_array {
-                if let Some(side_data_type) = side_data_entry.get("side_data_type").and_then(|v| v.as_str()) {
+                if let Some(side_data_type) = side_data_entry
+                    .get("side_data_type")
+                    .and_then(|v| v.as_str())
+                {
                     match side_data_type {
                         "Mastering display metadata" => {
                             if let Some(md) = self.extract_mastering_display(side_data_entry) {
                                 master_display_metadata = Some(md);
                             }
-                        },
+                        }
                         "Content light level metadata" => {
                             if let Some(cll) = self.extract_content_light_level(side_data_entry) {
                                 content_light_level = Some(cll);
                             }
-                        },
+                        }
                         // Enhanced HDR10+ dynamic metadata detection
-                        "HDR dynamic metadata (SMPTE 2094-40)" | 
-                        "HDR dynamic metadata SMPTE2094-40" |
-                        "HDR10+ dynamic metadata" |
-                        "Dynamic HDR10+ metadata" => {
+                        "HDR dynamic metadata (SMPTE 2094-40)"
+                        | "HDR dynamic metadata SMPTE2094-40"
+                        | "HDR10+ dynamic metadata"
+                        | "Dynamic HDR10+ metadata" => {
                             debug!("Found HDR10+ dynamic metadata: {}", side_data_type);
                             has_dynamic_metadata = true;
-                        },
+                        }
                         _ => {
                             // Pattern-based detection for HDR10+ variations
                             if self.is_hdr10plus_dynamic_metadata(side_data_type) {
-                                debug!("Pattern-matched HDR10+ dynamic metadata: {}", side_data_type);
+                                debug!(
+                                    "Pattern-matched HDR10+ dynamic metadata: {}",
+                                    side_data_type
+                                );
                                 has_dynamic_metadata = true;
                             }
                         }
@@ -136,22 +146,33 @@ impl HdrDetector {
                 }
             }
         }
-        
+
         // Also check frame-level side data if available
         if !has_dynamic_metadata {
             if let Some(frames) = json.get("frames").and_then(|v| v.as_array()) {
-                for frame in frames.iter().take(3) { // Check first 3 frames
-                    if let Some(frame_side_data) = frame.get("side_data_list").and_then(|v| v.as_array()) {
+                for frame in frames.iter().take(3) {
+                    // Check first 3 frames
+                    if let Some(frame_side_data) =
+                        frame.get("side_data_list").and_then(|v| v.as_array())
+                    {
                         for side_data_entry in frame_side_data {
-                            if let Some(side_data_type) = side_data_entry.get("side_data_type").and_then(|v| v.as_str()) {
+                            if let Some(side_data_type) = side_data_entry
+                                .get("side_data_type")
+                                .and_then(|v| v.as_str())
+                            {
                                 if self.is_hdr10plus_dynamic_metadata(side_data_type) {
-                                    debug!("Found HDR10+ dynamic metadata in frame: {}", side_data_type);
+                                    debug!(
+                                        "Found HDR10+ dynamic metadata in frame: {}",
+                                        side_data_type
+                                    );
                                     has_dynamic_metadata = true;
                                     break;
                                 }
                             }
                         }
-                        if has_dynamic_metadata { break; }
+                        if has_dynamic_metadata {
+                            break;
+                        }
                     }
                 }
             }
@@ -172,39 +193,43 @@ impl HdrDetector {
     /// Enhanced HDR10+ dynamic metadata detection with pattern matching
     fn is_hdr10plus_dynamic_metadata(&self, side_data_type: &str) -> bool {
         // Exact matches for known HDR10+ side data types
-        if matches!(side_data_type, 
-            "HDR dynamic metadata (SMPTE 2094-40)" |
-            "HDR dynamic metadata SMPTE2094-40" |
-            "HDR Dynamic Metadata SMPTE2094-40 (HDR10+)" |
-            "HDR10+ dynamic metadata" |
-            "Dynamic HDR10+ metadata" |
-            "SMPTE2094-40" |
-            "SMPTE 2094-40"
+        if matches!(
+            side_data_type,
+            "HDR dynamic metadata (SMPTE 2094-40)"
+                | "HDR dynamic metadata SMPTE2094-40"
+                | "HDR Dynamic Metadata SMPTE2094-40 (HDR10+)"
+                | "HDR10+ dynamic metadata"
+                | "Dynamic HDR10+ metadata"
+                | "SMPTE2094-40"
+                | "SMPTE 2094-40"
         ) {
             return true;
         }
-        
+
         // Pattern-based detection (case insensitive)
         let lower = side_data_type.to_lowercase();
-        
+
         // Check for SMPTE 2094-40 standard variations
-        if lower.contains("smpte2094-40") || 
-           lower.contains("smpte 2094-40") ||
-           lower.contains("smpte2094_40") {
+        if lower.contains("smpte2094-40")
+            || lower.contains("smpte 2094-40")
+            || lower.contains("smpte2094_40")
+        {
             return true;
         }
-        
+
         // Check for HDR10+ specific patterns
         if lower.contains("hdr10+") && lower.contains("dynamic") {
             return true;
         }
-        
+
         // Check for dynamic metadata with 2094 reference
-        if lower.contains("dynamic") && lower.contains("metadata") && 
-           (lower.contains("2094") || lower.contains("hdr10+")) {
+        if lower.contains("dynamic")
+            && lower.contains("metadata")
+            && (lower.contains("2094") || lower.contains("hdr10+"))
+        {
             return true;
         }
-        
+
         false
     }
 
@@ -225,8 +250,16 @@ impl HdrDetector {
 
             Some(format!(
                 "G({},{})B({},{})R({},{})WP({},{})L({},{})",
-                green_x, green_y, blue_x, blue_y, red_x, red_y,
-                white_point_x, white_point_y, max_luminance, min_luminance
+                green_x,
+                green_y,
+                blue_x,
+                blue_y,
+                red_x,
+                red_y,
+                white_point_x,
+                white_point_y,
+                max_luminance,
+                min_luminance
             ))
         } else {
             None
@@ -236,7 +269,7 @@ impl HdrDetector {
     fn extract_content_light_level(&self, side_data: &serde_json::Value) -> Option<String> {
         if let (Some(max_cll), Some(max_fall)) = (
             side_data.get("max_content").and_then(|v| v.as_str()),
-            side_data.get("max_average").and_then(|v| v.as_str())
+            side_data.get("max_average").and_then(|v| v.as_str()),
         ) {
             Some(format!("{},{}", max_cll, max_fall))
         } else {
@@ -244,20 +277,19 @@ impl HdrDetector {
         }
     }
 
-    fn analyze_hdr_characteristics(
-        &self,
-        metadata: &EnhancedVideoMetadata
-    ) -> Result<HdrMetadata> {
+    fn analyze_hdr_characteristics(&self, metadata: &EnhancedVideoMetadata) -> Result<HdrMetadata> {
         let format = self.determine_hdr_format(metadata);
         let color_space = self.parse_color_space(&metadata.color_space);
         let transfer_function = self.parse_transfer_function(&metadata.transfer_function);
         let color_primaries = self.parse_color_primaries(&metadata.color_primaries);
 
-        let master_display = metadata.master_display_metadata.as_ref()
-            .and_then(|md| crate::hdr::metadata::HdrMetadataExtractor::parse_master_display(md).ok());
+        let master_display = metadata.master_display_metadata.as_ref().and_then(|md| {
+            crate::hdr::metadata::HdrMetadataExtractor::parse_master_display(md).ok()
+        });
 
-        let content_light_level = metadata.content_light_level.as_ref()
-            .and_then(|cll| crate::hdr::metadata::HdrMetadataExtractor::parse_content_light_level(cll).ok());
+        let content_light_level = metadata.content_light_level.as_ref().and_then(|cll| {
+            crate::hdr::metadata::HdrMetadataExtractor::parse_content_light_level(cll).ok()
+        });
 
         Ok(HdrMetadata {
             format,
@@ -288,8 +320,9 @@ impl HdrDetector {
 
         // Additional checks for color space and primaries
         if let (Some(ref cs), Some(ref cp)) = (&metadata.color_space, &metadata.color_primaries) {
-            if (cs.contains("bt2020") || cs.contains("rec2020")) &&
-               (cp.contains("bt2020") || cp.contains("rec2020")) {
+            if (cs.contains("bt2020") || cs.contains("rec2020"))
+                && (cp.contains("bt2020") || cp.contains("rec2020"))
+            {
                 // Probably HDR but without clear transfer function
                 warn!("HDR color space detected but unclear transfer function");
                 return HdrFormat::HDR10;
@@ -335,8 +368,8 @@ impl HdrDetector {
         }
 
         // Color space provides additional confirmation
-        if metadata.color_space == ColorSpace::Bt2020 { 
-            confidence += 0.2 
+        if metadata.color_space == ColorSpace::Bt2020 {
+            confidence += 0.2
         }
 
         // Metadata presence increases confidence
@@ -353,7 +386,10 @@ impl HdrDetector {
     fn requires_tone_mapping(&self, metadata: &HdrMetadata) -> bool {
         // For now, assume tone mapping is not required
         // This could be expanded based on display characteristics
-        matches!(metadata.format, HdrFormat::HDR10 | HdrFormat::HDR10Plus | HdrFormat::HLG)
+        matches!(
+            metadata.format,
+            HdrFormat::HDR10 | HdrFormat::HDR10Plus | HdrFormat::HLG
+        )
     }
 
     fn calculate_encoding_complexity(&self, metadata: &HdrMetadata) -> f32 {

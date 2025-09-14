@@ -1,5 +1,5 @@
-use super::types::*;
 use super::metadata::HdrMetadataExtractor;
+use super::types::*;
 use std::collections::HashMap;
 use tracing::warn;
 
@@ -18,26 +18,22 @@ impl HdrEncodingParameterBuilder {
             HdrFormat::None => {
                 // SDR content - ensure no HDR parameters
                 self.ensure_sdr_params(&mut params);
-            },
+            }
             HdrFormat::HDR10 => {
                 self.add_hdr10_params(&mut params, hdr_metadata);
-            },
+            }
             HdrFormat::HDR10Plus => {
                 self.add_hdr10_plus_params(&mut params, hdr_metadata);
-            },
+            }
             HdrFormat::HLG => {
                 self.add_hlg_params(&mut params, hdr_metadata);
-            },
+            }
         }
 
         params
     }
 
-    fn add_hdr10_params(
-        &self,
-        params: &mut HashMap<String, String>,
-        metadata: &HdrMetadata
-    ) {
+    fn add_hdr10_params(&self, params: &mut HashMap<String, String>, metadata: &HdrMetadata) {
         // Color space parameters
         params.insert("colorprim".to_string(), "bt2020".to_string());
         params.insert("transfer".to_string(), "smpte2084".to_string());
@@ -61,7 +57,8 @@ impl HdrEncodingParameterBuilder {
         } else {
             // Use default HDR10 content light level if not present
             let default_cll = HdrMetadata::hdr10_default().content_light_level.unwrap();
-            let cll_string = HdrMetadataExtractor::format_content_light_level_for_x265(&default_cll);
+            let cll_string =
+                HdrMetadataExtractor::format_content_light_level_for_x265(&default_cll);
             params.insert("max-cll".to_string(), cll_string);
         }
 
@@ -70,17 +67,15 @@ impl HdrEncodingParameterBuilder {
         params.insert("hdr-opt".to_string(), "".to_string());
 
         // Ensure appropriate bit depth for HDR
-        params.entry("output-depth".to_string()).or_insert("10".to_string());
+        params
+            .entry("output-depth".to_string())
+            .or_insert("10".to_string());
 
         // HDR-specific encoding optimizations
         self.add_hdr_encoding_optimizations(params);
     }
 
-    fn add_hdr10_plus_params(
-        &self,
-        params: &mut HashMap<String, String>,
-        metadata: &HdrMetadata
-    ) {
+    fn add_hdr10_plus_params(&self, params: &mut HashMap<String, String>, metadata: &HdrMetadata) {
         // Start with HDR10 base
         self.add_hdr10_params(params, metadata);
 
@@ -94,11 +89,7 @@ impl HdrEncodingParameterBuilder {
         params.insert("psy-rdoq".to_string(), "1.0".to_string());
     }
 
-    fn add_hlg_params(
-        &self,
-        params: &mut HashMap<String, String>,
-        metadata: &HdrMetadata
-    ) {
+    fn add_hlg_params(&self, params: &mut HashMap<String, String>, metadata: &HdrMetadata) {
         // HLG (Hybrid Log-Gamma) parameters
         params.insert("colorprim".to_string(), "bt2020".to_string());
         params.insert("transfer".to_string(), "arib-std-b67".to_string());
@@ -118,7 +109,9 @@ impl HdrEncodingParameterBuilder {
         }
 
         // Ensure appropriate bit depth for HDR
-        params.entry("output-depth".to_string()).or_insert("10".to_string());
+        params
+            .entry("output-depth".to_string())
+            .or_insert("10".to_string());
 
         // HLG-specific optimizations
         self.add_hlg_encoding_optimizations(params);
@@ -139,15 +132,21 @@ impl HdrEncodingParameterBuilder {
 
         // SDR typically uses 8-bit or 10-bit
         // Don't force 8-bit as some profiles may prefer 10-bit for quality
-        params.entry("output-depth".to_string()).or_insert("8".to_string());
+        params
+            .entry("output-depth".to_string())
+            .or_insert("8".to_string());
     }
 
     fn add_hdr_encoding_optimizations(&self, params: &mut HashMap<String, String>) {
         // HDR-specific encoding optimizations for better quality preservation
-        
+
         // Psychovisual optimizations for HDR content
-        params.entry("psy-rd".to_string()).or_insert("2.0".to_string());
-        params.entry("psy-rdoq".to_string()).or_insert("1.0".to_string());
+        params
+            .entry("psy-rd".to_string())
+            .or_insert("2.0".to_string());
+        params
+            .entry("psy-rdoq".to_string())
+            .or_insert("1.0".to_string());
 
         // Rate-distortion optimization
         params.entry("rd".to_string()).or_insert("4".to_string());
@@ -157,11 +156,17 @@ impl HdrEncodingParameterBuilder {
         params.entry("subme".to_string()).or_insert("3".to_string());
 
         // Quantization optimizations
-        params.entry("aq-mode".to_string()).or_insert("3".to_string());
-        params.entry("aq-strength".to_string()).or_insert("0.8".to_string());
+        params
+            .entry("aq-mode".to_string())
+            .or_insert("3".to_string());
+        params
+            .entry("aq-strength".to_string())
+            .or_insert("0.8".to_string());
 
         // HDR content often benefits from stronger deblocking
-        params.entry("deblock".to_string()).or_insert("1,1".to_string());
+        params
+            .entry("deblock".to_string())
+            .or_insert("1,1".to_string());
 
         // SAO (Sample Adaptive Offset) is particularly useful for HDR
         params.entry("sao".to_string()).or_insert("".to_string());
@@ -173,10 +178,14 @@ impl HdrEncodingParameterBuilder {
 
     fn add_hlg_encoding_optimizations(&self, params: &mut HashMap<String, String>) {
         // HLG-specific encoding optimizations
-        
+
         // HLG has different perceptual characteristics than PQ
-        params.entry("psy-rd".to_string()).or_insert("1.8".to_string());
-        params.entry("psy-rdoq".to_string()).or_insert("0.8".to_string());
+        params
+            .entry("psy-rd".to_string())
+            .or_insert("1.8".to_string());
+        params
+            .entry("psy-rdoq".to_string())
+            .or_insert("0.8".to_string());
 
         // Rate-distortion optimization
         params.entry("rd".to_string()).or_insert("4".to_string());
@@ -186,11 +195,17 @@ impl HdrEncodingParameterBuilder {
         params.entry("subme".to_string()).or_insert("3".to_string());
 
         // Adaptive quantization for HLG
-        params.entry("aq-mode".to_string()).or_insert("2".to_string());
-        params.entry("aq-strength".to_string()).or_insert("0.7".to_string());
+        params
+            .entry("aq-mode".to_string())
+            .or_insert("2".to_string());
+        params
+            .entry("aq-strength".to_string())
+            .or_insert("0.7".to_string());
 
         // Deblocking for HLG content
-        params.entry("deblock".to_string()).or_insert("0,0".to_string());
+        params
+            .entry("deblock".to_string())
+            .or_insert("0,0".to_string());
 
         // SAO optimization for HLG
         params.entry("sao".to_string()).or_insert("".to_string());
@@ -200,9 +215,9 @@ impl HdrEncodingParameterBuilder {
     pub fn get_hdr_crf_adjustment(format: HdrFormat) -> f32 {
         match format {
             HdrFormat::None => 0.0,
-            HdrFormat::HDR10 => 2.0,      // HDR10 needs higher CRF
-            HdrFormat::HDR10Plus => 2.5,  // HDR10+ needs even higher CRF
-            HdrFormat::HLG => 1.5,        // HLG needs moderate adjustment
+            HdrFormat::HDR10 => 2.0,     // HDR10 needs higher CRF
+            HdrFormat::HDR10Plus => 2.5, // HDR10+ needs even higher CRF
+            HdrFormat::HLG => 1.5,       // HLG needs moderate adjustment
         }
     }
 
@@ -210,9 +225,9 @@ impl HdrEncodingParameterBuilder {
     pub fn get_hdr_bitrate_multiplier(format: HdrFormat) -> f32 {
         match format {
             HdrFormat::None => 1.0,
-            HdrFormat::HDR10 => 1.3,      // 30% increase for HDR10
-            HdrFormat::HDR10Plus => 1.4,  // 40% increase for HDR10+
-            HdrFormat::HLG => 1.2,        // 20% increase for HLG
+            HdrFormat::HDR10 => 1.3,     // 30% increase for HDR10
+            HdrFormat::HDR10Plus => 1.4, // 40% increase for HDR10+
+            HdrFormat::HLG => 1.2,       // 20% increase for HLG
         }
     }
 
@@ -225,9 +240,11 @@ impl HdrEncodingParameterBuilder {
             HdrFormat::None => {
                 // SDR should not have HDR parameters
                 if params.contains_key("master-display") || params.contains_key("max-cll") {
-                    return Err("SDR encoding should not include HDR metadata parameters".to_string());
+                    return Err(
+                        "SDR encoding should not include HDR metadata parameters".to_string()
+                    );
                 }
-            },
+            }
             HdrFormat::HDR10 | HdrFormat::HDR10Plus => {
                 // Validate required HDR10 parameters
                 if !params.contains_key("master-display") {
@@ -242,7 +259,9 @@ impl HdrEncodingParameterBuilder {
 
                 if let Some(transfer) = params.get("transfer") {
                     if transfer != "smpte2084" {
-                        return Err("HDR10 encoding requires smpte2084 transfer function".to_string());
+                        return Err(
+                            "HDR10 encoding requires smpte2084 transfer function".to_string()
+                        );
                     }
                 }
 
@@ -252,12 +271,14 @@ impl HdrEncodingParameterBuilder {
                         return Err("HDR encoding requires at least 10-bit depth".to_string());
                     }
                 }
-            },
+            }
             HdrFormat::HLG => {
                 // Validate HLG parameters
                 if let Some(transfer) = params.get("transfer") {
                     if transfer != "arib-std-b67" {
-                        return Err("HLG encoding requires arib-std-b67 transfer function".to_string());
+                        return Err(
+                            "HLG encoding requires arib-std-b67 transfer function".to_string()
+                        );
                     }
                 }
 
@@ -266,7 +287,7 @@ impl HdrEncodingParameterBuilder {
                         return Err("HLG encoding requires bt2020 color primaries".to_string());
                     }
                 }
-            },
+            }
         }
 
         Ok(())
@@ -275,7 +296,7 @@ impl HdrEncodingParameterBuilder {
     /// Format parameters for command line usage
     pub fn format_params_for_command_line(params: &HashMap<String, String>) -> String {
         let mut formatted_params = Vec::new();
-        
+
         for (key, value) in params {
             if value.is_empty() {
                 // Boolean parameters (no value)
@@ -285,7 +306,7 @@ impl HdrEncodingParameterBuilder {
                 formatted_params.push(format!("{}={}", key, value));
             }
         }
-        
+
         formatted_params.join(":")
     }
 }

@@ -10,7 +10,7 @@ use ffmpeg_autoencoder::{
         find_video_files, generate_uuid_filename, setup_logging, Error, FfmpegWrapper, FileLogger,
         ProgressMonitor, Result,
     },
-    UnifiedContentManager, ContentEncodingApproach,
+    ContentEncodingApproach, UnifiedContentManager,
 };
 
 #[tokio::main]
@@ -129,7 +129,7 @@ async fn process_single_file(
 ) -> Result<()> {
     info!("Getting video metadata for: {}", input_path.display());
     let metadata = ffmpeg.get_video_metadata(input_path).await?;
-    
+
     // Comprehensive content analysis using UnifiedContentManager
     info!("Running comprehensive content analysis...");
     let content_manager = UnifiedContentManager::new(
@@ -137,12 +137,9 @@ async fn process_single_file(
         config.analysis.dolby_vision.clone(),
         config.analysis.hdr10_plus.clone(),
     );
-    
-    let content_analysis = content_manager.analyze_content(
-        ffmpeg,
-        input_path,
-    ).await?;
-    
+
+    let content_analysis = content_manager.analyze_content(ffmpeg, input_path).await?;
+
     // Log comprehensive analysis results
     match &content_analysis.recommended_approach {
         ContentEncodingApproach::SDR => {
@@ -202,40 +199,72 @@ async fn process_single_file(
     let file_logger = FileLogger::new(output_path)?;
 
     // Use adjustments from comprehensive content analysis
-    let adaptive_crf = selected_profile.base_crf + content_analysis.encoding_adjustments.crf_adjustment;
-    let adaptive_bitrate = ((selected_profile.base_bitrate as f32) * content_analysis.encoding_adjustments.bitrate_multiplier) as u32;
-    
+    let adaptive_crf =
+        selected_profile.base_crf + content_analysis.encoding_adjustments.crf_adjustment;
+    let adaptive_bitrate = ((selected_profile.base_bitrate as f32)
+        * content_analysis.encoding_adjustments.bitrate_multiplier)
+        as u32;
+
     // Log content-specific parameter adjustments
     match &content_analysis.recommended_approach {
         ContentEncodingApproach::SDR => {
-            info!("Using standard encoding parameters (SDR): CRF={:.1}, Bitrate={}kbps", 
-                  adaptive_crf, adaptive_bitrate);
+            info!(
+                "Using standard encoding parameters (SDR): CRF={:.1}, Bitrate={}kbps",
+                adaptive_crf, adaptive_bitrate
+            );
         }
         ContentEncodingApproach::HDR(_) => {
             info!("HDR PARAMETER ADJUSTMENTS:");
-            info!("  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})", 
-                  selected_profile.base_crf, adaptive_crf, content_analysis.encoding_adjustments.crf_adjustment);
-            info!("  Base Bitrate: {} -> HDR Bitrate: {} ({:.1}x multiplier)", 
-                  selected_profile.base_bitrate, adaptive_bitrate, content_analysis.encoding_adjustments.bitrate_multiplier);
+            info!(
+                "  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})",
+                selected_profile.base_crf,
+                adaptive_crf,
+                content_analysis.encoding_adjustments.crf_adjustment
+            );
+            info!(
+                "  Base Bitrate: {} -> HDR Bitrate: {} ({:.1}x multiplier)",
+                selected_profile.base_bitrate,
+                adaptive_bitrate,
+                content_analysis.encoding_adjustments.bitrate_multiplier
+            );
         }
         ContentEncodingApproach::DolbyVision(_) => {
             info!("DOLBY VISION PARAMETER ADJUSTMENTS:");
-            info!("  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})", 
-                  selected_profile.base_crf, adaptive_crf, content_analysis.encoding_adjustments.crf_adjustment);
-            info!("  Base Bitrate: {} -> DV Bitrate: {} ({:.1}x multiplier)", 
-                  selected_profile.base_bitrate, adaptive_bitrate, content_analysis.encoding_adjustments.bitrate_multiplier);
+            info!(
+                "  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})",
+                selected_profile.base_crf,
+                adaptive_crf,
+                content_analysis.encoding_adjustments.crf_adjustment
+            );
+            info!(
+                "  Base Bitrate: {} -> DV Bitrate: {} ({:.1}x multiplier)",
+                selected_profile.base_bitrate,
+                adaptive_bitrate,
+                content_analysis.encoding_adjustments.bitrate_multiplier
+            );
         }
         ContentEncodingApproach::DolbyVisionWithHDR10Plus(_, _) => {
             info!("DUAL FORMAT PARAMETER ADJUSTMENTS (ULTRA-CONSERVATIVE):");
-            info!("  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})", 
-                  selected_profile.base_crf, adaptive_crf, content_analysis.encoding_adjustments.crf_adjustment);
-            info!("  Base Bitrate: {} -> Dual Format Bitrate: {} ({:.1}x multiplier)", 
-                  selected_profile.base_bitrate, adaptive_bitrate, content_analysis.encoding_adjustments.bitrate_multiplier);
+            info!(
+                "  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})",
+                selected_profile.base_crf,
+                adaptive_crf,
+                content_analysis.encoding_adjustments.crf_adjustment
+            );
+            info!(
+                "  Base Bitrate: {} -> Dual Format Bitrate: {} ({:.1}x multiplier)",
+                selected_profile.base_bitrate,
+                adaptive_bitrate,
+                content_analysis.encoding_adjustments.bitrate_multiplier
+            );
         }
     }
-    
+
     // Show x265 parameter preview based on content analysis
-    let is_advanced_content = !matches!(content_analysis.recommended_approach, ContentEncodingApproach::SDR);
+    let is_advanced_content = !matches!(
+        content_analysis.recommended_approach,
+        ContentEncodingApproach::SDR
+    );
     let x265_params_preview = selected_profile.build_x265_params_string_with_hdr(
         None, // No mode-specific params for preview
         Some(is_advanced_content),
@@ -245,7 +274,7 @@ async fn process_single_file(
         metadata.master_display.as_ref(),
         metadata.max_cll.as_ref(),
     );
-    
+
     if is_advanced_content {
         match &content_analysis.recommended_approach {
             ContentEncodingApproach::HDR(_) => {
@@ -259,13 +288,19 @@ async fn process_single_file(
             }
             _ => {}
         }
-        
+
         let params: Vec<&str> = x265_params_preview.split(':').collect();
-        let special_params: Vec<&str> = params.iter()
-            .filter(|p| p.contains("colormatrix") || p.contains("transfer") || 
-                       p.contains("colorprim") || p.contains("master-display") || 
-                       p.contains("max-cll") || p.contains("dolby-vision") || 
-                       p.contains("dhdr10-info"))
+        let special_params: Vec<&str> = params
+            .iter()
+            .filter(|p| {
+                p.contains("colormatrix")
+                    || p.contains("transfer")
+                    || p.contains("colorprim")
+                    || p.contains("master-display")
+                    || p.contains("max-cll")
+                    || p.contains("dolby-vision")
+                    || p.contains("dhdr10-info")
+            })
             .copied()
             .collect();
         if !special_params.is_empty() {
@@ -278,33 +313,34 @@ async fn process_single_file(
     }
 
     // Crop detection with logging
-    let (crop_values, crop_sample_timestamps, crop_analysis_result) = if config.analysis.crop_detection.enabled {
-        use ffmpeg_autoencoder::analysis::CropDetector;
-        let crop_detector = CropDetector::new(config.analysis.crop_detection.clone());
+    let (crop_values, crop_sample_timestamps, crop_analysis_result) =
+        if config.analysis.crop_detection.enabled {
+            use ffmpeg_autoencoder::analysis::CropDetector;
+            let crop_detector = CropDetector::new(config.analysis.crop_detection.clone());
 
-        let crop_analysis = crop_detector
-            .detect_crop_values(
-                input_path,
-                metadata.duration,
-                metadata.width,
-                metadata.height,
-                is_advanced_content,
-            )
-            .await?;
+            let crop_analysis = crop_detector
+                .detect_crop_values(
+                    input_path,
+                    metadata.duration,
+                    metadata.width,
+                    metadata.height,
+                    is_advanced_content,
+                )
+                .await?;
 
-        let sample_timestamps = config
-            .analysis
-            .crop_detection
-            .get_sample_timestamps(metadata.duration);
-        let crop_values = crop_analysis
-            .crop_values
-            .as_ref()
-            .map(|cv| cv.to_ffmpeg_string());
+            let sample_timestamps = config
+                .analysis
+                .crop_detection
+                .get_sample_timestamps(metadata.duration);
+            let crop_values = crop_analysis
+                .crop_values
+                .as_ref()
+                .map(|cv| cv.to_ffmpeg_string());
 
-        (crop_values, sample_timestamps, Some(crop_analysis))
-    } else {
-        (None, vec![], None)
-    };
+            (crop_values, sample_timestamps, Some(crop_analysis))
+        } else {
+            (None, vec![], None)
+        };
 
     let filter_chain = FilterBuilder::new(config)
         .with_deinterlace(args.deinterlace)?
@@ -331,17 +367,16 @@ async fn process_single_file(
         &format!("{:?}", stream_mapping),
     )?;
 
-    // Log video analysis results
+    // Log video analysis results including HDR/DV analysis
     file_logger.log_analysis_results(
-        &metadata, None, // Grain level detection not implemented
+        &metadata,
+        None, // Grain level detection not implemented
+        Some(&content_analysis),
     )?;
 
     // Log x265 parameters to file for reference
-    file_logger.log_encoding_progress(&format!(
-        "x265 parameters: {}", 
-        x265_params_preview
-    ))?;
-    
+    file_logger.log_encoding_progress(&format!("x265 parameters: {}", x265_params_preview))?;
+
     // Log crop detection results
     let detection_method = if let Some(ref analysis) = crop_analysis_result {
         &analysis.detection_method

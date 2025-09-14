@@ -127,19 +127,19 @@ pub struct HdrDetectionConfig {
 pub struct ToneMappingConfig {
     pub enabled: bool,
     pub target_max_nits: u32,
-    pub algorithm: String,  // "hable", "reinhard", "mobius", etc.
+    pub algorithm: String, // "hable", "reinhard", "mobius", etc.
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UnifiedHdrConfig {
     pub enabled: bool,
-    pub auto_detect_format: bool,           // Auto-detect HDR10/HLG/etc
-    pub preserve_metadata: bool,            // Preserve all HDR metadata
-    pub fallback_to_sdr: bool,             // Fallback if HDR processing fails  
-    pub encoding_optimization: bool,        // Use HDR-optimized encoding
-    pub crf_adjustment: f32,               // CRF adjustment for HDR
-    pub bitrate_multiplier: f32,           // Bitrate multiplier for HDR
-    pub force_10bit: bool,                 // Force 10-bit output for HDR
+    pub auto_detect_format: bool,    // Auto-detect HDR10/HLG/etc
+    pub preserve_metadata: bool,     // Preserve all HDR metadata
+    pub fallback_to_sdr: bool,       // Fallback if HDR processing fails
+    pub encoding_optimization: bool, // Use HDR-optimized encoding
+    pub crf_adjustment: f32,         // CRF adjustment for HDR
+    pub bitrate_multiplier: f32,     // Bitrate multiplier for HDR
+    pub force_10bit: bool,           // Force 10-bit output for HDR
     pub tone_mapping: Option<ToneMappingConfig>, // Future tone mapping
 }
 
@@ -162,18 +162,18 @@ impl Default for UnifiedHdrConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DolbyVisionConfig {
     pub enabled: bool,
-    pub preserve_profile_7: bool,          // Convert P7 to P8.1
-    pub target_profile: String,            // "8.1" or "8.2"  
-    pub require_dovi_tool: bool,           // Fail if dovi_tool missing
-    pub temp_dir: Option<String>,          // RPU temporary storage
-    pub auto_profile_conversion: bool,     // Auto convert profiles for compatibility
-    pub fallback_to_hdr10: bool,          // Fallback to HDR10 if DV processing fails
-    
+    pub preserve_profile_7: bool,      // Convert P7 to P8.1
+    pub target_profile: String,        // "8.1" or "8.2"
+    pub require_dovi_tool: bool,       // Fail if dovi_tool missing
+    pub temp_dir: Option<String>,      // RPU temporary storage
+    pub auto_profile_conversion: bool, // Auto convert profiles for compatibility
+    pub fallback_to_hdr10: bool,       // Fallback to HDR10 if DV processing fails
+
     // NEW: Dolby Vision-specific encoding adjustments
-    pub crf_adjustment: f32,               // CRF adjustment for DV content (+0.5 to +1.0)
-    pub bitrate_multiplier: f32,           // Bitrate multiplier for DV (1.5-2.0x)
-    pub vbv_bufsize: u32,                  // VBV buffer size (mandatory for DV)
-    pub vbv_maxrate: u32,                  // VBV max rate (mandatory for DV)
+    pub crf_adjustment: f32, // CRF adjustment for DV content (+0.5 to +1.0)
+    pub bitrate_multiplier: f32, // Bitrate multiplier for DV (1.5-2.0x)
+    pub vbv_bufsize: u32,    // VBV buffer size (mandatory for DV)
+    pub vbv_maxrate: u32,    // VBV max rate (mandatory for DV)
     pub profile_specific_adjustments: bool, // Different settings per profile
 }
 
@@ -187,12 +187,12 @@ impl Default for DolbyVisionConfig {
             temp_dir: None,
             auto_profile_conversion: true,
             fallback_to_hdr10: true,
-            
+
             // Dolby Vision encoding adjustments based on research
-            crf_adjustment: 1.0,        // Lower than HDR10's +2.0, use +1.0 for DV
-            bitrate_multiplier: 1.8,    // Higher than HDR10's 1.3x, use 1.8x for DV
-            vbv_bufsize: 160000,        // Required for Level 5.1 High Tier DV
-            vbv_maxrate: 160000,        // Mandatory VBV constraint for DV compliance
+            crf_adjustment: 1.0,     // Lower than HDR10's +2.0, use +1.0 for DV
+            bitrate_multiplier: 1.8, // Higher than HDR10's 1.3x, use 1.8x for DV
+            vbv_bufsize: 160000,     // Required for Level 5.1 High Tier DV
+            vbv_maxrate: 160000,     // Mandatory VBV constraint for DV compliance
             profile_specific_adjustments: true,
         }
     }
@@ -202,31 +202,30 @@ impl Default for DolbyVisionConfig {
 pub struct Hdr10PlusConfig {
     /// Enable HDR10+ dynamic metadata processing
     pub enabled: bool,
-    
+
     /// HDR10+ tool configuration
     pub tool: crate::hdr10plus::Hdr10PlusToolConfig,
-    
+
     /// Temporary directory for metadata files
     pub temp_dir: Option<String>,
-    
+
     /// Require hdr10plus_tool to be available (fail if missing)
     pub require_tool: bool,
-    
+
     /// Fallback to HDR10 if HDR10+ processing fails
     pub fallback_to_hdr10: bool,
-    
+
     /// HDR10+ encoding adjustments
-    pub crf_adjustment: f32,              // CRF adjustment for HDR10+ (+2.5)
-    pub bitrate_multiplier: f32,          // Bitrate multiplier for HDR10+ (1.4x)
-    pub encoding_complexity: f32,         // Encoding complexity multiplier (1.4x)
-    
+    pub crf_adjustment: f32, // CRF adjustment for HDR10+ (+2.5)
+    pub bitrate_multiplier: f32,  // Bitrate multiplier for HDR10+ (1.4x)
+    pub encoding_complexity: f32, // Encoding complexity multiplier (1.4x)
+
     /// Validate tone mapping curves
     pub validate_curves: bool,
-    
+
     /// Maximum number of scenes for Samsung compatibility
     pub max_scenes: Option<u32>,
 }
-
 
 impl Default for Hdr10PlusConfig {
     fn default() -> Self {
@@ -234,23 +233,22 @@ impl Default for Hdr10PlusConfig {
             enabled: true,
             tool: crate::hdr10plus::Hdr10PlusToolConfig::default(),
             temp_dir: None,
-            require_tool: false,  // Graceful fallback by default
+            require_tool: false, // Graceful fallback by default
             fallback_to_hdr10: true,
-            crf_adjustment: 2.5,  // Higher than HDR10's +2.0 due to complexity
-            bitrate_multiplier: 1.4,  // 40% increase for dynamic metadata
+            crf_adjustment: 2.5,     // Higher than HDR10's +2.0 due to complexity
+            bitrate_multiplier: 1.4, // 40% increase for dynamic metadata
             encoding_complexity: 1.4,
             validate_curves: true,
-            max_scenes: None,  // No limit by default
+            max_scenes: None, // No limit by default
         }
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AnalysisConfig {
     pub crop_detection: CropDetectionConfig,
-    pub hdr_detection: HdrDetectionConfig,  // Legacy - kept for backward compatibility
-    pub hdr: Option<UnifiedHdrConfig>,      // New unified HDR config
+    pub hdr_detection: HdrDetectionConfig, // Legacy - kept for backward compatibility
+    pub hdr: Option<UnifiedHdrConfig>,     // New unified HDR config
     pub dolby_vision: Option<DolbyVisionConfig>, // NEW: Dolby Vision configuration
     pub hdr10_plus: Option<Hdr10PlusConfig>, // NEW: HDR10+ dynamic metadata configuration
 }

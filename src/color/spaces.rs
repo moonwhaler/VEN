@@ -5,7 +5,7 @@ pub struct ColorSpaceInfo {
     pub name: &'static str,
     pub display_name: &'static str,
     pub description: &'static str,
-    pub gamut_coverage: f32,  // Approximate coverage of visible spectrum (0.0-1.0)
+    pub gamut_coverage: f32, // Approximate coverage of visible spectrum (0.0-1.0)
     pub is_hdr_compatible: bool,
 }
 
@@ -86,7 +86,8 @@ impl ColorSpace {
 
     /// Get HDR-compatible color spaces
     pub fn hdr_compatible() -> Vec<ColorSpace> {
-        Self::all().into_iter()
+        Self::all()
+            .into_iter()
             .filter(|cs| cs.info().is_hdr_compatible)
             .collect()
     }
@@ -149,13 +150,18 @@ impl ColorPrimaries {
 
         for (name, value) in coords {
             if !(0.0..=1.0).contains(&value) {
-                return Err(format!("Chromaticity coordinate {} out of range [0,1]: {}", name, value));
+                return Err(format!(
+                    "Chromaticity coordinate {} out of range [0,1]: {}",
+                    name, value
+                ));
             }
         }
 
         // Check if the RGB triangle is valid (positive area)
         if self.gamut_area() <= 0.0 {
-            return Err("Invalid color primaries: RGB triangle has zero or negative area".to_string());
+            return Err(
+                "Invalid color primaries: RGB triangle has zero or negative area".to_string(),
+            );
         }
 
         Ok(())

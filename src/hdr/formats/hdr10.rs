@@ -1,6 +1,6 @@
-use super::{HdrFormatHandler, EncodingRecommendations};
-use crate::hdr::types::{HdrFormat, HdrMetadata, TransferFunction, ColorSpace};
+use super::{EncodingRecommendations, HdrFormatHandler};
 use crate::hdr::metadata::HdrMetadataExtractor;
+use crate::hdr::types::{ColorSpace, HdrFormat, HdrMetadata, TransferFunction};
 use std::collections::HashMap;
 
 pub struct Hdr10Handler;
@@ -98,10 +98,14 @@ impl HdrFormatHandler for Hdr10Handler {
 
             // Validate chromaticity coordinates are in valid range
             let coords = [
-                md.red_primary.0, md.red_primary.1,
-                md.green_primary.0, md.green_primary.1,
-                md.blue_primary.0, md.blue_primary.1,
-                md.white_point.0, md.white_point.1,
+                md.red_primary.0,
+                md.red_primary.1,
+                md.green_primary.0,
+                md.green_primary.1,
+                md.blue_primary.0,
+                md.blue_primary.1,
+                md.white_point.0,
+                md.white_point.1,
             ];
 
             for (i, coord) in coords.iter().enumerate() {
@@ -136,7 +140,7 @@ impl HdrFormatHandler for Hdr10Handler {
 
     fn get_encoding_recommendations(&self) -> EncodingRecommendations {
         let mut special_params = HashMap::new();
-        
+
         // HDR10-specific encoding parameters
         special_params.insert("psy-rd".to_string(), "2.0".to_string());
         special_params.insert("psy-rdoq".to_string(), "1.0".to_string());
@@ -145,8 +149,8 @@ impl HdrFormatHandler for Hdr10Handler {
         special_params.insert("deblock".to_string(), "1,1".to_string());
 
         EncodingRecommendations {
-            crf_adjustment: 2.0,  // HDR10 typically needs +2 CRF
-            bitrate_multiplier: 1.3,  // 30% bitrate increase
+            crf_adjustment: 2.0,     // HDR10 typically needs +2 CRF
+            bitrate_multiplier: 1.3, // 30% bitrate increase
             minimum_bit_depth: 10,
             recommended_preset: Some("slow".to_string()),
             special_params,
@@ -157,8 +161,12 @@ impl HdrFormatHandler for Hdr10Handler {
 impl Hdr10Handler {
     fn add_hdr10_optimizations(&self, params: &mut HashMap<String, String>) {
         // Psychovisual optimizations for HDR10 content
-        params.entry("psy-rd".to_string()).or_insert("2.0".to_string());
-        params.entry("psy-rdoq".to_string()).or_insert("1.0".to_string());
+        params
+            .entry("psy-rd".to_string())
+            .or_insert("2.0".to_string());
+        params
+            .entry("psy-rdoq".to_string())
+            .or_insert("1.0".to_string());
 
         // Rate-distortion optimization
         params.entry("rd".to_string()).or_insert("4".to_string());
@@ -168,11 +176,17 @@ impl Hdr10Handler {
         params.entry("subme".to_string()).or_insert("3".to_string());
 
         // Adaptive quantization for HDR content
-        params.entry("aq-mode".to_string()).or_insert("3".to_string());
-        params.entry("aq-strength".to_string()).or_insert("0.8".to_string());
+        params
+            .entry("aq-mode".to_string())
+            .or_insert("3".to_string());
+        params
+            .entry("aq-strength".to_string())
+            .or_insert("0.8".to_string());
 
         // Deblocking filter - stronger for HDR content
-        params.entry("deblock".to_string()).or_insert("1,1".to_string());
+        params
+            .entry("deblock".to_string())
+            .or_insert("1,1".to_string());
 
         // Sample Adaptive Offset
         params.entry("sao".to_string()).or_insert("".to_string());
@@ -182,17 +196,31 @@ impl Hdr10Handler {
         params.entry("amp".to_string()).or_insert("".to_string());
 
         // Rate control optimizations for HDR
-        params.entry("rc-lookahead".to_string()).or_insert("25".to_string());
-        params.entry("bframes".to_string()).or_insert("4".to_string());
-        params.entry("b-adapt".to_string()).or_insert("2".to_string());
+        params
+            .entry("rc-lookahead".to_string())
+            .or_insert("25".to_string());
+        params
+            .entry("bframes".to_string())
+            .or_insert("4".to_string());
+        params
+            .entry("b-adapt".to_string())
+            .or_insert("2".to_string());
 
         // HDR-specific quality optimizations
-        params.entry("nr-intra".to_string()).or_insert("0".to_string()); // Disable noise reduction for HDR
-        params.entry("nr-inter".to_string()).or_insert("0".to_string());
-        
+        params
+            .entry("nr-intra".to_string())
+            .or_insert("0".to_string()); // Disable noise reduction for HDR
+        params
+            .entry("nr-inter".to_string())
+            .or_insert("0".to_string());
+
         // Strong analysis for HDR content
-        params.entry("strong-intra-smoothing".to_string()).or_insert("".to_string());
-        params.entry("constrained-intra".to_string()).or_insert("".to_string());
+        params
+            .entry("strong-intra-smoothing".to_string())
+            .or_insert("".to_string());
+        params
+            .entry("constrained-intra".to_string())
+            .or_insert("".to_string());
     }
 }
 
