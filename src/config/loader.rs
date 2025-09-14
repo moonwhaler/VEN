@@ -34,11 +34,6 @@ impl Config {
             ));
         }
 
-        if self.progress.stall_detection_seconds == 0 {
-            return Err(Error::validation(
-                "stall_detection_seconds must be greater than 0",
-            ));
-        }
 
         if self.profiles.is_empty() {
             return Err(Error::validation("At least one profile must be defined"));
@@ -90,9 +85,6 @@ impl Default for Config {
             },
             progress: ProgressConfig {
                 update_interval_ms: 1000,
-                stall_detection_seconds: 15,
-                show_eta: true,
-                show_file_size: true,
             },
             analysis: AnalysisConfig {
                 crop_detection: CropDetectionConfig {
@@ -182,9 +174,6 @@ logging:
 
 progress:
   update_interval_ms: 500
-  stall_detection_seconds: 30
-  show_eta: true
-  show_file_size: false
 
 analysis:
   crop_detection:
