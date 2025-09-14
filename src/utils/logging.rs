@@ -238,7 +238,7 @@ impl FileLogger {
         writeln!(writer, "  Sample Count: {}", sample_count)?;
 
         // Format timestamps for display
-        let timestamp_display = if sample_timestamps.len() == 1 && sample_timestamps[0] == -1.0 {
+        let timestamp_display = if sample_timestamps.len() == 1 && (sample_timestamps[0] + 1.0).abs() < f64::EPSILON {
             "Manual Override".to_string()
         } else {
             sample_timestamps
@@ -351,6 +351,28 @@ impl FileLogger {
         writeln!(writer, "  Completed: {}", timestamp)?;
         writeln!(writer)?;
 
+        writer.flush()?;
+        Ok(())
+    }
+
+    pub fn log_ffmpeg_command(
+        &self,
+        ffmpeg_path: &str,
+        args: &[String],
+    ) -> crate::utils::Result<()> {
+        let mut writer = self.writer.lock().unwrap();
+        
+        writeln!(writer, "RAW FFMPEG COMMAND:")?;
+        
+        // Build the complete command with path and arguments
+        let mut full_command = vec![ffmpeg_path.to_string()];
+        full_command.push("-y".to_string()); // The -y flag is always added by start_encoding
+        full_command.extend_from_slice(args);
+        
+        // Write as a single line that can be copy-pasted
+        writeln!(writer, "  {}", full_command.join(" "))?;
+        writeln!(writer)?;
+        
         writer.flush()?;
         Ok(())
     }

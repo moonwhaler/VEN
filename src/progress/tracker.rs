@@ -1,23 +1,23 @@
 use crate::utils::Result;
 use indicatif::{ProgressBar, ProgressStyle};
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 use std::time::{Duration, Instant};
 use tracing::{debug, info, warn};
 
-static PROGRESS_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})").unwrap());
+static PROGRESS_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})").unwrap());
 
-static FRAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"frame=\s*(\d+)").unwrap());
+static FRAME_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"frame=\s*(\d+)").unwrap());
 
-static SPEED_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"speed=\s*([0-9.]+)x").unwrap());
+static SPEED_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"speed=\s*([0-9.]+)x").unwrap());
 
-static SIZE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"size=\s*(\d+)kB").unwrap());
+static SIZE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"size=\s*(\d+)kB").unwrap());
 
-static FPS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"fps=\s*([0-9.]+)").unwrap());
+static FPS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"fps=\s*([0-9.]+)").unwrap());
 
-static BITRATE_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"bitrate=\s*([0-9.]+)kbits/s").unwrap());
+static BITRATE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"bitrate=\s*([0-9.]+)kbits/s").unwrap());
 
 #[derive(Debug, Clone)]
 pub struct ProgressMetrics {
@@ -370,7 +370,7 @@ impl EnhancedProgressTracker {
 
         time_since_last >= self.stall_threshold
             && self.metrics.current_frame == self.last_frame
-            && self.metrics.current_time == self.last_time
+            && (self.metrics.current_time - self.last_time).abs() < f64::EPSILON
     }
 }
 
@@ -382,7 +382,7 @@ mod tests {
     fn test_progress_metrics_creation() {
         let metrics = ProgressMetrics::new(3600.0, 24.0); // 1 hour at 24fps
         assert_eq!(metrics.total_frames, 86400);
-        assert_eq!(metrics.total_duration, 3600.0);
+        assert!((metrics.total_duration - 3600.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -393,7 +393,7 @@ mod tests {
         let updated = metrics.update_from_ffmpeg_output("frame= 1500 fps= 28 q=18.0 size=   12345kB time=00:00:50.00 bitrate=2024.3kbits/s speed=0.93x");
         assert!(updated);
         assert_eq!(metrics.current_frame, 1500);
-        assert_eq!(metrics.current_time, 50.0);
+        assert!((metrics.current_time - 50.0).abs() < f64::EPSILON);
         assert_eq!(metrics.speed, Some(0.93));
         assert!(metrics.progress_percentage > 0.0);
     }

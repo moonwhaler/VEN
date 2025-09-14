@@ -280,6 +280,7 @@ async fn process_single_file(
                     adaptive_crf,
                     adaptive_bitrate,
                     args.title.as_deref(),
+                    Some(&file_logger),
                 )
                 .await?
         }
@@ -297,6 +298,7 @@ async fn process_single_file(
                     adaptive_crf,
                     adaptive_bitrate,
                     args.title.as_deref(),
+                    Some(&file_logger),
                 )
                 .await?
         }
@@ -314,6 +316,7 @@ async fn process_single_file(
                     adaptive_crf,
                     adaptive_bitrate,
                     args.title.as_deref(),
+                    Some(&file_logger),
                 )
                 .await?
         }

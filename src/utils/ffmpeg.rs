@@ -1,27 +1,27 @@
 use crate::utils::{Error, Result};
-use once_cell::sync::Lazy;
 use regex::Regex;
 use std::path::Path;
 use std::process::Stdio;
+use std::sync::LazyLock;
 use tokio::process::{Child, Command as TokioCommand};
 use tracing::debug;
 
-static DURATION_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"Duration: (\d{2}):(\d{2}):(\d{2})\.(\d{2})").unwrap());
+static DURATION_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"Duration: (\d{2}):(\d{2}):(\d{2})\.(\d{2})").unwrap());
 
-static PROGRESS_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})").unwrap());
+static PROGRESS_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})").unwrap());
 
-static FRAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"frame=\s*(\d+)").unwrap());
+static FRAME_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"frame=\s*(\d+)").unwrap());
 
-static SPEED_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"speed=\s*([0-9.]+)x").unwrap());
+static SPEED_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"speed=\s*([0-9.]+)x").unwrap());
 
-static SIZE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?:size|Lsize)=\s*(\d+)k?iB").unwrap());
+static SIZE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:size|Lsize)=\s*(\d+)k?iB").unwrap());
 
-static BITRATE_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"bitrate=\s*([0-9.]+)kbits/s").unwrap());
+static BITRATE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"bitrate=\s*([0-9.]+)kbits/s").unwrap());
 
-static FPS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"fps=\s*([0-9.]+)").unwrap());
+static FPS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"fps=\s*([0-9.]+)").unwrap());
 
 #[derive(Debug, Clone)]
 pub struct VideoMetadata {
@@ -73,6 +73,10 @@ impl FfmpegWrapper {
             ffmpeg_path,
             ffprobe_path,
         }
+    }
+
+    pub fn get_ffmpeg_path(&self) -> &str {
+        &self.ffmpeg_path
     }
 
     pub async fn get_video_metadata<P: AsRef<Path>>(&self, input_path: P) -> Result<VideoMetadata> {
@@ -453,7 +457,7 @@ mod tests {
         assert_eq!(ffmpeg.parse_fraction_to_float("30/1"), Some(30.0));
         assert_eq!(
             ffmpeg.parse_fraction_to_float("24000/1001"),
-            Some(23.976024)
+            Some(23.976_024)
         );
         assert_eq!(ffmpeg.parse_fraction_to_float("29.97"), Some(29.97));
         assert_eq!(ffmpeg.parse_fraction_to_float("invalid"), None);
