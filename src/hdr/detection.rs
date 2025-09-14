@@ -52,12 +52,14 @@ impl HdrDetector {
         ffmpeg: &FfmpegWrapper,
         input_path: P,
     ) -> Result<EnhancedVideoMetadata> {
-        // Use ffprobe to get detailed HDR metadata
+        // Enhanced ffprobe command to detect HDR10+ dynamic metadata
         let output = ffmpeg.run_ffprobe(&[
             "-v", "quiet",
             "-select_streams", "v:0",
             "-show_entries",
-            "stream=color_space,color_transfer,color_primaries,bits_per_raw_sample,chroma_location:stream_side_data=mastering_display_color_volume,content_light_level",
+            "stream=color_space,color_transfer,color_primaries,bits_per_raw_sample,chroma_location:stream_side_data",
+            "-show_frames",
+            "-read_intervals", "%+#3", // Check first 3 frames for dynamic metadata
             "-print_format", "json",
             &input_path.as_ref().to_string_lossy(),
         ]).await?;
@@ -115,10 +117,41 @@ impl HdrDetector {
                                 content_light_level = Some(cll);
                             }
                         },
-                        "HDR dynamic metadata (SMPTE 2094-40)" | "HDR dynamic metadata" => {
+                        // Enhanced HDR10+ dynamic metadata detection
+                        "HDR dynamic metadata (SMPTE 2094-40)" | 
+                        "HDR dynamic metadata SMPTE2094-40" |
+                        "HDR10+ dynamic metadata" |
+                        "Dynamic HDR10+ metadata" => {
+                            debug!("Found HDR10+ dynamic metadata: {}", side_data_type);
                             has_dynamic_metadata = true;
                         },
-                        _ => {}
+                        _ => {
+                            // Pattern-based detection for HDR10+ variations
+                            if self.is_hdr10plus_dynamic_metadata(side_data_type) {
+                                debug!("Pattern-matched HDR10+ dynamic metadata: {}", side_data_type);
+                                has_dynamic_metadata = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Also check frame-level side data if available
+        if !has_dynamic_metadata {
+            if let Some(frames) = json.get("frames").and_then(|v| v.as_array()) {
+                for frame in frames.iter().take(3) { // Check first 3 frames
+                    if let Some(frame_side_data) = frame.get("side_data_list").and_then(|v| v.as_array()) {
+                        for side_data_entry in frame_side_data {
+                            if let Some(side_data_type) = side_data_entry.get("side_data_type").and_then(|v| v.as_str()) {
+                                if self.is_hdr10plus_dynamic_metadata(side_data_type) {
+                                    debug!("Found HDR10+ dynamic metadata in frame: {}", side_data_type);
+                                    has_dynamic_metadata = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if has_dynamic_metadata { break; }
                     }
                 }
             }
@@ -134,6 +167,45 @@ impl HdrDetector {
             bit_depth,
             chroma_subsampling,
         })
+    }
+
+    /// Enhanced HDR10+ dynamic metadata detection with pattern matching
+    fn is_hdr10plus_dynamic_metadata(&self, side_data_type: &str) -> bool {
+        // Exact matches for known HDR10+ side data types
+        if matches!(side_data_type, 
+            "HDR dynamic metadata (SMPTE 2094-40)" |
+            "HDR dynamic metadata SMPTE2094-40" |
+            "HDR Dynamic Metadata SMPTE2094-40 (HDR10+)" |
+            "HDR10+ dynamic metadata" |
+            "Dynamic HDR10+ metadata" |
+            "SMPTE2094-40" |
+            "SMPTE 2094-40"
+        ) {
+            return true;
+        }
+        
+        // Pattern-based detection (case insensitive)
+        let lower = side_data_type.to_lowercase();
+        
+        // Check for SMPTE 2094-40 standard variations
+        if lower.contains("smpte2094-40") || 
+           lower.contains("smpte 2094-40") ||
+           lower.contains("smpte2094_40") {
+            return true;
+        }
+        
+        // Check for HDR10+ specific patterns
+        if lower.contains("hdr10+") && lower.contains("dynamic") {
+            return true;
+        }
+        
+        // Check for dynamic metadata with 2094 reference
+        if lower.contains("dynamic") && lower.contains("metadata") && 
+           (lower.contains("2094") || lower.contains("hdr10+")) {
+            return true;
+        }
+        
+        false
     }
 
     fn extract_mastering_display(&self, side_data: &serde_json::Value) -> Option<String> {
