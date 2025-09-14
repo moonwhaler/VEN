@@ -199,11 +199,60 @@ impl Default for DolbyVisionConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Hdr10PlusConfig {
+    /// Enable HDR10+ dynamic metadata processing
+    pub enabled: bool,
+    
+    /// HDR10+ tool configuration
+    pub tool: crate::hdr10plus::Hdr10PlusToolConfig,
+    
+    /// Temporary directory for metadata files
+    pub temp_dir: Option<String>,
+    
+    /// Require hdr10plus_tool to be available (fail if missing)
+    pub require_tool: bool,
+    
+    /// Fallback to HDR10 if HDR10+ processing fails
+    pub fallback_to_hdr10: bool,
+    
+    /// HDR10+ encoding adjustments
+    pub crf_adjustment: f32,              // CRF adjustment for HDR10+ (+2.5)
+    pub bitrate_multiplier: f32,          // Bitrate multiplier for HDR10+ (1.4x)
+    pub encoding_complexity: f32,         // Encoding complexity multiplier (1.4x)
+    
+    /// Validate tone mapping curves
+    pub validate_curves: bool,
+    
+    /// Maximum number of scenes for Samsung compatibility
+    pub max_scenes: Option<u32>,
+}
+
+
+impl Default for Hdr10PlusConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            tool: crate::hdr10plus::Hdr10PlusToolConfig::default(),
+            temp_dir: None,
+            require_tool: false,  // Graceful fallback by default
+            fallback_to_hdr10: true,
+            crf_adjustment: 2.5,  // Higher than HDR10's +2.0 due to complexity
+            bitrate_multiplier: 1.4,  // 40% increase for dynamic metadata
+            encoding_complexity: 1.4,
+            validate_curves: true,
+            max_scenes: None,  // No limit by default
+        }
+    }
+}
+
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AnalysisConfig {
     pub crop_detection: CropDetectionConfig,
     pub hdr_detection: HdrDetectionConfig,  // Legacy - kept for backward compatibility
     pub hdr: Option<UnifiedHdrConfig>,      // New unified HDR config
     pub dolby_vision: Option<DolbyVisionConfig>, // NEW: Dolby Vision configuration
+    pub hdr10_plus: Option<Hdr10PlusConfig>, // NEW: HDR10+ dynamic metadata configuration
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

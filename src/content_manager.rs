@@ -5,9 +5,10 @@
 /// in "docs/Dolby Vision CRF Requirements.md"
 
 use crate::analysis::dolby_vision::{DolbyVisionDetector, DolbyVisionInfo, DolbyVisionProfile};
-use crate::config::DolbyVisionConfig;
+use crate::config::{DolbyVisionConfig, Hdr10PlusConfig};
 use crate::config::UnifiedHdrConfig;
 use crate::hdr::{HdrManager, HdrAnalysisResult, HdrFormat};
+use crate::hdr10plus::{Hdr10PlusManager, Hdr10PlusProcessingResult};
 use crate::utils::{FfmpegWrapper, Result};
 use std::path::Path;
 use tracing::{debug, info, warn};
@@ -16,6 +17,7 @@ use tracing::{debug, info, warn};
 pub struct ContentAnalysisResult {
     pub hdr_analysis: HdrAnalysisResult,
     pub dolby_vision: DolbyVisionInfo,
+    pub hdr10_plus: Option<Hdr10PlusProcessingResult>,
     pub recommended_approach: ContentEncodingApproach,
     pub encoding_adjustments: EncodingAdjustments,
 }
@@ -25,6 +27,7 @@ pub enum ContentEncodingApproach {
     SDR,
     HDR(HdrAnalysisResult),
     DolbyVision(DolbyVisionInfo),
+    DolbyVisionWithHDR10Plus(DolbyVisionInfo, HdrAnalysisResult),
 }
 
 #[derive(Debug, Clone)]
@@ -52,28 +55,45 @@ impl EncodingAdjustments {
     }
 }
 
-/// Unified content manager that handles both HDR and Dolby Vision analysis
+/// Unified content manager that handles HDR, Dolby Vision, and HDR10+ analysis
 pub struct UnifiedContentManager {
     hdr_manager: HdrManager,
     dv_detector: Option<DolbyVisionDetector>,
     dv_config: Option<DolbyVisionConfig>,
+    hdr10plus_manager: Option<Hdr10PlusManager>,
+    hdr10plus_config: Option<Hdr10PlusConfig>,
 }
 
 impl UnifiedContentManager {
-    pub fn new(hdr_config: UnifiedHdrConfig, dv_config: Option<DolbyVisionConfig>) -> Self {
+    pub fn new(
+        hdr_config: UnifiedHdrConfig, 
+        dv_config: Option<DolbyVisionConfig>,
+        hdr10plus_config: Option<Hdr10PlusConfig>
+    ) -> Self {
         let hdr_manager = HdrManager::new(hdr_config);
         let dv_detector = dv_config.as_ref()
             .filter(|config| config.enabled)
             .map(|config| DolbyVisionDetector::new(config.clone()));
         
+        let hdr10plus_manager = hdr10plus_config.as_ref()
+            .filter(|config| config.enabled)
+            .map(|config| {
+                let temp_dir = config.temp_dir.as_deref()
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(|| std::path::PathBuf::from("/tmp"));
+                Hdr10PlusManager::new(temp_dir, Some(config.tool.clone()))
+            });
+        
         Self {
             hdr_manager,
             dv_detector,
             dv_config,
+            hdr10plus_manager,
+            hdr10plus_config,
         }
     }
 
-    /// Analyze content for both HDR and Dolby Vision characteristics
+    /// Analyze content for HDR, Dolby Vision, and HDR10+ characteristics
     pub async fn analyze_content<P: AsRef<Path>>(
         &self,
         ffmpeg: &FfmpegWrapper,
@@ -93,7 +113,32 @@ impl UnifiedContentManager {
         };
         debug!("Dolby Vision analysis complete: profile={:?}", dv_info.profile);
 
-        // Determine the recommended encoding approach
+        // Process HDR10+ dynamic metadata if enabled and detected
+        let hdr10plus_result = if let Some(ref manager) = self.hdr10plus_manager {
+            if hdr_analysis.metadata.format == HdrFormat::HDR10Plus {
+                info!("HDR10+ content detected - extracting dynamic metadata");
+                if dv_info.is_dolby_vision() {
+                    // Dual format processing
+                    manager.process_dual_format(&input_path, &dv_info, &hdr_analysis).await?
+                } else {
+                    // HDR10+ only processing
+                    manager.extract_hdr10plus_metadata(&input_path, &hdr_analysis).await?
+                }
+            } else {
+                debug!("No HDR10+ content detected");
+                None
+            }
+        } else {
+            debug!("HDR10+ processing disabled");
+            None
+        };
+
+        if let Some(ref result) = hdr10plus_result {
+            info!("HDR10+ processing complete: {} frames with tone mapping",
+                  result.curve_count);
+        }
+
+        // Determine the recommended encoding approach with all metadata
         let approach = self.determine_encoding_approach(&hdr_analysis, &dv_info);
         info!("Recommended encoding approach: {:?}", approach);
 
@@ -103,6 +148,7 @@ impl UnifiedContentManager {
         Ok(ContentAnalysisResult {
             hdr_analysis,
             dolby_vision: dv_info,
+            hdr10_plus: hdr10plus_result,
             recommended_approach: approach,
             encoding_adjustments: adjustments,
         })
@@ -113,12 +159,20 @@ impl UnifiedContentManager {
         hdr: &HdrAnalysisResult,
         dv: &DolbyVisionInfo,
     ) -> ContentEncodingApproach {
-        // Priority: Dolby Vision > HDR > SDR
+        // Enhanced priority logic: DV+HDR10+ > DV > HDR10+ > HDR10 > SDR
         if dv.is_dolby_vision() {
             if let Some(ref config) = self.dv_config {
                 if config.enabled {
                     if let Some(ref detector) = self.dv_detector {
                         if detector.should_preserve_dolby_vision(dv) {
+                            // Check if we also have HDR10+ for dual encoding
+                            if hdr.metadata.format == HdrFormat::HDR10Plus {
+                                info!("Dual format detected: Dolby Vision + HDR10+");
+                                return ContentEncodingApproach::DolbyVisionWithHDR10Plus(
+                                    dv.clone(), 
+                                    hdr.clone()
+                                );
+                            }
                             return ContentEncodingApproach::DolbyVision(dv.clone());
                         }
                     }
@@ -190,6 +244,37 @@ impl UnifiedContentManager {
                         vbv_bufsize: Some(160000),
                         vbv_maxrate: Some(160000),
                         recommended_crf_range: (16.0, 20.0), // Conservative DV range
+                    }
+                }
+            },
+            
+            ContentEncodingApproach::DolbyVisionWithHDR10Plus(dv_info, _hdr_result) => {
+                // Dual format: even more conservative settings needed
+                info!("Applying dual Dolby Vision + HDR10+ encoding adjustments");
+                
+                if let Some(ref config) = self.dv_config {
+                    let (dv_crf_range, dv_complexity) = self.get_profile_specific_adjustments(dv_info, config);
+                    
+                    // Combine adjustments for both formats - very conservative
+                    EncodingAdjustments {
+                        crf_adjustment: config.crf_adjustment - 0.5, // Even lower CRF for dual format
+                        bitrate_multiplier: config.bitrate_multiplier * 1.2, // 20% extra for HDR10+
+                        encoding_complexity: dv_complexity * 1.3, // Higher complexity for dual metadata
+                        requires_vbv: true,  // MANDATORY for both formats
+                        vbv_bufsize: Some(config.vbv_bufsize),
+                        vbv_maxrate: Some(config.vbv_maxrate),
+                        recommended_crf_range: (dv_crf_range.0 - 1.0, dv_crf_range.1 - 0.5), // More conservative range
+                    }
+                } else {
+                    // Fallback to very conservative dual format settings
+                    EncodingAdjustments {
+                        crf_adjustment: 0.5, // Very conservative CRF
+                        bitrate_multiplier: 2.2, // High bitrate for dual metadata
+                        encoding_complexity: 2.0, // High complexity
+                        requires_vbv: true,
+                        vbv_bufsize: Some(160000),
+                        vbv_maxrate: Some(160000),
+                        recommended_crf_range: (15.0, 18.0), // Very conservative range
                     }
                 }
             }

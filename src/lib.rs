@@ -7,6 +7,7 @@ pub mod dolby_vision;
 pub mod dolby_vision_integration_test;
 pub mod encoding;
 pub mod hdr;
+pub mod hdr10plus;
 pub mod progress;
 pub mod stream;
 pub mod utils;
@@ -18,5 +19,6 @@ pub use content_manager::{UnifiedContentManager, ContentAnalysisResult, ContentE
 pub use dolby_vision::{DoviTool, DoviToolConfig, RpuManager, RpuMetadata};
 pub use encoding::{EncodingMode, EncodingOptions};
 pub use hdr::{HdrFormat, HdrManager, HdrMetadata, ColorSpace, TransferFunction};
+pub use hdr10plus::{Hdr10PlusManager, Hdr10PlusMetadata, Hdr10PlusProcessingResult, Hdr10PlusToolConfig};
 pub use stream::preservation::{StreamMapping, StreamPreservation};
 pub use utils::{Error, FfmpegWrapper, Result};

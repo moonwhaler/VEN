@@ -103,6 +103,7 @@ impl Default for Config {
                 },
                 hdr: Some(UnifiedHdrConfig::default()),
                 dolby_vision: Some(DolbyVisionConfig::default()),
+                hdr10_plus: Some(crate::config::types::Hdr10PlusConfig::default()),
             },
             profiles: {
                 let mut profiles = HashMap::new();
