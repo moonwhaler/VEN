@@ -128,6 +128,22 @@ async fn process_single_file(
 ) -> Result<()> {
     info!("Getting video metadata for: {}", input_path.display());
     let metadata = ffmpeg.get_video_metadata(input_path).await?;
+    
+    // Log HDR detection results prominently
+    if metadata.is_hdr {
+        info!("HDR CONTENT DETECTED");
+        if let Some(ref color_space) = metadata.color_space {
+            info!("  Color Space: {}", color_space);
+        }
+        if let Some(ref transfer) = metadata.transfer_function {
+            info!("  Transfer Function: {}", transfer);
+        }
+        if let Some(ref primaries) = metadata.color_primaries {
+            info!("  Color Primaries: {}", primaries);
+        }
+    } else {
+        info!("SDR content detected");
+    }
 
     let selected_profile = if args.profile == "auto" {
         info!("Auto-selecting profile based on content analysis...");
@@ -153,6 +169,48 @@ async fn process_single_file(
         config.analysis.hdr_detection.crf_adjustment,
     );
     let adaptive_bitrate = selected_profile.calculate_adaptive_bitrate(1.0, metadata.is_hdr);
+    
+    // Log HDR-specific parameter adjustments
+    if metadata.is_hdr {
+        info!("HDR PARAMETER ADJUSTMENTS:");
+        info!("  Base CRF: {} -> Adjusted CRF: {:.1} (+{:.1})", 
+              selected_profile.base_crf, adaptive_crf, config.analysis.hdr_detection.crf_adjustment);
+        info!("  Base Bitrate: {} -> HDR Bitrate: {} (+{:.0}%)", 
+              selected_profile.base_bitrate, adaptive_bitrate,
+              ((adaptive_bitrate as f32 / selected_profile.base_bitrate as f32) - 1.0) * 100.0);
+    } else {
+        info!("Using standard encoding parameters (SDR): CRF={:.1}, Bitrate={}kbps", 
+              adaptive_crf, adaptive_bitrate);
+    }
+    
+    // Show x265 parameter preview with HDR-specific injections
+    let x265_params_preview = selected_profile.build_x265_params_string_with_hdr(
+        None, // No mode-specific params for preview
+        Some(metadata.is_hdr),
+        metadata.color_space.as_ref(),
+        metadata.transfer_function.as_ref(),
+        metadata.color_primaries.as_ref(),
+        metadata.master_display.as_ref(),
+        metadata.max_cll.as_ref(),
+    );
+    
+    if metadata.is_hdr {
+        info!("HDR x265 parameters injected:");
+        let params: Vec<&str> = x265_params_preview.split(':').collect();
+        let hdr_params: Vec<&str> = params.iter()
+            .filter(|p| p.contains("colormatrix") || p.contains("transfer") || 
+                       p.contains("colorprim") || p.contains("master-display") || 
+                       p.contains("max-cll"))
+            .copied()
+            .collect();
+        if !hdr_params.is_empty() {
+            for param in hdr_params {
+                info!("  -> {}", param);
+            }
+        } else {
+            info!("  -> No HDR-specific parameters added (using profile defaults)");
+        }
+    }
 
     // Crop detection with logging
     let (crop_values, crop_sample_timestamps, crop_analysis_result) = if let Some(crop) = &args.crop
@@ -216,6 +274,12 @@ async fn process_single_file(
         &metadata, None, // Grain level detection not implemented
     )?;
 
+    // Log x265 parameters to file for reference
+    file_logger.log_encoding_progress(&format!(
+        "x265 parameters: {}", 
+        x265_params_preview
+    ))?;
+    
     // Log crop detection results
     let detection_method = if args.crop.is_some() {
         "manual_override"

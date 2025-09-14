@@ -252,6 +252,15 @@ impl FfmpegWrapper {
             .map(|s| s.to_string());
 
         let is_hdr = self.detect_hdr(&color_space, &transfer_function);
+        
+        // Log HDR detection details for debugging
+        if is_hdr {
+            debug!("HDR content detected with color_space: {:?}, transfer_function: {:?}", 
+                   color_space, transfer_function);
+        } else {
+            debug!("SDR content detected with color_space: {:?}, transfer_function: {:?}", 
+                   color_space, transfer_function);
+        }
 
         // Extract HDR metadata if HDR is detected (optimized to skip for faster analysis)
         let (master_display, max_cll, max_fall) = if is_hdr {
@@ -334,13 +343,29 @@ impl FfmpegWrapper {
 
         let has_hdr_color_space = color_space
             .as_ref()
-            .is_some_and(|cs| hdr_color_spaces.iter().any(|&hdr_cs| cs.contains(hdr_cs)));
+            .is_some_and(|cs| {
+                let matched = hdr_color_spaces.iter().any(|&hdr_cs| cs.contains(hdr_cs));
+                if matched {
+                    debug!("HDR color space detected: {} (matches HDR patterns)", cs);
+                }
+                matched
+            });
 
         let has_hdr_transfer = transfer_function
             .as_ref()
-            .is_some_and(|tf| hdr_transfers.iter().any(|&hdr_tf| tf.contains(hdr_tf)));
+            .is_some_and(|tf| {
+                let matched = hdr_transfers.iter().any(|&hdr_tf| tf.contains(hdr_tf));
+                if matched {
+                    debug!("HDR transfer function detected: {} (matches HDR patterns)", tf);
+                }
+                matched
+            });
 
-        has_hdr_color_space && has_hdr_transfer
+        let is_hdr = has_hdr_color_space && has_hdr_transfer;
+        debug!("HDR detection result: {} (color_space: {}, transfer: {})", 
+               is_hdr, has_hdr_color_space, has_hdr_transfer);
+        
+        is_hdr
     }
 
     pub async fn check_availability(&self) -> Result<()> {
