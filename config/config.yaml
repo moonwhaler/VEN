@@ -67,6 +67,27 @@ analysis:
     vbv_maxrate: 160000               # Mandatory VBV max rate (required for DV compliance)
     profile_specific_adjustments: true # Different settings per DV profile
 
+  # NEW: HDR10+ dynamic metadata configuration
+  hdr10_plus:
+    enabled: true                     # Enable HDR10+ dynamic metadata processing
+    require_tool: false               # Graceful fallback if hdr10plus_tool missing
+    fallback_to_hdr10: true          # Fallback to HDR10 if HDR10+ processing fails
+    temp_dir: "/tmp"                  # Temporary directory for metadata files
+    validate_curves: true             # Validate tone mapping curves
+    
+    # Tool configuration
+    tool:
+      path: "hdr10plus_tool"          # Path to hdr10plus_tool binary
+      timeout_seconds: 300            # Tool operation timeout (5 minutes)
+      # extract_args: ["--verbose"]   # Optional custom extraction arguments
+      # inject_args: ["--force"]      # Optional custom injection arguments
+    
+    # HDR10+ encoding adjustments
+    crf_adjustment: 2.5               # Higher than HDR10's +2.0 (complexity of dynamic metadata)
+    bitrate_multiplier: 1.4           # 40% bitrate increase for dynamic metadata preservation
+    encoding_complexity: 1.4          # Processing complexity multiplier
+    # max_scenes: 100                 # Optional maximum scenes for Samsung compatibility
+
 # Content-Aware Parameter Adaptation
 # Video Filter Settings
 filters:
