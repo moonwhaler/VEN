@@ -278,10 +278,7 @@ async fn process_single_file(
     }
 
     // Crop detection with logging
-    let (crop_values, crop_sample_timestamps, crop_analysis_result) = if let Some(crop) = &args.crop
-    {
-        (Some(crop.clone()), vec![-1.0], None) // -1.0 indicates manual override
-    } else if config.analysis.crop_detection.enabled {
+    let (crop_values, crop_sample_timestamps, crop_analysis_result) = if config.analysis.crop_detection.enabled {
         use ffmpeg_autoencoder::analysis::CropDetector;
         let crop_detector = CropDetector::new(config.analysis.crop_detection.clone());
 
@@ -346,9 +343,7 @@ async fn process_single_file(
     ))?;
     
     // Log crop detection results
-    let detection_method = if args.crop.is_some() {
-        "manual_override"
-    } else if let Some(ref analysis) = crop_analysis_result {
+    let detection_method = if let Some(ref analysis) = crop_analysis_result {
         &analysis.detection_method
     } else if config.analysis.crop_detection.enabled {
         "automatic_detection"
@@ -357,7 +352,7 @@ async fn process_single_file(
     };
 
     file_logger.log_crop_detection_results(
-        config.analysis.crop_detection.enabled || args.crop.is_some(),
+        config.analysis.crop_detection.enabled,
         config.analysis.crop_detection.sample_count,
         &crop_sample_timestamps,
         crop_values.as_deref(),

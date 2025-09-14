@@ -29,7 +29,7 @@ EXAMPLES:
   # Batch processing directory
   ffmpeg-encoder -i ~/Videos/Raw/ -p auto -m abr
 
-  # With crop detection
+  # With automatic crop detection
   ffmpeg-encoder -i input.mkv -p movie -m abr
 ")]
 pub struct CliArgs {
@@ -54,9 +54,6 @@ pub struct CliArgs {
     #[arg(short, long, default_value = "abr", value_parser = ["crf", "abr", "cbr"])]
     pub mode: String,
 
-    /// Manual crop values in format width:height:x:y
-    #[arg(short, long, value_name = "W:H:X:Y")]
-    pub crop: Option<String>,
 
     /// Enable video denoising (hqdn3d=1:1:2:2)
     #[arg(long)]
@@ -164,15 +161,6 @@ impl CliArgs {
             )));
         }
 
-        // Validate crop format
-        if let Some(crop) = &self.crop {
-            if !self.is_valid_crop_format(crop) {
-                return Err(crate::utils::Error::validation(format!(
-                    "Invalid crop format: {} (expected format: width:height:x:y)",
-                    crop
-                )));
-            }
-        }
 
         // Validate profile name
         let valid_profiles = [
@@ -199,13 +187,6 @@ impl CliArgs {
         Ok(())
     }
 
-    fn is_valid_crop_format(&self, crop: &str) -> bool {
-        let parts: Vec<&str> = crop.split(':').collect();
-        if parts.len() != 4 {
-            return false;
-        }
-        parts.iter().all(|part| part.parse::<u32>().is_ok())
-    }
 
     pub fn print_help_topic(&self, topic: &str) {
         match topic.to_lowercase().as_str() {
@@ -267,7 +248,7 @@ impl CliArgs {
                 println!("  ffmpeg-encoder -i ~/Videos/Raw/ -p auto -m crf");
                 println!();
                 println!("Manual Overrides:");
-                println!("  ffmpeg-encoder -i input.mkv -p anime --crop 1920:800:0:140 --denoise");
+                println!("  ffmpeg-encoder -i input.mkv -p anime --denoise");
                 println!("  ffmpeg-encoder -i input.mkv -p auto -t \"Movie Title\"");
             }
             _ => {

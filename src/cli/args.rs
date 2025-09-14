@@ -51,11 +51,6 @@ pub struct EncodingCommand {
     #[arg(short, long, default_value = "abr", value_parser = ["crf", "abr", "cbr"])]
     pub mode: String,
 
-    /// Manual crop values in format width:height:x:y
-    #[arg(short, long)]
-    pub crop: Option<String>,
-
-
 
     /// Enable video denoising
     #[arg(long)]
@@ -138,15 +133,6 @@ impl EncodingCommand {
             )));
         }
 
-        if let Some(crop) = &self.crop {
-            if !self.is_valid_crop_format(crop) {
-                return Err(crate::utils::Error::validation(format!(
-                    "Invalid crop format: {} (expected format: width:height:x:y)",
-                    crop
-                )));
-            }
-        }
-
 
         Ok(())
     }
@@ -155,13 +141,6 @@ impl EncodingCommand {
         !self.input.as_os_str().is_empty()
     }
 
-    fn is_valid_crop_format(&self, crop: &str) -> bool {
-        let parts: Vec<&str> = crop.split(':').collect();
-        if parts.len() != 4 {
-            return false;
-        }
-        parts.iter().all(|part| part.parse::<u32>().is_ok())
-    }
 
 }
 
@@ -241,7 +220,6 @@ impl Default for EncodingCommand {
             profile: "auto".to_string(),
             title: None,
             mode: "abr".to_string(),
-            crop: None,
             denoise: false,
             deinterlace: false,
             config: PathBuf::from("config.yaml"),

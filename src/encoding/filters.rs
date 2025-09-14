@@ -190,6 +190,7 @@ mod tests {
                 },
                 hdr: Some(crate::config::UnifiedHdrConfig::default()),
                 dolby_vision: Some(crate::config::DolbyVisionConfig::default()),
+                hdr10_plus: Some(crate::config::Hdr10PlusConfig::default()),
             },
             profiles: HashMap::new(),
             filters: FiltersConfig {
