@@ -156,7 +156,25 @@ impl CropDetector {
         // Frequency analysis to find most common crop values
         let crop_analysis = self.analyze_crop_frequency(&sample_results, width, height);
 
-        info!("Crop detection completed: {:?}", crop_analysis.crop_values);
+        match &crop_analysis.crop_values {
+            Some(crop_values) => {
+                let original_pixels = width * height;
+                let new_pixels = crop_values.width * crop_values.height;
+                let size_reduction_percent =
+                    ((original_pixels - new_pixels) as f32 / original_pixels as f32) * 100.0;
+
+                info!(
+                    "Crop detection completed: {}x{} -> {}x{} (reduced by {:.1}%)",
+                    width, height, crop_values.width, crop_values.height, size_reduction_percent
+                );
+            }
+            None => {
+                info!(
+                    "Crop detection completed: No crop detected (original size: {}x{})",
+                    width, height
+                );
+            }
+        }
         Ok(crop_analysis)
     }
 
