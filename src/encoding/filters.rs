@@ -121,7 +121,23 @@ impl<'a> FilterBuilder<'a> {
                 // Check if weights file exists
                 if std::path::Path::new(weights_path).exists() {
                     let field_mode = &deinterlace_config.nnedi_settings.field;
-                    format!("nnedi=weights={}:field={}", weights_path, field_mode)
+                    let field_value = match field_mode.as_str() {
+                        "af" => -2,   // use frame flags, both fields
+                        "a" => -1,    // use frame flags, single field
+                        "t" => 0,     // use top field only
+                        "b" => 1,     // use bottom field only
+                        "tf" => 2,    // use both fields, top first
+                        "bf" => 3,    // use both fields, bottom first
+                        "auto" => -1, // fallback to 'a' for auto
+                        _ => {
+                            tracing::warn!(
+                                "Unknown NNEDI field mode '{}', using 'a' (-1)",
+                                field_mode
+                            );
+                            -1
+                        }
+                    };
+                    format!("nnedi=weights={}:field={}", weights_path, field_value)
                 } else {
                     // Fall back to fallback method if weights file doesn't exist
                     tracing::warn!(
@@ -280,5 +296,59 @@ mod tests {
         assert!(result.is_ok());
         let chain = result.unwrap();
         assert!(!chain.is_empty());
+    }
+
+    #[test]
+    fn test_nnedi_filter_construction() {
+        let mut config = create_test_config();
+        // Set up NNEDI weights file path for the test
+        config.tools.nnedi_weights = Some("/tmp/test_weights.bin".to_string());
+
+        // Create a dummy weights file for the test
+        std::fs::write("/tmp/test_weights.bin", "test").unwrap();
+
+        let builder = FilterBuilder::new(&config);
+        let filter_result = builder.build_deinterlace_filter();
+
+        // Clean up test file
+        let _ = std::fs::remove_file("/tmp/test_weights.bin");
+
+        assert!(filter_result.is_ok());
+        let filter = filter_result.unwrap();
+
+        // Should contain the NNEDI filter with correct field mapping
+        assert!(filter.contains("nnedi="));
+        assert!(filter.contains("weights=/tmp/test_weights.bin"));
+        assert!(filter.contains("field=-1")); // "auto" should map to -1
+    }
+
+    #[test]
+    fn test_nnedi_field_mapping() {
+        let mut config = create_test_config();
+        config.tools.nnedi_weights = Some("/tmp/test_weights.bin".to_string());
+
+        // Create a dummy weights file for the test
+        std::fs::write("/tmp/test_weights.bin", "test").unwrap();
+
+        // Test "af" mapping to -2
+        config.filters.deinterlace.nnedi_settings.field = "af".to_string();
+        let builder = FilterBuilder::new(&config);
+        let filter = builder.build_deinterlace_filter().unwrap();
+        assert!(filter.contains("field=-2"));
+
+        // Test "a" mapping to -1
+        config.filters.deinterlace.nnedi_settings.field = "a".to_string();
+        let builder = FilterBuilder::new(&config);
+        let filter = builder.build_deinterlace_filter().unwrap();
+        assert!(filter.contains("field=-1"));
+
+        // Test "t" mapping to 0
+        config.filters.deinterlace.nnedi_settings.field = "t".to_string();
+        let builder = FilterBuilder::new(&config);
+        let filter = builder.build_deinterlace_filter().unwrap();
+        assert!(filter.contains("field=0"));
+
+        // Clean up test file
+        let _ = std::fs::remove_file("/tmp/test_weights.bin");
     }
 }
