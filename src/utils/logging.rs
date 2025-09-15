@@ -32,7 +32,7 @@ pub fn setup_logging(
     let fmt_layer = fmt::layer()
         .with_target(false)
         .with_level(true)
-        .with_ansi(false)  // Disable ANSI formatting to remove emojis
+        .with_ansi(false) // Disable ANSI formatting to remove emojis
         .compact();
 
     let fmt_layer = if show_timestamps {
@@ -68,11 +68,7 @@ pub fn log_encoding_complete(duration: std::time::Duration, output_size: u64) {
 }
 
 pub fn log_analysis_result(content_type: &str, grain_level: u8) {
-    tracing::info!(
-        "Analysis: type={}, grain={}",
-        content_type,
-        grain_level
-    );
+    tracing::info!("Analysis: type={}, grain={}", content_type, grain_level);
 }
 
 pub fn log_crop_detection(crop_values: &str) {
@@ -80,11 +76,7 @@ pub fn log_crop_detection(crop_values: &str) {
 }
 
 pub fn log_profile_selection(profile: &str, reason: &str) {
-    tracing::info!(
-        "Profile selected: {} ({})",
-        profile,
-        reason
-    );
+    tracing::info!("Profile selected: {} ({})", profile, reason);
 }
 
 pub struct FileLogger {

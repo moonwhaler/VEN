@@ -96,11 +96,12 @@ pub struct CliArgs {
 }
 
 impl CliArgs {
-    pub fn get_log_level(&self) -> &'static str {
+    pub fn get_log_level<'a>(&self, config_level: &'a str) -> &'a str {
         if self.debug {
             "debug"
         } else {
-            "info" // Default to info level so users can see what's happening
+            // Use config level if debug flag is not set
+            config_level
         }
     }
 
