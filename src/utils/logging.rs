@@ -1,5 +1,4 @@
 use chrono::Utc;
-use console::Style;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -15,7 +14,7 @@ use tracing_subscriber::{
 pub fn setup_logging(
     level: &str,
     show_timestamps: bool,
-    colored: bool,
+    _colored: bool,
 ) -> crate::utils::Result<()> {
     let level = match level.to_lowercase().as_str() {
         "trace" => Level::TRACE,
@@ -33,7 +32,8 @@ pub fn setup_logging(
     let fmt_layer = fmt::layer()
         .with_target(false)
         .with_level(true)
-        .with_ansi(colored);
+        .with_ansi(false)  // Disable ANSI formatting to remove emojis
+        .compact();
 
     let fmt_layer = if show_timestamps {
         fmt_layer.with_timer(ChronoUtc::rfc_3339()).boxed()
@@ -50,10 +50,8 @@ pub fn setup_logging(
 }
 
 pub fn log_encoding_start(input: &str, output: &str, profile: &str, mode: &str) {
-    let style = Style::new().bold().green();
     tracing::info!(
-        "{} Starting encoding: {} -> {} (profile: {}, mode: {})",
-        style.apply_to("►"),
+        "Starting encoding: {} -> {} (profile: {}, mode: {})",
         input,
         output,
         profile,
@@ -62,35 +60,28 @@ pub fn log_encoding_start(input: &str, output: &str, profile: &str, mode: &str) 
 }
 
 pub fn log_encoding_complete(duration: std::time::Duration, output_size: u64) {
-    let style = Style::new().bold().green();
     tracing::info!(
-        "{} Encoding completed in {:.2}s, output size: {:.2} MB",
-        style.apply_to("✓"),
+        "Encoding completed in {:.2}s, output size: {:.2} MB",
         duration.as_secs_f64(),
         output_size as f64 / 1_048_576.0
     );
 }
 
 pub fn log_analysis_result(content_type: &str, grain_level: u8) {
-    let style = Style::new().bold().cyan();
     tracing::info!(
-        "{} Analysis: type={}, grain={}",
-        style.apply_to("ANALYSIS"),
+        "Analysis: type={}, grain={}",
         content_type,
         grain_level
     );
 }
 
 pub fn log_crop_detection(crop_values: &str) {
-    let style = Style::new().bold().cyan();
-    tracing::info!("{} Crop detected: {}", style.apply_to("CROP"), crop_values);
+    tracing::info!("Crop detected: {}", crop_values);
 }
 
 pub fn log_profile_selection(profile: &str, reason: &str) {
-    let style = Style::new().bold().magenta();
     tracing::info!(
-        "{} Profile selected: {} ({})",
-        style.apply_to("PROFILE"),
+        "Profile selected: {} ({})",
         profile,
         reason
     );
