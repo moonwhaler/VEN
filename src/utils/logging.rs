@@ -75,7 +75,7 @@ pub fn log_analysis_result(content_type: &str, grain_level: u8) {
     let style = Style::new().bold().cyan();
     tracing::info!(
         "{} Analysis: type={}, grain={}",
-        style.apply_to("🔍"),
+        style.apply_to("ANALYSIS"),
         content_type,
         grain_level
     );
@@ -83,14 +83,14 @@ pub fn log_analysis_result(content_type: &str, grain_level: u8) {
 
 pub fn log_crop_detection(crop_values: &str) {
     let style = Style::new().bold().cyan();
-    tracing::info!("{} Crop detected: {}", style.apply_to("✂"), crop_values);
+    tracing::info!("{} Crop detected: {}", style.apply_to("CROP"), crop_values);
 }
 
 pub fn log_profile_selection(profile: &str, reason: &str) {
     let style = Style::new().bold().magenta();
     tracing::info!(
         "{} Profile selected: {} ({})",
-        style.apply_to("🎯"),
+        style.apply_to("PROFILE"),
         profile,
         reason
     );

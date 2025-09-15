@@ -443,7 +443,7 @@ async fn process_single_file(
     // Determine if we need post-processing and use temporary output path if needed
     let needs_post_processing = metadata_workflow.needs_post_processing(&extracted_metadata);
     let actual_output_path = if needs_post_processing {
-        info!("🔄 Post-processing required - using temporary output path");
+        info!("Post-processing required - using temporary output path");
         metadata_workflow.get_temp_output_path(output_path)
     } else {
         output_path.to_path_buf()
@@ -543,7 +543,7 @@ async fn process_single_file(
 
     // Handle post-encoding metadata injection if needed
     if status.success() && needs_post_processing {
-        info!("🔄 Starting post-encoding metadata injection...");
+        info!("Starting post-encoding metadata injection...");
         metadata_workflow
             .inject_metadata(
                 &actual_output_path,
@@ -551,7 +551,7 @@ async fn process_single_file(
                 &extracted_metadata,
             )
             .await?;
-        info!("✅ Post-encoding metadata injection completed!");
+        info!("Post-encoding metadata injection completed!");
     }
 
     let output_size = std::fs::metadata(output_path).map(|m| m.len()).ok();

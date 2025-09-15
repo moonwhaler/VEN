@@ -133,7 +133,7 @@ impl MetadataWorkflowManager {
     }
 
     async fn check_and_log_tool_availability(&mut self) -> Result<()> {
-        info!("🔍 Checking external metadata tool availability...");
+        info!("Checking external metadata tool availability...");
 
         // Check dovi_tool availability
         if let Some(ref manager) = self.rpu_manager {
@@ -141,19 +141,23 @@ impl MetadataWorkflowManager {
                 Ok(available) => {
                     self.tools_available.dovi_tool = available;
                     if available {
-                        info!("✅ dovi_tool: AVAILABLE - Dolby Vision RPU extraction/injection enabled");
+                        info!(
+                            "dovi_tool: AVAILABLE - Dolby Vision RPU extraction/injection enabled"
+                        );
                     } else {
-                        info!("❌ dovi_tool: NOT AVAILABLE - Dolby Vision will use x265 built-in parameters only");
+                        info!("dovi_tool: NOT AVAILABLE - Dolby Vision will use x265 built-in parameters only");
                     }
                 }
                 Err(e) => {
-                    warn!("⚠️  dovi_tool: ERROR checking availability: {}", e);
+                    warn!("dovi_tool: ERROR checking availability: {}", e);
                     self.tools_available.dovi_tool = false;
-                    info!("❌ dovi_tool: DISABLED - Dolby Vision will use x265 built-in parameters only");
+                    info!(
+                        "dovi_tool: DISABLED - Dolby Vision will use x265 built-in parameters only"
+                    );
                 }
             }
         } else {
-            info!("❌ dovi_tool: DISABLED in configuration");
+            info!("dovi_tool: DISABLED in configuration");
         }
 
         // Check hdr10plus_tool availability
@@ -162,26 +166,28 @@ impl MetadataWorkflowManager {
                 Ok(available) => {
                     self.tools_available.hdr10plus_tool = available;
                     if available {
-                        info!("✅ hdr10plus_tool: AVAILABLE - HDR10+ dynamic metadata extraction/injection enabled");
+                        info!("hdr10plus_tool: AVAILABLE - HDR10+ dynamic metadata extraction/injection enabled");
                     } else {
-                        info!("❌ hdr10plus_tool: NOT AVAILABLE - HDR10+ will use x265 built-in parameters only");
+                        info!("hdr10plus_tool: NOT AVAILABLE - HDR10+ will use x265 built-in parameters only");
                     }
                 }
                 Err(e) => {
-                    warn!("⚠️  hdr10plus_tool: ERROR checking availability: {}", e);
+                    warn!("hdr10plus_tool: ERROR checking availability: {}", e);
                     self.tools_available.hdr10plus_tool = false;
-                    info!("❌ hdr10plus_tool: DISABLED - HDR10+ will use x265 built-in parameters only");
+                    info!(
+                        "hdr10plus_tool: DISABLED - HDR10+ will use x265 built-in parameters only"
+                    );
                 }
             }
         } else {
-            info!("❌ hdr10plus_tool: DISABLED in configuration");
+            info!("hdr10plus_tool: DISABLED in configuration");
         }
 
         // Summary
         if self.tools_available.dovi_tool || self.tools_available.hdr10plus_tool {
-            info!("🚀 External metadata tools are ready - enhanced preservation enabled!");
+            info!("External metadata tools are ready - enhanced preservation enabled!");
         } else {
-            info!("📦 No external tools available - using x265 built-in HDR support only");
+            info!("No external tools available - using x265 built-in HDR support only");
         }
 
         Ok(())
@@ -195,19 +201,19 @@ impl MetadataWorkflowManager {
         dv_info: &DolbyVisionInfo,
         hdr_analysis: &HdrAnalysisResult,
     ) -> Result<ExtractedMetadata> {
-        info!("🔍 Starting pre-encoding metadata extraction phase");
+        info!("Starting pre-encoding metadata extraction phase");
 
         let mut extracted = ExtractedMetadata::none(self.temp_dir.clone());
 
         match approach {
             ContentEncodingApproach::DolbyVision(_) => {
-                info!("📝 Processing Dolby Vision content");
+                info!("Processing Dolby Vision content");
                 extracted.dolby_vision = self
                     .extract_dolby_vision_metadata(&input_path, dv_info)
                     .await?;
             }
             ContentEncodingApproach::DolbyVisionWithHDR10Plus(_, _) => {
-                info!("📝 Processing dual format content (Dolby Vision + HDR10+)");
+                info!("Processing dual format content (Dolby Vision + HDR10+)");
                 // Extract both DV and HDR10+ metadata for dual format
                 extracted.dolby_vision = self
                     .extract_dolby_vision_metadata(&input_path, dv_info)
@@ -219,23 +225,25 @@ impl MetadataWorkflowManager {
             ContentEncodingApproach::HDR(hdr_result) => {
                 // Check if this is HDR10+ content
                 if hdr_result.metadata.format == crate::hdr::types::HdrFormat::HDR10Plus {
-                    info!("📝 Processing HDR10+ content");
+                    info!("Processing HDR10+ content");
                     extracted.hdr10_plus = self
                         .extract_hdr10plus_metadata(&input_path, hdr_analysis)
                         .await?;
                 } else {
-                    info!("📝 Processing standard HDR10 content (no external tools needed)");
+                    info!("Processing standard HDR10 content (no external tools needed)");
                 }
             }
             ContentEncodingApproach::SDR => {
-                info!("📝 Processing SDR content (no metadata extraction needed)");
+                info!("Processing SDR content (no metadata extraction needed)");
             }
         }
 
         if extracted.has_metadata() {
-            info!("✅ Metadata extraction phase completed - external metadata ready for encoding");
+            info!("Metadata extraction phase completed - external metadata ready for encoding");
         } else {
-            info!("ℹ️  No external metadata extracted - encoding will use x265 built-in parameters only");
+            info!(
+                "No external metadata extracted - encoding will use x265 built-in parameters only"
+            );
         }
 
         Ok(extracted)
@@ -247,7 +255,7 @@ impl MetadataWorkflowManager {
         dv_info: &DolbyVisionInfo,
     ) -> Result<Option<RpuMetadata>> {
         if !self.tools_available.dovi_tool {
-            info!("⚠️  Skipping Dolby Vision RPU extraction - dovi_tool not available");
+            info!("Skipping Dolby Vision RPU extraction - dovi_tool not available");
             info!("   Encoding will continue with HDR10 fallback parameters");
             return Ok(None);
         }
@@ -262,13 +270,13 @@ impl MetadataWorkflowManager {
             return Ok(None);
         };
 
-        info!("🎬 Extracting Dolby Vision RPU metadata using dovi_tool...");
+        info!("Extracting Dolby Vision RPU metadata using dovi_tool...");
         info!("   Profile: {}", dv_info.profile.as_str());
 
         match manager.extract_rpu(&input_path, dv_info).await {
             Ok(metadata) => {
                 if let Some(ref meta) = metadata {
-                    info!("✅ Dolby Vision RPU extraction successful!");
+                    info!("Dolby Vision RPU extraction successful!");
                     info!(
                         "   Profile: {}, File: {}, Size: {} bytes",
                         meta.profile.as_str(),
@@ -279,7 +287,7 @@ impl MetadataWorkflowManager {
                 Ok(metadata)
             }
             Err(e) => {
-                warn!("❌ Dolby Vision RPU extraction failed:");
+                warn!("Dolby Vision RPU extraction failed:");
 
                 // Log the detailed error message with tool-specific information
                 let error_details = e.to_string();
@@ -300,7 +308,7 @@ impl MetadataWorkflowManager {
         hdr_analysis: &HdrAnalysisResult,
     ) -> Result<Option<Hdr10PlusProcessingResult>> {
         if !self.tools_available.hdr10plus_tool {
-            info!("⚠️  Skipping HDR10+ metadata extraction - hdr10plus_tool not available");
+            info!("Skipping HDR10+ metadata extraction - hdr10plus_tool not available");
             info!("   Encoding will continue with HDR10 fallback parameters");
             return Ok(None);
         }
@@ -310,7 +318,7 @@ impl MetadataWorkflowManager {
             return Ok(None);
         };
 
-        info!("🌈 Extracting HDR10+ dynamic metadata using hdr10plus_tool...");
+        info!("Extracting HDR10+ dynamic metadata using hdr10plus_tool...");
 
         match manager
             .extract_hdr10plus_metadata(&input_path, hdr_analysis)
@@ -318,7 +326,7 @@ impl MetadataWorkflowManager {
         {
             Ok(metadata) => {
                 if let Some(ref meta) = metadata {
-                    info!("✅ HDR10+ metadata extraction successful!");
+                    info!("HDR10+ metadata extraction successful!");
                     info!(
                         "   Frames: {}, Curves: {}, File: {}",
                         meta.metadata.num_frames,
@@ -329,7 +337,7 @@ impl MetadataWorkflowManager {
                 Ok(metadata)
             }
             Err(e) => {
-                warn!("❌ HDR10+ metadata extraction failed:");
+                warn!("HDR10+ metadata extraction failed:");
 
                 // Log the detailed error message with tool-specific information
                 let error_details = e.to_string();
@@ -359,7 +367,7 @@ impl MetadataWorkflowManager {
                 // Note: x265 has limited built-in DV support, but we store the path for potential future use
                 // The main workflow is: extract -> encode without DV -> inject RPU post-encoding
                 info!(
-                    "🔧 Dolby Vision RPU available for post-encoding injection: {}",
+                    "Dolby Vision RPU available for post-encoding injection: {}",
                     dv_meta.temp_file.display()
                 );
                 debug!("   Profile: {}", dv_meta.profile.as_str());
@@ -375,7 +383,7 @@ impl MetadataWorkflowManager {
                     hdr10plus_meta.metadata_file.to_string_lossy().to_string(),
                 ));
                 info!(
-                    "🔧 Added HDR10+ metadata parameter for x265: --dhdr10-info {}",
+                    "Added HDR10+ metadata parameter for x265: --dhdr10-info {}",
                     hdr10plus_meta.metadata_file.display()
                 );
                 debug!(
@@ -386,7 +394,7 @@ impl MetadataWorkflowManager {
         }
 
         if !params.is_empty() {
-            info!("✅ External metadata parameters ready for x265 encoding");
+            info!("External metadata parameters ready for x265 encoding");
         } else {
             debug!("No external metadata parameters to add - using x265 built-in HDR support only");
         }
@@ -411,33 +419,33 @@ impl MetadataWorkflowManager {
             return Ok(());
         }
 
-        info!("🔄 Starting post-encoding metadata injection phase");
+        info!("Starting post-encoding metadata injection phase");
 
         // Handle Dolby Vision RPU injection first (most critical)
         if let Some(ref dv_meta) = extracted.dolby_vision {
             if dv_meta.extracted_successfully && self.tools_available.dovi_tool {
-                info!("💉 Injecting Dolby Vision RPU metadata using dovi_tool...");
+                info!("Injecting Dolby Vision RPU metadata using dovi_tool...");
                 if let Some(ref manager) = self.rpu_manager {
                     match manager
                         .inject_rpu(&encoded_path, dv_meta, &final_output_path)
                         .await
                     {
                         Ok(_) => {
-                            info!("✅ Dolby Vision RPU injection successful!");
+                            info!("Dolby Vision RPU injection successful!");
                             info!("   Final file: {}", final_output_path.as_ref().display());
                             info!("   Profile: {}", dv_meta.profile.as_str());
 
                             // If we also had HDR10+ metadata, log that it was included during encoding
                             if let Some(ref hdr10plus_meta) = extracted.hdr10_plus {
                                 if hdr10plus_meta.extraction_successful {
-                                    info!("✅ HDR10+ metadata was included during x265 encoding (--dhdr10-info)");
+                                    info!("HDR10+ metadata was included during x265 encoding (--dhdr10-info)");
                                     info!("   This is a dual-format Dolby Vision + HDR10+ file!");
                                 }
                             }
                             return Ok(());
                         }
                         Err(e) => {
-                            warn!("❌ Dolby Vision RPU injection failed: {}", e);
+                            warn!("Dolby Vision RPU injection failed: {}", e);
                             warn!("   Falling back to encoded file without RPU injection");
                         }
                     }
@@ -448,7 +456,7 @@ impl MetadataWorkflowManager {
         // If we reach here, either DV injection failed or there was only HDR10+ metadata
         if let Some(ref hdr10plus_meta) = extracted.hdr10_plus {
             if hdr10plus_meta.extraction_successful {
-                info!("ℹ️  HDR10+ metadata was successfully included during x265 encoding");
+                info!("HDR10+ metadata was successfully included during x265 encoding");
                 info!("   No post-encoding injection needed for HDR10+ (handled by --dhdr10-info)");
             }
         }
@@ -457,7 +465,7 @@ impl MetadataWorkflowManager {
         if encoded_path.as_ref() != final_output_path.as_ref() {
             tokio::fs::rename(&encoded_path, &final_output_path).await?;
             info!(
-                "📁 Moved encoded file to final location: {}",
+                "Moved encoded file to final location: {}",
                 final_output_path.as_ref().display()
             );
         }
@@ -495,7 +503,7 @@ impl MetadataWorkflowManager {
 
     /// Clean up all temporary files
     pub async fn cleanup(&self) -> Result<()> {
-        debug!("🧹 Cleaning up temporary metadata files...");
+        debug!("Cleaning up temporary metadata files...");
 
         if let Some(ref manager) = self.rpu_manager {
             if let Err(e) = manager.cleanup_all_rpu_files().await {
