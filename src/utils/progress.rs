@@ -1,3 +1,4 @@
+use crate::encoding::EncodingMode;
 use crate::utils::{FfmpegWrapper, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::time::{Duration, Instant};
@@ -8,18 +9,32 @@ pub struct ProgressMonitor {
     start_time: Instant,
     total_duration: f64,
     total_frames: Option<u32>,
+    is_two_pass: bool,
+    last_progress: f64,
+    source_fps: f32,
 }
 
 impl ProgressMonitor {
-    pub fn new(total_duration: f64, fps: f32, _ffmpeg: FfmpegWrapper) -> Self {
+    pub fn new(
+        total_duration: f64,
+        fps: f32,
+        _ffmpeg: FfmpegWrapper,
+        encoding_mode: EncodingMode,
+    ) -> Self {
+        let is_two_pass = matches!(encoding_mode, EncodingMode::ABR | EncodingMode::CBR);
         let progress_bar = ProgressBar::new(10000); // Use 10000 as max for 0.01% precision
 
+        // Adjust progress bar template for two-pass encoding
+        let template = if is_two_pass {
+            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {percent:>3}% (Pass 2/2) | {msg}"
+        } else {
+            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {percent:>3}% | {msg}"
+        };
+
         progress_bar.set_style(
-            ProgressStyle::with_template(
-                "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {percent:>3}% | {msg}"
-            )
-            .unwrap()
-            .progress_chars("█▉▊▋▌▍▎▏ "),
+            ProgressStyle::with_template(template)
+                .unwrap()
+                .progress_chars("█▉▊▋▌▍▎▏ "),
         );
 
         // Calculate total frames using duration × framerate
@@ -34,6 +49,9 @@ impl ProgressMonitor {
             start_time: Instant::now(),
             total_duration,
             total_frames,
+            is_two_pass,
+            last_progress: 0.0,
+            source_fps: fps,
         }
     }
 
@@ -41,9 +59,30 @@ impl ProgressMonitor {
         self.progress_bar.set_message(message.to_string());
     }
 
+    pub fn start_pass_one(&self) {
+        if self.is_two_pass {
+            self.progress_bar
+                .set_message("Starting Pass 1/2 (analysis)...".to_string());
+        }
+    }
+
+    pub fn start_pass_two(&self) {
+        if self.is_two_pass {
+            self.progress_bar
+                .set_message("Starting Pass 2/2 (encoding)...".to_string());
+        }
+    }
+
     pub async fn monitor_encoding(&mut self, mut child: Child) -> Result<std::process::ExitStatus> {
         use std::path::Path;
         use tokio::time::{interval, Duration};
+
+        // For two-pass encoding, reset start time when monitoring begins (Pass 2)
+        if self.is_two_pass {
+            self.start_time = Instant::now();
+            self.last_progress = 0.0; // Reset progress for Pass 2
+            self.start_pass_two();
+        }
 
         // Get progress file path (same format as in encoding)
         let progress_file = format!("/tmp/ffmpeg_progress_{}.txt", std::process::id());
@@ -137,22 +176,58 @@ impl ProgressMonitor {
     }
 
     fn update_progress(&mut self, info: &crate::utils::ffmpeg::ProgressInfo) {
-        // Calculate progress using both time and frame methods
+        // Always use time-based progress for consistency, especially with complex filters
         let mut current_progress = info.progress_percentage as f64 / 100.0;
+        let time_based_progress = current_progress;
 
-        // Frame-based progress calculation (more reliable for some content)
-        if let (Some(current_frame), Some(total_frames)) = (info.frame, self.total_frames) {
-            if current_frame > 0 && total_frames > 0 {
-                let frame_progress = current_frame as f64 / total_frames as f64;
-                // Prefer frame-based if it's available and reasonable
-                if frame_progress > 0.0 && frame_progress <= 1.0 {
-                    current_progress = frame_progress;
+        // Frame-based progress can be unreliable with deinterlacing/complex filters
+        // Only use frame-based as a fallback if time-based isn't working
+        let mut frame_based_progress = None;
+        if current_progress <= 0.0 {
+            if let (Some(current_frame), Some(total_frames)) = (info.frame, self.total_frames) {
+                if current_frame > 0 && total_frames > 0 {
+                    let frame_progress = current_frame as f64 / total_frames as f64;
+                    if frame_progress > 0.0 && frame_progress <= 1.0 {
+                        current_progress = frame_progress;
+                        frame_based_progress = Some(frame_progress);
+                    }
                 }
             }
         }
 
+        // Debug logging to track progress calculation issues
+        if tracing::enabled!(tracing::Level::DEBUG) && current_progress > 0.01 {
+            let debug_msg = if let Some(fb_prog) = frame_based_progress {
+                format!(
+                    "Progress debug: time={:.1}% frame={:.1}% using=frame final={:.1}% last={:.1}%",
+                    time_based_progress * 100.0,
+                    fb_prog * 100.0,
+                    current_progress * 100.0,
+                    self.last_progress * 100.0
+                )
+            } else {
+                format!(
+                    "Progress debug: time={:.1}% using=time final={:.1}% last={:.1}%",
+                    time_based_progress * 100.0,
+                    current_progress * 100.0,
+                    self.last_progress * 100.0
+                )
+            };
+
+            // Only log if progress changes significantly to avoid spam
+            if (current_progress - self.last_progress).abs() > 0.02 {
+                tracing::debug!("{}", debug_msg);
+            }
+        }
+
+        // Prevent backwards progress movement - only allow forward progress
+        current_progress = current_progress.max(self.last_progress);
+
         // Ensure progress doesn't exceed 100%
         current_progress = current_progress.min(1.0);
+
+        // Store the current progress for next iteration
+        self.last_progress = current_progress;
 
         let position = (current_progress * 10000.0) as u64;
         self.progress_bar.set_position(position);
@@ -161,11 +236,16 @@ impl ProgressMonitor {
         let mut message_parts = vec![];
 
         // Build a clean, compact status message
-        if let Some(fps) = info.fps {
-            message_parts.push(format!("{:.1}fps", fps));
-        }
+        if let Some(encoding_fps) = info.fps {
+            message_parts.push(format!("{:.1}fps", encoding_fps));
 
-        if let Some(speed) = info.speed {
+            // Calculate actual speed multiplier from source FPS
+            if self.source_fps > 0.0 {
+                let actual_speed_multiplier = encoding_fps / self.source_fps;
+                message_parts.push(format!("{:.1}x", actual_speed_multiplier));
+            }
+        } else if let Some(speed) = info.speed {
+            // Fallback to FFmpeg's speed value if no FPS available
             message_parts.push(format!("{:.1}x", speed));
         }
 

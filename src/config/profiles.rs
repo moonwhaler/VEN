@@ -99,6 +99,16 @@ impl EncodingProfile {
         self.x265_params.get("pix_fmt").cloned()
     }
 
+    /// Get the preset from the profile x265 parameters
+    pub fn get_preset(&self) -> Option<String> {
+        self.x265_params.get("preset").cloned()
+    }
+
+    /// Get the profile from the profile x265 parameters
+    pub fn get_profile(&self) -> Option<String> {
+        self.x265_params.get("profile").cloned()
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn build_x265_params_string_with_hdr(
         &self,
@@ -185,13 +195,15 @@ impl EncodingProfile {
             }
         }
 
-        // Remove pix_fmt from x265 params as it should be a separate FFmpeg parameter
+        // Remove parameters that should be separate FFmpeg parameters, not x265-params
         params.remove("pix_fmt");
+        params.remove("preset");
+        params.remove("profile");
 
         let param_strs: Vec<String> = params
             .into_iter()
             .map(|(key, value)| {
-                if value.is_empty() || value == "true" || value == "1" {
+                if value.is_empty() || value == "true" {
                     key
                 } else {
                     format!("{}={}", key, value)
@@ -307,14 +319,16 @@ impl EncodingProfile {
             }
         }
 
-        // Remove pix_fmt from x265 params as it should be a separate FFmpeg parameter
+        // Remove parameters that should be separate FFmpeg parameters, not x265-params
         params.remove("pix_fmt");
+        params.remove("preset");
+        params.remove("profile");
 
         // Build parameter string
         let param_strs: Vec<String> = params
             .into_iter()
             .map(|(key, value)| {
-                if value.is_empty() || value == "true" || value == "1" {
+                if value.is_empty() || value == "true" {
                     key
                 } else {
                     format!("{}={}", key, value)
@@ -516,9 +530,10 @@ mod tests {
         let profile = EncodingProfile::from_raw("test".to_string(), raw).unwrap();
 
         let params_str = profile.build_x265_params_string(None);
-        assert!(params_str.contains("preset=slow"));
+        // preset, pix_fmt, and profile are removed as they are separate FFmpeg parameters
+        assert!(!params_str.contains("preset=slow"));
         assert!(params_str.contains("crf=22"));
-        assert!(params_str.contains("weightb"));
+        assert!(params_str.contains("weightb=1"));
         assert!(params_str.contains("no-sao=0"));
     }
 

@@ -98,6 +98,16 @@ impl Encoder for CrfEncoder {
         // Add video encoding settings
         args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
 
+        // Add preset as separate parameter if specified in profile
+        if let Some(preset) = profile.get_preset() {
+            args.extend(vec!["-preset".to_string(), preset]);
+        }
+
+        // Add profile as separate parameter if specified in profile
+        if let Some(profile_name) = profile.get_profile() {
+            args.extend(vec!["-profile:v".to_string(), profile_name]);
+        }
+
         // Add pixel format as separate parameter if specified in profile
         if let Some(pix_fmt) = profile.get_pixel_format() {
             args.extend(vec!["-pix_fmt".to_string(), pix_fmt]);
@@ -376,6 +386,16 @@ impl AbrEncoder {
 
         // Add video encoding settings
         args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
+
+        // Add preset as separate parameter if specified in profile
+        if let Some(preset) = profile.get_preset() {
+            args.extend(vec!["-preset".to_string(), preset]);
+        }
+
+        // Add profile as separate parameter if specified in profile
+        if let Some(profile_name) = profile.get_profile() {
+            args.extend(vec!["-profile:v".to_string(), profile_name]);
+        }
 
         // Add pixel format as separate parameter if specified in profile
         if let Some(pix_fmt) = profile.get_pixel_format() {

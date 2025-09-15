@@ -85,6 +85,9 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
     let mut profile_manager = ProfileManager::new();
     profile_manager.load_profiles(config.profiles.clone())?;
 
+    let mut successful_files = 0;
+    let mut failed_files = Vec::new();
+
     for (index, input_path) in video_files.iter().enumerate() {
         info!(
             "Processing file {}/{}: {}",
@@ -92,6 +95,14 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
             video_files.len(),
             input_path.display()
         );
+
+        // Check if file exists before processing
+        if !input_path.exists() {
+            let error_msg = format!("File not found: {}", input_path.display());
+            tracing::warn!("{}", error_msg);
+            failed_files.push((input_path.clone(), error_msg));
+            continue;
+        }
 
         let output_path = if let Some(output) = &args.output {
             if video_files.len() > 1 {
@@ -104,7 +115,7 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
             generate_uuid_filename(input_path, None::<&std::path::Path>)
         };
 
-        process_single_file(
+        match process_single_file(
             &ffmpeg,
             &stream_preservation,
             args,
@@ -113,7 +124,39 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
             input_path,
             &output_path,
         )
-        .await?;
+        .await
+        {
+            Ok(()) => {
+                successful_files += 1;
+                info!("✓ Successfully processed: {}", input_path.display());
+            }
+            Err(e) => {
+                let error_msg = format!("Failed to process {}: {}", input_path.display(), e);
+                tracing::error!("{}", error_msg);
+                failed_files.push((input_path.clone(), error_msg));
+            }
+        }
+    }
+
+    // Report processing summary
+    if video_files.len() > 1 {
+        info!(
+            "Processing complete: {} successful, {} failed",
+            successful_files,
+            failed_files.len()
+        );
+
+        if !failed_files.is_empty() {
+            info!("Failed files:");
+            for (path, error) in &failed_files {
+                info!("  - {}: {}", path.display(), error);
+            }
+        }
+    }
+
+    // Only return error if all files failed
+    if successful_files == 0 && !failed_files.is_empty() {
+        return Err(Error::encoding("All files failed to process".to_string()));
     }
 
     Ok(())
@@ -521,8 +564,12 @@ async fn process_single_file(
     let start_time = std::time::Instant::now();
 
     // Initialize progress monitor with frame calculation
-    let mut progress_monitor =
-        ProgressMonitor::new(metadata.duration, metadata.fps, ffmpeg.clone());
+    let mut progress_monitor = ProgressMonitor::new(
+        metadata.duration,
+        metadata.fps,
+        ffmpeg.clone(),
+        encoding_mode,
+    );
     let total_frames = if metadata.fps > 0.0 && metadata.duration > 0.0 {
         (metadata.duration * metadata.fps as f64) as u32
     } else {
