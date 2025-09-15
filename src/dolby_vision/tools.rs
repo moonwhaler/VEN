@@ -119,10 +119,38 @@ impl DoviTool {
             error!("Stdout: {}", stdout);
             error!("Stderr: {}", stderr);
 
-            return Err(Error::DolbyVision(format!(
+            // Capture tool information for better error context
+            let mut error_context = format!(
                 "RPU extraction failed with exit code {}: {}",
                 output.status, stderr
-            )));
+            );
+
+            // Add contextual information based on the actual error
+            if stderr.contains("Invalid input file type") {
+                // Get tool version and help information
+                if let Ok(version) = self.get_version().await {
+                    error_context.push_str(&format!("\nTool version: {}", version));
+                }
+
+                // Try to get extract-rpu help for supported formats
+                if let Ok(help_output) = Command::new(&self.config.path)
+                    .args(["extract-rpu", "--help"])
+                    .output()
+                    .await
+                {
+                    let help_text = String::from_utf8_lossy(&help_output.stdout);
+                    if help_text.contains("HEVC file") {
+                        error_context.push_str(
+                            "\nSupported formats: HEVC files (as indicated by tool help)",
+                        );
+                        error_context.push_str(
+                            "\nNote: MP4 containers may need conversion to raw HEVC bitstream",
+                        );
+                    }
+                }
+            }
+
+            return Err(Error::DolbyVision(error_context));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);

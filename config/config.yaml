@@ -10,11 +10,11 @@ tools:
   ffmpeg: "ffmpeg"
   ffprobe: "ffprobe"
   nnedi_weights: "/home/christian/Documents/source/ffmpeg_autoencoder/neural/nnedi3_weights.bin"
-  dovi_tool:                          # NEW: Dolby Vision tool
-    path: "dovi_tool"                 # Path to dovi_tool binary
+  dovi_tool:    
+    path: "/usr/bin/dovi_tool"        # Path to dovi_tool binary
     timeout_seconds: 300              # Tool operation timeout (5 minutes)
-  hdr10plus_tool:                     # NEW: HDR10+ tool
-    path: "hdr10plus_tool"            # Path to hdr10plus_tool binary
+  hdr10plus_tool:              
+    path: "/usr/bin/hdr10plus_tool"   # Path to hdr10plus_tool binary
     timeout_seconds: 300              # Tool operation timeout (5 minutes)
     # extract_args: ["--verbose"]     # Optional custom extraction arguments
     # inject_args: ["--force"]        # Optional custom injection arguments

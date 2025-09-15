@@ -5,6 +5,7 @@ use ffmpeg_autoencoder::{
     cli::{handle_commands, CliArgs},
     config::{Config, ProfileManager},
     encoding::{modes::Encoder, AbrEncoder, CbrEncoder, CrfEncoder, EncodingMode, FilterBuilder},
+    metadata_workflow::MetadataWorkflowManager,
     stream::preservation::StreamPreservation,
     utils::{
         find_video_files, generate_uuid_filename, setup_logging, Error, FfmpegWrapper, FileLogger,
@@ -140,6 +141,20 @@ async fn process_single_file(
     );
 
     let content_analysis = content_manager.analyze_content(ffmpeg, input_path).await?;
+
+    // Initialize metadata workflow manager for external tool integration
+    info!("Initializing metadata workflow manager...");
+    let metadata_workflow = MetadataWorkflowManager::new(config).await?;
+
+    // Extract external metadata if tools are available
+    let extracted_metadata = metadata_workflow
+        .extract_metadata(
+            input_path,
+            &content_analysis.recommended_approach,
+            &content_analysis.dolby_vision,
+            &content_analysis.hdr_analysis,
+        )
+        .await?;
 
     // Log comprehensive analysis results
     match &content_analysis.recommended_approach {
@@ -425,6 +440,24 @@ async fn process_single_file(
             .to_string_lossy()
     ))?;
 
+    // Determine if we need post-processing and use temporary output path if needed
+    let needs_post_processing = metadata_workflow.needs_post_processing(&extracted_metadata);
+    let actual_output_path = if needs_post_processing {
+        info!("🔄 Post-processing required - using temporary output path");
+        metadata_workflow.get_temp_output_path(output_path)
+    } else {
+        output_path.to_path_buf()
+    };
+
+    // Get external metadata parameters for x265
+    let external_metadata_params =
+        metadata_workflow.build_external_metadata_params(&extracted_metadata);
+    let external_params_ref = if external_metadata_params.is_empty() {
+        None
+    } else {
+        Some(external_metadata_params.as_slice())
+    };
+
     let child = match encoding_mode {
         EncodingMode::CRF => {
             let encoder = CrfEncoder;
@@ -432,7 +465,7 @@ async fn process_single_file(
                 .encode(
                     ffmpeg,
                     input_path,
-                    output_path,
+                    &actual_output_path,
                     &selected_profile,
                     &filter_chain,
                     &stream_mapping,
@@ -441,6 +474,7 @@ async fn process_single_file(
                     adaptive_bitrate,
                     args.title.as_deref(),
                     Some(&file_logger),
+                    external_params_ref,
                 )
                 .await?
         }
@@ -450,7 +484,7 @@ async fn process_single_file(
                 .encode(
                     ffmpeg,
                     input_path,
-                    output_path,
+                    &actual_output_path,
                     &selected_profile,
                     &filter_chain,
                     &stream_mapping,
@@ -459,6 +493,7 @@ async fn process_single_file(
                     adaptive_bitrate,
                     args.title.as_deref(),
                     Some(&file_logger),
+                    external_params_ref,
                 )
                 .await?
         }
@@ -468,7 +503,7 @@ async fn process_single_file(
                 .encode(
                     ffmpeg,
                     input_path,
-                    output_path,
+                    &actual_output_path,
                     &selected_profile,
                     &filter_chain,
                     &stream_mapping,
@@ -477,6 +512,7 @@ async fn process_single_file(
                     adaptive_bitrate,
                     args.title.as_deref(),
                     Some(&file_logger),
+                    external_params_ref,
                 )
                 .await?
         }
@@ -504,6 +540,19 @@ async fn process_single_file(
 
     let status = progress_monitor.monitor_encoding(child).await?;
     let duration = start_time.elapsed();
+
+    // Handle post-encoding metadata injection if needed
+    if status.success() && needs_post_processing {
+        info!("🔄 Starting post-encoding metadata injection...");
+        metadata_workflow
+            .inject_metadata(
+                &actual_output_path,
+                &output_path.to_path_buf(),
+                &extracted_metadata,
+            )
+            .await?;
+        info!("✅ Post-encoding metadata injection completed!");
+    }
 
     let output_size = std::fs::metadata(output_path).map(|m| m.len()).ok();
     let exit_code = status.code();
@@ -537,6 +586,14 @@ async fn process_single_file(
             exit_code.unwrap_or(-1)
         )));
     }
+
+    // Clean up temporary metadata files
+    metadata_workflow.cleanup().await.unwrap_or_else(|e| {
+        tracing::warn!("Failed to cleanup metadata files: {}", e);
+    });
+
+    // Clean up extracted metadata files explicitly
+    extracted_metadata.cleanup();
 
     Ok(())
 }

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use tokio::process::Command as TokioCommand;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Hdr10PlusToolConfig {
@@ -103,10 +103,39 @@ impl Hdr10PlusTool {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(Error::encoding(format!(
-                "hdr10plus_tool extract failed: {}",
-                stderr
-            )));
+            let stdout = String::from_utf8_lossy(&output.stdout);
+
+            // Log detailed error information
+            error!("hdr10plus_tool extract failed:");
+            error!("Exit code: {}", output.status);
+            error!("Stdout: {}", stdout);
+            error!("Stderr: {}", stderr);
+
+            // Build dynamic error context with tool information
+            let mut error_context = format!("hdr10plus_tool extract failed: {}", stderr);
+
+            // Add contextual information for common errors
+            if stderr.contains("Invalid input file type") {
+                // Try to get tool help for supported formats
+                if let Ok(help_output) = TokioCommand::new(&self.config.path)
+                    .args(["extract", "--help"])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .await
+                {
+                    let help_text = String::from_utf8_lossy(&help_output.stdout);
+                    if help_text.contains("HEVC file") {
+                        error_context.push_str(
+                            "\nSupported formats: HEVC files (as indicated by tool help)",
+                        );
+                        error_context
+                            .push_str("\nNote: Container format conversion may be required");
+                    }
+                }
+            }
+
+            return Err(Error::encoding(error_context));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);

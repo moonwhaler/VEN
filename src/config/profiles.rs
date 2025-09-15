@@ -105,6 +105,30 @@ impl EncodingProfile {
         master_display: Option<&String>,
         max_cll: Option<&String>,
     ) -> String {
+        self.build_x265_params_string_with_external_metadata(
+            mode_specific_params,
+            is_hdr,
+            color_space,
+            transfer_function,
+            color_primaries,
+            master_display,
+            max_cll,
+            None, // No external metadata
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn build_x265_params_string_with_external_metadata(
+        &self,
+        mode_specific_params: Option<&HashMap<String, String>>,
+        is_hdr: Option<bool>,
+        color_space: Option<&String>,
+        transfer_function: Option<&String>,
+        color_primaries: Option<&String>,
+        master_display: Option<&String>,
+        max_cll: Option<&String>,
+        external_metadata_params: Option<&[(String, String)]>,
+    ) -> String {
         let mut params = self.x265_params.clone();
 
         if let Some(mode_params) = mode_specific_params {
@@ -146,6 +170,13 @@ impl EncodingProfile {
             // Add max-cll metadata if available
             if let Some(cll) = max_cll {
                 params.insert("max-cll".to_string(), format!("{},400", cll));
+            }
+        }
+
+        // Add external metadata parameters (HDR10+, Dolby Vision, etc.)
+        if let Some(external_params) = external_metadata_params {
+            for (key, value) in external_params {
+                params.insert(key.clone(), value.clone());
             }
         }
 

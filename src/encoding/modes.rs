@@ -48,6 +48,7 @@ pub trait Encoder {
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
         file_logger: Option<&crate::utils::logging::FileLogger>,
+        external_metadata_params: Option<&[(String, String)]>,
     ) -> Result<tokio::process::Child>;
 }
 
@@ -67,6 +68,7 @@ impl Encoder for CrfEncoder {
         _adaptive_bitrate: u32,
         custom_title: Option<&str>,
         file_logger: Option<&crate::utils::logging::FileLogger>,
+        external_metadata_params: Option<&[(String, String)]>,
     ) -> Result<tokio::process::Child> {
         let input_path_str = input_path.as_ref().to_string_lossy();
         let output_path_str = output_path.as_ref().to_string_lossy();
@@ -74,7 +76,7 @@ impl Encoder for CrfEncoder {
         let mut mode_params = HashMap::new();
         mode_params.insert("crf".to_string(), adaptive_crf.to_string());
 
-        let x265_params = profile.build_x265_params_string_with_hdr(
+        let x265_params = profile.build_x265_params_string_with_external_metadata(
             Some(&mode_params),
             Some(metadata.is_hdr),
             metadata.color_space.as_ref(),
@@ -82,6 +84,7 @@ impl Encoder for CrfEncoder {
             metadata.color_primaries.as_ref(),
             metadata.master_display.as_ref(),
             metadata.max_cll.as_ref(),
+            external_metadata_params,
         );
 
         let mut args = vec!["-i".to_string(), input_path_str.to_string()];
@@ -158,6 +161,7 @@ impl Encoder for AbrEncoder {
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
         file_logger: Option<&crate::utils::logging::FileLogger>,
+        external_metadata_params: Option<&[(String, String)]>,
     ) -> Result<tokio::process::Child> {
         self.run_two_pass_encoding(
             ffmpeg,
@@ -171,6 +175,7 @@ impl Encoder for AbrEncoder {
             adaptive_bitrate,
             custom_title,
             file_logger,
+            external_metadata_params,
             false,
         )
         .await
@@ -192,6 +197,7 @@ impl AbrEncoder {
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
         file_logger: Option<&crate::utils::logging::FileLogger>,
+        external_metadata_params: Option<&[(String, String)]>,
         is_cbr: bool,
     ) -> Result<tokio::process::Child> {
         let input_path_str = input_path.as_ref().to_string_lossy();
@@ -212,6 +218,7 @@ impl AbrEncoder {
                 filters,
                 metadata,
                 adaptive_bitrate,
+                external_metadata_params,
                 &stats_file,
                 is_cbr,
             )
@@ -235,6 +242,7 @@ impl AbrEncoder {
                 adaptive_bitrate,
                 custom_title,
                 file_logger,
+                external_metadata_params,
                 &stats_file,
                 is_cbr,
             )
@@ -253,6 +261,7 @@ impl AbrEncoder {
         filters: &FilterChain,
         metadata: &VideoMetadata,
         adaptive_bitrate: u32,
+        external_metadata_params: Option<&[(String, String)]>,
         stats_file: &str,
         is_cbr: bool,
     ) -> Result<()> {
@@ -270,7 +279,7 @@ impl AbrEncoder {
             mode_params.insert("nal-hrd".to_string(), "cbr".to_string());
         }
 
-        let x265_params = profile.build_x265_params_string_with_hdr(
+        let x265_params = profile.build_x265_params_string_with_external_metadata(
             Some(&mode_params),
             Some(metadata.is_hdr),
             metadata.color_space.as_ref(),
@@ -278,6 +287,7 @@ impl AbrEncoder {
             metadata.color_primaries.as_ref(),
             metadata.master_display.as_ref(),
             metadata.max_cll.as_ref(),
+            external_metadata_params,
         );
 
         let mut args = vec!["-i".to_string(), input_path.to_string()];
@@ -321,6 +331,7 @@ impl AbrEncoder {
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
         file_logger: Option<&crate::utils::logging::FileLogger>,
+        external_metadata_params: Option<&[(String, String)]>,
         stats_file: &str,
         is_cbr: bool,
     ) -> Result<tokio::process::Child> {
@@ -336,7 +347,7 @@ impl AbrEncoder {
             mode_params.insert("nal-hrd".to_string(), "cbr".to_string());
         }
 
-        let x265_params = profile.build_x265_params_string_with_hdr(
+        let x265_params = profile.build_x265_params_string_with_external_metadata(
             Some(&mode_params),
             Some(metadata.is_hdr),
             metadata.color_space.as_ref(),
@@ -344,6 +355,7 @@ impl AbrEncoder {
             metadata.color_primaries.as_ref(),
             metadata.master_display.as_ref(),
             metadata.max_cll.as_ref(),
+            external_metadata_params,
         );
 
         let mut args = vec!["-i".to_string(), input_path.to_string()];
@@ -443,6 +455,7 @@ impl Encoder for CbrEncoder {
         adaptive_bitrate: u32,
         custom_title: Option<&str>,
         file_logger: Option<&crate::utils::logging::FileLogger>,
+        external_metadata_params: Option<&[(String, String)]>,
     ) -> Result<tokio::process::Child> {
         tracing::info!(
             "Starting CBR encoding (constant bitrate={}kbps)",
@@ -462,6 +475,7 @@ impl Encoder for CbrEncoder {
                 adaptive_bitrate,
                 custom_title,
                 file_logger,
+                external_metadata_params,
                 true,
             )
             .await
