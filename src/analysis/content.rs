@@ -25,8 +25,8 @@ impl ContentAnalyzer {
         &self,
         metadata: &crate::utils::ffmpeg::VideoMetadata,
     ) -> Result<ContentClassification> {
-        let bitrate_per_pixel =
-            f64::from(metadata.bitrate.unwrap_or(0)) / (f64::from(metadata.width) * f64::from(metadata.height));
+        let bitrate_per_pixel = f64::from(metadata.bitrate.unwrap_or(0))
+            / (f64::from(metadata.width) * f64::from(metadata.height));
 
         let content_type = if bitrate_per_pixel > 0.02 {
             ContentType::HeavyGrain

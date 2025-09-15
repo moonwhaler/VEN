@@ -21,6 +21,7 @@ pub mod dolby_vision_integration_test;
 pub mod encoding;
 pub mod hdr;
 pub mod hdr10plus;
+pub mod metadata_workflow;
 pub mod progress;
 pub mod stream;
 pub mod utils;
@@ -37,5 +38,6 @@ pub use hdr::{ColorSpace, HdrFormat, HdrManager, HdrMetadata, TransferFunction};
 pub use hdr10plus::{
     Hdr10PlusManager, Hdr10PlusMetadata, Hdr10PlusProcessingResult, Hdr10PlusToolConfig,
 };
+pub use metadata_workflow::{ExtractedMetadata, MetadataWorkflowManager, ToolAvailability};
 pub use stream::preservation::{StreamMapping, StreamPreservation};
 pub use utils::{Error, FfmpegWrapper, Result};

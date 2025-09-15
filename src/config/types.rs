@@ -192,8 +192,8 @@ impl Default for DolbyVisionConfig {
             // Dolby Vision encoding adjustments based on research
             crf_adjustment: 1.0,     // Lower than HDR10's +2.0, use +1.0 for DV
             bitrate_multiplier: 1.8, // Higher than HDR10's 1.3x, use 1.8x for DV
-            vbv_bufsize: 160_000,     // Required for Level 5.1 High Tier DV
-            vbv_maxrate: 160_000,     // Mandatory VBV constraint for DV compliance
+            vbv_bufsize: 160_000,    // Required for Level 5.1 High Tier DV
+            vbv_maxrate: 160_000,    // Mandatory VBV constraint for DV compliance
             profile_specific_adjustments: true,
         }
     }
@@ -203,7 +203,6 @@ impl Default for DolbyVisionConfig {
 pub struct Hdr10PlusConfig {
     /// Enable HDR10+ dynamic metadata processing
     pub enabled: bool,
-
 
     /// Temporary directory for metadata files
     pub temp_dir: Option<String>,
