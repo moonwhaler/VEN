@@ -96,12 +96,15 @@ impl Encoder for CrfEncoder {
         args.extend(stream_mapping.mapping_args.clone());
 
         // Add video encoding settings
-        args.extend(vec![
-            "-c:v".to_string(),
-            "libx265".to_string(),
-            "-x265-params".to_string(),
-            x265_params,
-        ]);
+        args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
+
+        // Add pixel format as separate parameter if specified in profile
+        if let Some(pix_fmt) = profile.get_pixel_format() {
+            args.extend(vec!["-pix_fmt".to_string(), pix_fmt]);
+        }
+
+        // Add x265 parameters
+        args.extend(vec!["-x265-params".to_string(), x265_params]);
 
         // Add metadata and stream-specific settings from stream preservation
         let stream_preservation =
@@ -294,9 +297,14 @@ impl AbrEncoder {
 
         args.extend(filters.build_ffmpeg_args());
 
+        args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
+
+        // Add pixel format as separate parameter if specified in profile
+        if let Some(pix_fmt) = profile.get_pixel_format() {
+            args.extend(vec!["-pix_fmt".to_string(), pix_fmt]);
+        }
+
         args.extend(vec![
-            "-c:v".to_string(),
-            "libx265".to_string(),
             "-x265-params".to_string(),
             x265_params,
             "-an".to_string(),
@@ -367,12 +375,15 @@ impl AbrEncoder {
         args.extend(stream_mapping.mapping_args.clone());
 
         // Add video encoding settings
-        args.extend(vec![
-            "-c:v".to_string(),
-            "libx265".to_string(),
-            "-x265-params".to_string(),
-            x265_params,
-        ]);
+        args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
+
+        // Add pixel format as separate parameter if specified in profile
+        if let Some(pix_fmt) = profile.get_pixel_format() {
+            args.extend(vec!["-pix_fmt".to_string(), pix_fmt]);
+        }
+
+        // Add x265 parameters
+        args.extend(vec!["-x265-params".to_string(), x265_params]);
 
         // Add metadata and stream-specific settings from stream preservation
         let stream_preservation =

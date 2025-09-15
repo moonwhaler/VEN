@@ -65,7 +65,6 @@ impl ProgressMonitor {
                     if Path::new(&progress_file).exists() {
                         if let Ok(content) = tokio::fs::read_to_string(&progress_file).await {
                             if let Some(progress_info) = self.parse_progress_file(&content) {
-                                tracing::debug!("Progress: {:?}", progress_info);
                                 self.update_progress(&progress_info);
                             }
                         }

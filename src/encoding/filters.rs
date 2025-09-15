@@ -115,19 +115,47 @@ impl<'a> FilterBuilder<'a> {
     fn build_deinterlace_filter(&self) -> Result<String> {
         let deinterlace_config = &self.config.filters.deinterlace;
 
-        // Use fallback method (yadif) for simplicity since NNEDI requires weights file
-        let filter = match deinterlace_config.fallback_method.as_str() {
-            "yadif" => "yadif=mode=send_field:parity=auto:deint=interlaced".to_string(),
-            "bwdif" => "bwdif=mode=send_field:parity=auto:deint=interlaced".to_string(),
-            other => {
-                return Err(Error::encoding(format!(
-                    "Unsupported deinterlace method: {}",
-                    other
-                )));
+        // Try to use primary method (NNEDI) if weights file is available
+        let filter = if deinterlace_config.primary_method == "nnedi" {
+            if let Some(weights_path) = &self.config.tools.nnedi_weights {
+                // Check if weights file exists
+                if std::path::Path::new(weights_path).exists() {
+                    let field_mode = &deinterlace_config.nnedi_settings.field;
+                    format!("nnedi=weights={}:field={}", weights_path, field_mode)
+                } else {
+                    // Fall back to fallback method if weights file doesn't exist
+                    tracing::warn!(
+                        "NNEDI weights file not found at: {}, falling back to {}",
+                        weights_path,
+                        deinterlace_config.fallback_method
+                    );
+                    self.build_fallback_deinterlace_filter(&deinterlace_config.fallback_method)?
+                }
+            } else {
+                // Fall back to fallback method if no weights path configured
+                tracing::warn!(
+                    "No NNEDI weights path configured, falling back to {}",
+                    deinterlace_config.fallback_method
+                );
+                self.build_fallback_deinterlace_filter(&deinterlace_config.fallback_method)?
             }
+        } else {
+            // Use the configured primary method (not NNEDI)
+            self.build_fallback_deinterlace_filter(&deinterlace_config.primary_method)?
         };
 
         Ok(filter)
+    }
+
+    fn build_fallback_deinterlace_filter(&self, method: &str) -> Result<String> {
+        match method {
+            "yadif" => Ok("yadif=mode=send_field:parity=auto:deint=interlaced".to_string()),
+            "bwdif" => Ok("bwdif=mode=send_field:parity=auto:deint=interlaced".to_string()),
+            other => Err(Error::encoding(format!(
+                "Unsupported deinterlace method: {}",
+                other
+            ))),
+        }
     }
 
     fn build_denoise_filter(&self) -> String {

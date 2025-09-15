@@ -94,6 +94,11 @@ impl EncodingProfile {
         )
     }
 
+    /// Get the pixel format from the profile x265 parameters
+    pub fn get_pixel_format(&self) -> Option<String> {
+        self.x265_params.get("pix_fmt").cloned()
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn build_x265_params_string_with_hdr(
         &self,
@@ -179,6 +184,9 @@ impl EncodingProfile {
                 params.insert(key.clone(), value.clone());
             }
         }
+
+        // Remove pix_fmt from x265 params as it should be a separate FFmpeg parameter
+        params.remove("pix_fmt");
 
         let param_strs: Vec<String> = params
             .into_iter()
@@ -298,6 +306,9 @@ impl EncodingProfile {
                 params.insert("colormatrix".to_string(), "bt2020nc".to_string());
             }
         }
+
+        // Remove pix_fmt from x265 params as it should be a separate FFmpeg parameter
+        params.remove("pix_fmt");
 
         // Build parameter string
         let param_strs: Vec<String> = params

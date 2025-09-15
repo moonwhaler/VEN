@@ -104,13 +104,15 @@ impl CliArgs {
 }
 
 impl EncodingCommand {
-    pub fn get_log_level(&self) -> &'static str {
+    pub fn get_log_level<'a>(&self, config_level: &'a str) -> &'a str {
+        // CLI flags override config
         if self.debug {
             "debug"
         } else if self.verbose {
             "info"
         } else {
-            "warn"
+            // Use config level if no CLI flags are set
+            config_level
         }
     }
 
@@ -201,14 +203,14 @@ mod tests {
             verbose: false,
             ..Default::default()
         };
-        assert_eq!(cmd.get_log_level(), "debug");
+        assert_eq!(cmd.get_log_level("info"), "debug");
 
         cmd.debug = false;
         cmd.verbose = true;
-        assert_eq!(cmd.get_log_level(), "info");
+        assert_eq!(cmd.get_log_level("error"), "info");
 
         cmd.verbose = false;
-        assert_eq!(cmd.get_log_level(), "warn");
+        assert_eq!(cmd.get_log_level("trace"), "trace");
     }
 }
 

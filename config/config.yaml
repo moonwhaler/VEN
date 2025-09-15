@@ -21,7 +21,7 @@ tools:
 
 # Logging Configuration
 logging:
-  level: "info"  # trace, debug, info, warn, error
+  level: "debug"  # trace, debug, info, warn, error
   show_timestamps: true
   colored_output: true
 
@@ -82,7 +82,7 @@ filters:
     primary_method: "nnedi"
     fallback_method: "yadif"
     nnedi_settings:
-      field: "auto"
+      field: "af"
   
   denoise:
     filter: "hqdn3d"

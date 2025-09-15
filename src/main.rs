@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
     let config = Config::load(&args.config)?;
 
     setup_logging(
-        args.get_log_level(),
+        args.get_log_level(&config.logging.level),
         config.logging.show_timestamps,
         config.logging.colored_output && args.should_use_color(),
     )?;

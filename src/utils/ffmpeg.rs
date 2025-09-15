@@ -123,6 +123,10 @@ impl FfmpegWrapper {
         let mut cmd_args = vec!["-y".to_string()];
         cmd_args.extend(args);
 
+        // Log the complete FFmpeg command for debugging
+        let full_command = format!("{} {}", self.ffmpeg_path, cmd_args.join(" "));
+        tracing::debug!("Executing FFmpeg command: {}", full_command);
+
         let mut command = TokioCommand::new(&self.ffmpeg_path);
         command
             .args(&cmd_args)
