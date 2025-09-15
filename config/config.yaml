@@ -21,7 +21,7 @@ tools:
 
 # Logging Configuration
 logging:
-  level: "debug"  # trace, debug, info, warn, error
+  level: "info"  # trace, debug, info, warn, error
   show_timestamps: true
   colored_output: true
 
@@ -33,7 +33,7 @@ progress:
 analysis:
   crop_detection:
     enabled: true
-    sample_count: 10 # Number of evenly distributed sample points across video duration 
+    sample_count: 3 # Number of evenly distributed sample points across video duration 
     sdr_crop_limit: 24 # Crop detection threshold for SDR content
     hdr_crop_limit: 64 # Crop detection threshold for HDR content  
     min_pixel_change_percent: 2.0  # Only apply crops that remove >n% of pixels
