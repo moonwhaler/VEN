@@ -26,14 +26,20 @@ impl ProgressMonitor {
 
         // Adjust progress bar template for two-pass encoding
         let template = if is_two_pass {
-            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {percent:>3}% (Pass 2/2) | {msg}"
+            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {percent_precise:>5}% (Pass 2/2) | {msg}"
         } else {
-            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {percent:>3}% | {msg}"
+            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {percent_precise:>5}% | {msg}"
         };
 
         progress_bar.set_style(
             ProgressStyle::with_template(template)
                 .unwrap()
+                .with_key(
+                    "percent_precise",
+                    |state: &indicatif::ProgressState, w: &mut dyn std::fmt::Write| {
+                        _ = write!(w, "{:>4.1}", state.fraction() * 100.0);
+                    },
+                )
                 .progress_chars("█▉▊▋▌▍▎▏ "),
         );
 
