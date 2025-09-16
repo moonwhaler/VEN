@@ -172,22 +172,28 @@ impl EnhancedProgressTracker {
         // Enhanced progress bar template with detailed status information
         let template = if show_eta && show_file_size {
             format!(
-                "{}: [{{bar:40.cyan/blue}}] {{pos:>5.2}}% | ETA: {{msg}}",
+                "{}: [{{bar:40.cyan/blue}}] {{percent_precise:>5}}% | ETA: {{msg}}",
                 description
             )
         } else if show_eta {
             format!(
-                "{}: [{{bar:40.cyan/blue}}] {{pos:>5.2}}% | {{msg}}",
+                "{}: [{{bar:40.cyan/blue}}] {{percent_precise:>5}}% | {{msg}}",
                 description
             )
         } else {
-            format!("{}: [{{bar:40.cyan/blue}}] {{pos:>5.2}}%", description)
+            format!("{}: [{{bar:40.cyan/blue}}] {{percent_precise:>5}}%", description)
         };
 
         bar.set_style(
             ProgressStyle::default_bar()
                 .template(&template)
                 .unwrap()
+                .with_key(
+                    "percent_precise",
+                    |state: &indicatif::ProgressState, w: &mut dyn std::fmt::Write| {
+                        _ = write!(w, "{:>4.1}", state.fraction() * 100.0);
+                    },
+                )
                 .progress_chars("█▉▊▋▌▍▎▏ "), // More detailed progress chars
         );
 
