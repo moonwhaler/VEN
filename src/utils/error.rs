@@ -34,8 +34,6 @@ pub enum Error {
     #[error("Validation error: {message}")]
     Validation { message: String },
 
-    #[error("Hardware acceleration error: {message}")]
-    Hardware { message: String },
 
     #[error("Dolby Vision error: {0}")]
     DolbyVision(String),
@@ -84,11 +82,6 @@ impl Error {
         }
     }
 
-    pub fn hardware<T: Into<String>>(message: T) -> Self {
-        Self::Hardware {
-            message: message.into(),
-        }
-    }
 
     pub fn dolby_vision<T: Into<String>>(message: T) -> Self {
         Self::DolbyVision(message.into())

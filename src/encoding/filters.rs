@@ -264,13 +264,13 @@ mod tests {
     #[test]
     fn test_filter_chain_with_filters() {
         let mut chain = FilterChain::new();
-        chain.add_filter("scale=1920:1080".to_string());
+        chain.add_filter("crop=1920:800:0:140".to_string());
         chain.add_filter("hqdn3d=1:1:2:2".to_string());
 
         assert!(!chain.is_empty());
         assert_eq!(
             chain.build_ffmpeg_args(),
-            vec!["-vf", "scale=1920:1080,hqdn3d=1:1:2:2"]
+            vec!["-vf", "crop=1920:800:0:140,hqdn3d=1:1:2:2"]
         );
     }
 
