@@ -9,13 +9,12 @@ This document provides comprehensive technical information for developers and Cl
 **Target**: Professional video encoding with intelligent content analysis  
 
 ### Recent Major Changes
-- ✅ **Hardware acceleration removed** - Simplified to software-only processing
-- ✅ **Web search functionality removed** - No external dependencies for content classification
-- ✅ **Content adaptation removed** - Direct profile control without automatic modifications
-- ✅ **Complexity analysis removed** - Streamlined content analysis pipeline
-- ✅ **Video scaling removed** - Preserves original video resolution
-- ✅ **Content classification simplified** - Basic bitrate-per-pixel heuristics only
-- ✅ **FFprobe optimized** - Reduced analysis time from 30+ seconds to ~0.2 seconds
+- ✅ **Unified Content Analysis**: Replaced disparate analysis modules with `UnifiedContentManager` for integrated SDR, HDR, Dolby Vision, and HDR10+ detection.
+- ✅ **Dolby Vision Integration**: Added full support for Dolby Vision metadata preservation and profile-specific encoding adjustments.
+- ✅ **HDR10+ Support**: Integrated HDR10+ dynamic metadata extraction.
+- ✅ **Advanced Parameter Adjustment**: Content analysis now drives dynamic adjustments to CRF, bitrate, and VBV settings based on content type.
+- ✅ **Simplified Core Logic**: Removed legacy features like hardware acceleration and external content classification to focus on high-quality software encoding.
+- ✅ **FFprobe Optimized**: Maintained optimized FFprobe settings for fast initial analysis.
 
 ## 🏗️ Codebase Architecture
 
@@ -31,14 +30,18 @@ src/
 │   ├── loader.rs          # YAML config loading and validation
 │   ├── types.rs           # Configuration type definitions
 │   └── profiles.rs        # Encoding profile management
+├── content_manager.rs     # Unified content analysis orchestrator
+├── dolby_vision/           # Dolby Vision detection and analysis
+├── hdr10plus/              # HDR10+ metadata extraction
+├── hdr/                    # HDR analysis and management
 ├── encoding/               # Core encoding logic
 │   ├── modes.rs           # CRF/ABR/CBR implementations
 │   ├── filters.rs         # Video filter pipeline (crop, denoise, deinterlace)
 │   └── options.rs         # Encoding options validation
 ├── analysis/               # Video analysis modules
 │   ├── video.rs           # Basic video metadata analysis
-│   ├── content.rs         # Content type classification
-│   └── crop.rs            # Intelligent crop detection
+│   ├── crop.rs           # Crop detection analysis
+│   └── content.rs         # Content type classification
 ├── stream/                 # Stream preservation
 │   └── preservation.rs    # Audio/subtitle/chapter/metadata handling
 ├── utils/                  # Utilities and helpers
@@ -163,46 +166,44 @@ pub trait Encoder {
 }
 ```
 
-### 4. Video Analysis (`src/analysis/`)
+### 4. Unified Content Analysis (`src/content_manager.rs`)
 
-#### Crop Detection (`crop.rs`)
-- **Multi-temporal sampling** (default: 3 sample points across video duration)
-- **HDR/SDR-specific thresholds** (SDR: 24, HDR: 64)
-- **Validation logic** to prevent false positives
-- **Letterbox detection** with pixel-level analysis
+The `UnifiedContentManager` is the core of the intelligent analysis system, orchestrating the detection of SDR, HDR, Dolby Vision, and HDR10+ content.
+
+**Key Responsibilities**:
+- **Coordinate Analysis**: Sequentially runs HDR, Dolby Vision, and HDR10+ detectors.
+- **Determine Encoding Approach**: Selects the best encoding strategy based on a priority system (e.g., DV + HDR10+ > DV > HDR10+ > HDR > SDR).
+- **Calculate Adjustments**: Computes dynamic adjustments for CRF, bitrate, and VBV settings based on the detected content.
 
 ```rust
-pub struct CropDetector {
-    pub config: CropDetectionConfig,
+pub struct UnifiedContentManager {
+    hdr_manager: HdrManager,
+    dv_detector: Option<DolbyVisionDetector>,
+    hdr10plus_manager: Option<Hdr10PlusManager>,
 }
 
-pub struct CropAnalysisResult {
-    pub crop_values: Option<String>,          // "width:height:x:y" format
-    pub sample_timestamps: Vec<f64>,          // Temporal sample points
-    pub detection_method: String,             // Analysis method used
-    pub confidence_score: f32,                // Detection confidence
+pub struct ContentAnalysisResult {
+    pub hdr_analysis: HdrAnalysisResult,
+    pub dolby_vision: DolbyVisionInfo,
+    pub hdr10_plus: Option<Hdr10PlusProcessingResult>,
+    pub recommended_approach: ContentEncodingApproach,
+    pub encoding_adjustments: EncodingAdjustments,
 }
 ```
 
-#### HDR Detection (`analysis/video.rs` via `ffmpeg.rs`)
-- **Color space detection**: bt2020, rec2020 patterns
-- **Transfer function analysis**: smpte2084, arib-std-b67 patterns  
-- **Automatic CRF adjustment**: +2.0 CRF for HDR content
-- **Bitrate scaling**: Uses `hdr_bitrate` profile values
+#### Dolby Vision Support (`src/dolby_vision/`)
+- **Profile Detection**: Identifies Dolby Vision profiles (5, 7, 8.1, 8.2, 8.4).
+- **RPU Preservation**: Ensures RPU data is correctly handled.
+- **Profile-Specific Adjustments**: Applies different CRF ranges and complexity multipliers for each DV profile, ensuring compliance and quality.
+- **VBV Constraints**: Automatically enforces VBV buffer/maxrate for DV content.
 
-#### Content Classification (`content.rs`)
-**Simple Heuristic Approach**:
-```rust
-let bitrate_per_pixel = bitrate / (width * height);
+#### HDR10+ Support (`src/hdr10plus/`)
+- **Metadata Extraction**: Uses external tools to extract HDR10+ dynamic metadata.
+- **Dual-Format Handling**: Manages content that contains both Dolby Vision and HDR10+.
 
-let content_type = if bitrate_per_pixel > 0.02 {
-    ContentType::HeavyGrain
-} else if bitrate_per_pixel > 0.015 {
-    ContentType::LightGrain  
-} else {
-    ContentType::Film
-};
-```
+#### Legacy Analysis (`src/analysis/`)
+- **Automatic Crop Detection**: The intelligent crop detector remains a key part of the analysis pipeline, but manual override has been removed.
+- **Content Classification**: The simple bitrate-per-pixel heuristic is still used for automatic profile selection when `-p auto` is specified.
 
 ### 5. Stream Preservation (`src/stream/preservation.rs`)
 
@@ -366,23 +367,21 @@ profiles:
 3. **Configuration options** in `AnalysisConfig`
 4. **Logging and reporting** in analysis results
 
-## 🚫 Removed Features (Legacy References)
+## 🚫 Evolved and Deprecated Features
 
-### Previously Removed Components
-These features were removed to simplify the codebase and improve reliability:
+### Feature Evolution
+Many features previously listed as "removed" have evolved into more sophisticated systems:
 
-- **Hardware Acceleration** (`--hardware`, CUDA encoding, GPU denoising)
-- **Web Search Integration** (external content classification APIs)
-- **Content Adaptation System** (automatic CRF/bitrate modification based on content type)
-- **Complexity Analysis** (advanced scene complexity detection)
-- **Video Scaling** (`--scale` option, resolution modification)
-- **Advanced Content Classification** (grain/motion/scene-change thresholds)
+- **Content Adaptation**: Replaced by the `UnifiedContentManager`, which provides much more advanced, content-aware parameter adjustments for HDR, DV, and HDR10+.
+- **Complexity Analysis**: The core concept is now integrated into the `UnifiedContentManager`'s encoding adjustments, which consider content complexity implicitly.
+- **Advanced Content Classification**: Superseded by the direct detection of advanced formats like Dolby Vision and HDR10+.
 
-### Migration Notes
-- **Hardware encoding users**: Tool now focuses on software encoding with x265
-- **Content adaptation users**: Use appropriate profiles directly instead
-- **Scaling users**: Handle resolution changes in pre-processing or post-processing
-- **Web search users**: Tool now uses local technical analysis only
+### Deprecated Features
+These features have been fully removed to streamline the tool:
+
+- **Hardware Acceleration**: The tool is now focused exclusively on high-quality software encoding with x265.
+- **Web Search Integration**: All content analysis is performed locally.
+- **Video Scaling**: The tool is designed to preserve the original resolution.
 
 ## 🛠️ Build and Development
 
@@ -472,6 +471,18 @@ analysis:
       - "smpte2084"
       - "arib-std-b67"
     crf_adjustment: 2.0               # CRF adjustment for HDR content
+
+  dolby_vision:
+    enabled: true
+    crf_adjustment: 1.0
+    bitrate_multiplier: 1.8
+    vbv_bufsize: 160000
+    vbv_maxrate: 160000
+    profile_specific_adjustments: true
+
+  hdr10_plus:
+    enabled: true
+    temp_dir: "/tmp/hdr10plus"
 
 filters:
   deinterlace:

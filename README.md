@@ -11,10 +11,13 @@ A professional Rust-based video encoding tool built around FFmpeg and x265, desi
 - **Stream preservation** - losslessly preserves all audio, subtitle, data streams, chapters, and metadata
 
 ### Intelligent Video Analysis
-- **Automatic crop detection** with multi-temporal sampling and HDR/SDR-specific thresholds
-- **HDR content detection** with automatic parameter adjustment for HDR10 content
-- **Content classification** for optimal profile selection
-- **Comprehensive metadata extraction** with optimized FFprobe settings
+- **Unified Content Analysis**: Automatically detects SDR, HDR10, HDR10+, and Dolby Vision to apply optimal encoding parameters.
+- **Dolby Vision Support**: Preserves Dolby Vision metadata (Profiles 5, 7, 8.1, 8.2, 8.4) with profile-specific CRF and VBV adjustments.
+- **HDR10+ Support**: Extracts and preserves HDR10+ dynamic metadata.
+- **Dual Format Handling**: Special conservative settings for content with both Dolby Vision and HDR10+.
+- **Automatic crop detection** with multi-temporal sampling and HDR/SDR-specific thresholds.
+- **Content classification** for optimal profile selection.
+- **Comprehensive metadata extraction** with optimized FFprobe settings.
 
 ### Professional Profiles
 11 content-specific encoding profiles:
@@ -68,9 +71,6 @@ The binary will be created at `target/release/ffmpeg-encoder`.
 
 ### Advanced Options
 ```bash
-# Manual crop with denoising
-./ffmpeg-encoder -i input.mkv -p movie --crop 1920:800:0:140 --denoise
-
 # CBR encoding for streaming
 ./ffmpeg-encoder -i input.mkv -p movie -m cbr
 
@@ -92,7 +92,6 @@ The binary will be created at `target/release/ffmpeg-encoder`.
 ### Processing Options  
 - `--denoise` - Enable video denoising (hqdn3d filter)
 - `--deinterlace` - Enable NNEDI3/yadif deinterlacing
-- `--crop <W:H:X:Y>` - Manual crop values (overrides auto-detection)
 
 ### Utility Commands
 - `--list-profiles` - Show all available encoding profiles
@@ -140,6 +139,18 @@ analysis:
     color_space_patterns: ["bt2020", "rec2020"]
     transfer_patterns: ["smpte2084", "arib-std-b67"] 
     crf_adjustment: 2.0          # CRF increase for HDR content
+
+  dolby_vision:
+    enabled: true
+    crf_adjustment: 1.0
+    bitrate_multiplier: 1.8
+    vbv_bufsize: 160000
+    vbv_maxrate: 160000
+    profile_specific_adjustments: true
+
+  hdr10_plus:
+    enabled: true
+    temp_dir: "/tmp/hdr10plus"
 ```
 
 ### Processing Filters
@@ -203,9 +214,6 @@ profiles:
 # Legacy content with full restoration
 ./ffmpeg-encoder -i old_tv_show.avi --deinterlace --denoise -p classic_anime
 
-# Manual crop with custom settings
-./ffmpeg-encoder -i letterbox_movie.mkv --crop 1920:800:0:140 -p movie
-
 # Streaming-optimized CBR encoding
 ./ffmpeg-encoder -i content.mkv -p movie -m cbr
 ```
@@ -238,7 +246,10 @@ Real-time progress display showing:
 - **CLI Interface** (`src/cli/`) - Clap-based command parsing with validation
 - **Configuration** (`src/config/`) - Type-safe YAML configuration management
 - **Encoding Modes** (`src/encoding/`) - CRF/ABR/CBR implementations with multi-pass support
+- **Content Management** (`src/content_manager.rs`) - Unified analysis for SDR, HDR, Dolby Vision, and HDR10+.
 - **Video Analysis** (`src/analysis/`) - Crop detection, HDR detection, content classification
+- **Dolby Vision** (`src/dolby_vision/`) - Dolby Vision detection and metadata handling.
+- **HDR10+** (`src/hdr10plus/`) - HDR10+ metadata extraction and processing.
 - **Stream Processing** (`src/stream/`) - Lossless stream preservation and metadata handling
 - **Utilities** (`src/utils/`) - FFmpeg wrapper, progress monitoring, error handling
 
