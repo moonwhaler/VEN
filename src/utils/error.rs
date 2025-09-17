@@ -34,6 +34,8 @@ pub enum Error {
     #[error("Validation error: {message}")]
     Validation { message: String },
 
+    #[error("Tool error: {0}")]
+    Tool(String),
 
     #[error("Dolby Vision error: {0}")]
     DolbyVision(String),
@@ -85,5 +87,9 @@ impl Error {
 
     pub fn dolby_vision<T: Into<String>>(message: T) -> Self {
         Self::DolbyVision(message.into())
+    }
+
+    pub fn tool<T: Into<String>>(message: T) -> Self {
+        Self::Tool(message.into())
     }
 }

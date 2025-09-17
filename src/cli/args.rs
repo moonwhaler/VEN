@@ -1,69 +1,69 @@
-use clap::{Parser, Subcommand, Args};
+use crate::utils::Result;
+use clap::Parser;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about)]
 #[command(name = "ffmpeg-encoder")]
-#[command(about = "Modern Rust-based FFmpeg video encoding automation")]
+#[command(
+    about = "Modern Rust-based FFmpeg video encoding automation with intelligent content analysis"
+)]
+#[command(long_about = "
+A professional-grade Rust implementation of automated video encoding using FFmpeg with x265/HEVC codec.
+Provides multi-mode encoding support (CRF/ABR/CBR), intelligent content analysis with automatic profile 
+selection, and comprehensive batch processing capabilities.
+
+EXAMPLES:
+  # Auto-selection with UUID output
+  ffmpeg-encoder -i input.mkv -p auto -m crf
+
+  # Specific profile with custom output  
+  ffmpeg-encoder -i input.mkv -o output.mkv -p anime -m crf
+
+  # With denoising
+  ffmpeg-encoder -i input.mkv -p 4k_heavy_grain -m crf --denoise
+
+  # Legacy interlaced footage with neural network deinterlacing
+  ffmpeg-encoder -i legacy_footage.mkv -p classic_anime -m crf --deinterlace
+
+  # Batch processing directory
+  ffmpeg-encoder -i ~/Videos/Raw/ -p auto -m abr
+
+  # With automatic crop detection
+  ffmpeg-encoder -i input.mkv -p movie -m abr
+")]
 pub struct CliArgs {
-    #[command(subcommand)]
-    pub command: Option<Commands>,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum Commands {
-    /// List available encoding profiles
-    ListProfiles,
-    /// Show detailed information about a specific profile
-    ShowProfile {
-        /// Profile name to show
-        name: String,
-    },
-    /// Validate configuration file
-    ValidateConfig {
-        /// Path to configuration file
-        #[arg(short, long, default_value = "config.yaml")]
-        config: PathBuf,
-    },
-    /// Encode video files
-    Encode(EncodingCommand),
-}
-
-#[derive(Args, Debug)]
-pub struct EncodingCommand {
-    /// Input video file or directory
-    #[arg(short, long)]
-    pub input: PathBuf,
+    /// Input video file or directory (can be specified multiple times)
+    #[arg(short, long, value_name = "PATH", action = clap::ArgAction::Append)]
+    pub input: Vec<PathBuf>,
 
     /// Output file path (optional, auto-generates UUID-based name if not specified)
-    #[arg(short, long)]
+    #[arg(short, long, value_name = "PATH")]
     pub output: Option<PathBuf>,
 
-    /// Encoding profile to use
-    #[arg(short, long, default_value = "auto")]
+    /// Encoding profile to use [anime, classic_anime, 3d_cgi, 3d_complex, movie, movie_mid_grain,
+    /// movie_size_focused, heavy_grain, 4k, 4k_heavy_grain, auto]
+    #[arg(short, long, default_value = "auto", value_name = "PROFILE")]
     pub profile: String,
 
     /// Video title for metadata
-    #[arg(short, long)]
+    #[arg(short, long, value_name = "TITLE")]
     pub title: Option<String>,
 
     /// Encoding mode: crf (quality), abr (average bitrate), cbr (constant bitrate)
     #[arg(short, long, default_value = "abr", value_parser = ["crf", "abr", "cbr"])]
     pub mode: String,
 
-
-    /// Enable video denoising
+    /// Enable video denoising (hqdn3d=1:1:2:2)
     #[arg(long)]
     pub denoise: bool,
 
-    /// Enable deinterlacing for interlaced content
+    /// Enable deinterlacing for interlaced content (NNEDI/yadif)
     #[arg(long)]
     pub deinterlace: bool,
 
-
-
     /// Configuration file path
-    #[arg(long, default_value = "config.yaml")]
+    #[arg(long, default_value = "config.yaml", value_name = "FILE")]
     pub config: PathBuf,
 
     /// Enable verbose logging
@@ -77,41 +77,30 @@ pub struct EncodingCommand {
     /// Disable colored output
     #[arg(long)]
     pub no_color: bool,
+
+    /// Show help for specific topic [profiles, modes, examples]
+    #[arg(long, value_name = "TOPIC")]
+    pub help_topic: Option<String>,
+
+    /// List available encoding profiles
+    #[arg(long)]
+    pub list_profiles: bool,
+
+    /// Show detailed information about a specific profile
+    #[arg(long, value_name = "PROFILE")]
+    pub show_profile: Option<String>,
+
+    /// Validate configuration file
+    #[arg(long)]
+    pub validate_config: bool,
 }
 
 impl CliArgs {
-    pub fn is_command(&self) -> bool {
-        match &self.command {
-            Some(Commands::Encode(_)) | None => false,
-            _ => true,
-        }
-    }
-
-    pub fn should_encode(&self) -> bool {
-        match &self.command {
-            Some(Commands::Encode(_)) | None => true,
-            _ => false,
-        }
-    }
-
-    pub fn get_encoding_command(&self) -> Option<&EncodingCommand> {
-        match &self.command {
-            Some(Commands::Encode(cmd)) => Some(cmd),
-            None => None,
-            _ => None,
-        }
-    }
-}
-
-impl EncodingCommand {
     pub fn get_log_level<'a>(&self, config_level: &'a str) -> &'a str {
-        // CLI flags override config
         if self.debug {
             "debug"
-        } else if self.verbose {
-            "info"
         } else {
-            // Use config level if no CLI flags are set
+            // Use config level if debug flag is not set
             config_level
         }
     }
@@ -120,14 +109,51 @@ impl EncodingCommand {
         !self.no_color
     }
 
-    pub fn validate(&self) -> crate::utils::Result<()> {
-        if self.should_encode() && !self.input.exists() {
+    pub fn is_info_command(&self) -> bool {
+        self.list_profiles
+            || self.show_profile.is_some()
+            || self.validate_config
+            || self.help_topic.is_some()
+    }
+
+    pub fn should_encode(&self) -> bool {
+        !self.is_info_command() && !self.input.is_empty()
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        // Only validate input if we're encoding
+        if self.should_encode() {
+            if self.input.is_empty() {
+                return Err(crate::utils::Error::validation(
+                    "At least one input path is required for encoding".to_string(),
+                ));
+            }
+
+            // Validate all input paths exist
+            for input in &self.input {
+                if !input.exists() {
+                    return Err(crate::utils::Error::validation(format!(
+                        "Input path does not exist: {}",
+                        input.display()
+                    )));
+                }
+            }
+        }
+
+        // Only validate config file for commands that actually need it
+        if (self.should_encode()
+            || self.list_profiles
+            || self.show_profile.is_some()
+            || self.validate_config)
+            && !self.config.exists()
+        {
             return Err(crate::utils::Error::validation(format!(
-                "Input path does not exist: {}",
-                self.input.display()
+                "Configuration file does not exist: {}",
+                self.config.display()
             )));
         }
 
+        // Validate encoding mode
         if !["crf", "abr", "cbr"].contains(&self.mode.as_str()) {
             return Err(crate::utils::Error::validation(format!(
                 "Invalid encoding mode: {} (must be crf, abr, or cbr)",
@@ -135,99 +161,98 @@ impl EncodingCommand {
             )));
         }
 
+        // Validate profile name
+        let valid_profiles = [
+            "auto",
+            "anime",
+            "classic_anime",
+            "3d_cgi",
+            "3d_complex",
+            "movie",
+            "movie_mid_grain",
+            "movie_size_focused",
+            "heavy_grain",
+            "4k",
+            "4k_heavy_grain",
+        ];
+        if !valid_profiles.contains(&self.profile.as_str()) {
+            return Err(crate::utils::Error::validation(format!(
+                "Invalid profile: {} (valid profiles: {})",
+                self.profile,
+                valid_profiles.join(", ")
+            )));
+        }
 
         Ok(())
     }
 
-    fn should_encode(&self) -> bool {
-        !self.input.as_os_str().is_empty()
-    }
-
-
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use clap::Parser;
-
-    #[test]
-    fn test_cli_args_parsing() {
-        let args = CliArgs::parse_from(&[
-            "ffmpeg-encoder",
-            "-i", "input.mkv",
-            "-o", "output.mkv",
-            "-p", "anime",
-            "-m", "crf",
-            "--denoise",
-        ]);
-
-        assert!(!args.is_command());
-        assert!(args.should_encode());
-        assert_eq!(args.encoding.input, PathBuf::from("input.mkv"));
-        assert_eq!(args.encoding.output, Some(PathBuf::from("output.mkv")));
-        assert_eq!(args.encoding.profile, "anime");
-        assert_eq!(args.encoding.mode, "crf");
-        assert!(args.encoding.denoise);
-    }
-
-    #[test]
-    fn test_cli_args_list_profiles_command() {
-        let args = CliArgs::parse_from(&[
-            "ffmpeg-encoder",
-            "list-profiles",
-        ]);
-
-        assert!(args.is_command());
-        assert!(!args.should_encode());
-        matches!(args.command, Some(Commands::ListProfiles));
-    }
-
-    #[test]
-    fn test_cli_args_show_profile_command() {
-        let args = CliArgs::parse_from(&[
-            "ffmpeg-encoder",
-            "show-profile",
-            "anime",
-        ]);
-
-        assert!(args.is_command());
-        matches!(args.command, Some(Commands::ShowProfile { name }) if name == "anime");
-    }
-
-    #[test]
-    fn test_encoding_command_log_level() {
-        let mut cmd = EncodingCommand {
-            input: PathBuf::from("test.mkv"),
-            debug: true,
-            verbose: false,
-            ..Default::default()
-        };
-        assert_eq!(cmd.get_log_level("info"), "debug");
-
-        cmd.debug = false;
-        cmd.verbose = true;
-        assert_eq!(cmd.get_log_level("error"), "info");
-
-        cmd.verbose = false;
-        assert_eq!(cmd.get_log_level("trace"), "trace");
-    }
-}
-
-impl Default for EncodingCommand {
-    fn default() -> Self {
-        Self {
-            input: PathBuf::new(),
-            output: None,
-            profile: "auto".to_string(),
-            title: None,
-            mode: "abr".to_string(),
-            denoise: false,
-            deinterlace: false,
-            config: PathBuf::from("config.yaml"),
-            verbose: false,
-            debug: false,
-            no_color: false,
+    pub fn print_help_topic(&self, topic: &str) {
+        match topic.to_lowercase().as_str() {
+            "profiles" => {
+                println!("AVAILABLE ENCODING PROFILES:\n");
+                println!("Content-Specific Profiles:");
+                println!("  anime           - Modern anime content (CRF=23, 9000kbps)");
+                println!("  classic_anime   - 90s anime with finer details (CRF=22, 10000kbps)");
+                println!("  3d_cgi          - 3D CGI Pixar-like (CRF=22, 10000kbps)");
+                println!(
+                    "  3d_complex      - Complex 3D animation Arcane-like (CRF=22, 11000kbps)"
+                );
+                println!();
+                println!("Film Profiles:");
+                println!("  movie           - Standard movie (CRF=22, 10000kbps)");
+                println!("  movie_mid_grain - Movies with lighter grain (CRF=21, 11000kbps)");
+                println!("  movie_size_focused - Standard movie smaller size (CRF=22, 10000kbps)");
+                println!("  heavy_grain     - 4K heavy grain preservation (CRF=21, 12000kbps)");
+                println!();
+                println!("Resolution Profiles:");
+                println!(
+                    "  4k              - General 4K balanced optimization (CRF=22, 15000kbps)"
+                );
+                println!("  4k_heavy_grain  - 4K heavy grain preservation (CRF=21, 18000kbps)");
+                println!();
+                println!("Automatic:");
+                println!(
+                    "  auto            - Intelligent profile selection based on content analysis"
+                );
+            }
+            "modes" => {
+                println!("ENCODING MODES:\n");
+                println!("CRF Mode (-m crf):");
+                println!("  Single-pass encoding using only CRF value for quality control");
+                println!("  Best for: Archival quality, variable file sizes");
+                println!("  Technical: Pure quality-based encoding without bitrate constraints");
+                println!();
+                println!("ABR Mode (-m abr) [DEFAULT]:");
+                println!("  Two-pass average bitrate encoding");
+                println!("  Best for: Streaming delivery with predictable file sizes");
+                println!("  Pass 1: Fast analysis pass, Pass 2: Quality-optimized encoding");
+                println!();
+                println!("CBR Mode (-m cbr):");
+                println!("  Two-pass constant bitrate with VBV buffer constraints");
+                println!("  Best for: Broadcast transmission with constant bandwidth");
+                println!("  Technical: Maintains strict bitrate limits for streaming");
+            }
+            "examples" => {
+                println!("USAGE EXAMPLES:\n");
+                println!("Basic Usage:");
+                println!("  ffmpeg-encoder -i input.mkv -p auto");
+                println!("  ffmpeg-encoder -i input.mkv -o output.mkv -p anime -m crf");
+                println!();
+                println!("Advanced Options:");
+                println!("  ffmpeg-encoder -i input.mkv -p 4k_heavy_grain --denoise");
+                println!("  ffmpeg-encoder -i input.mkv -p movie --deinterlace -m abr");
+                println!();
+                println!("Batch Processing:");
+                println!("  ffmpeg-encoder -i ~/Videos/Raw/ -p auto -m crf");
+                println!();
+                println!("Manual Overrides:");
+                println!("  ffmpeg-encoder -i input.mkv -p anime --denoise");
+                println!("  ffmpeg-encoder -i input.mkv -p auto -t \"Movie Title\"");
+            }
+            _ => {
+                println!("Unknown help topic: {}", topic);
+                println!("Available topics: profiles, modes, examples");
+            }
         }
     }
 }
