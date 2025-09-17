@@ -1,9 +1,8 @@
-use crate::utils::{Error, Result};
+use crate::utils::tool_runner::ToolRunner;
+use crate::utils::Result;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
-use tokio::process::Command as TokioCommand;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Hdr10PlusToolConfig {
@@ -26,42 +25,21 @@ impl Default for Hdr10PlusToolConfig {
 
 /// Wrapper for hdr10plus_tool external binary
 pub struct Hdr10PlusTool {
+    runner: ToolRunner,
     config: Hdr10PlusToolConfig,
 }
 
 impl Hdr10PlusTool {
     pub fn new(config: Hdr10PlusToolConfig) -> Self {
-        Self { config }
+        let runner = ToolRunner::new(config.path.clone(), config.timeout_seconds);
+        Self { runner, config }
     }
 
     /// Check if hdr10plus_tool is available
     pub async fn check_availability(&self) -> Result<bool> {
-        debug!(
-            "Checking hdr10plus_tool availability at: {}",
-            self.config.path
-        );
-
-        let output = TokioCommand::new(&self.config.path)
-            .arg("--help")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .await;
-
-        match output {
-            Ok(result) => {
-                if result.status.success() {
-                    debug!("hdr10plus_tool is available");
-                    Ok(true)
-                } else {
-                    warn!("hdr10plus_tool found but returned error");
-                    Ok(false)
-                }
-            }
-            Err(e) => {
-                debug!("hdr10plus_tool not found: {}", e);
-                Ok(false)
-            }
+        match self.runner.check_availability("--help", "extract").await {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
         }
     }
 
@@ -86,70 +64,14 @@ impl Hdr10PlusTool {
             output_path.to_string(),
         ];
 
-        // Add custom extract arguments if configured
         if let Some(ref custom_args) = self.config.extract_args {
             args.extend_from_slice(custom_args);
         }
 
-        let output = TokioCommand::new(&self.config.path)
-            .args(&args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
+        self.runner
+            .run(&args, Some(output_json.as_ref()))
             .await
-            .map_err(|e| {
-                Error::encoding(format!("Failed to execute hdr10plus_tool extract: {}", e))
-            })?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
-
-            // Log detailed error information
-            error!("hdr10plus_tool extract failed:");
-            error!("Exit code: {}", output.status);
-            error!("Stdout: {}", stdout);
-            error!("Stderr: {}", stderr);
-
-            // Build dynamic error context with tool information
-            let mut error_context = format!("hdr10plus_tool extract failed: {}", stderr);
-
-            // Add contextual information for common errors
-            if stderr.contains("Invalid input file type") {
-                // Try to get tool help for supported formats
-                if let Ok(help_output) = TokioCommand::new(&self.config.path)
-                    .args(["extract", "--help"])
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .output()
-                    .await
-                {
-                    let help_text = String::from_utf8_lossy(&help_output.stdout);
-                    if help_text.contains("HEVC file") {
-                        error_context.push_str(
-                            "\nSupported formats: HEVC files (as indicated by tool help)",
-                        );
-                        error_context
-                            .push_str("\nNote: Container format conversion may be required");
-                    }
-                }
-            }
-
-            return Err(Error::encoding(error_context));
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        debug!("hdr10plus_tool extract output: {}", stdout);
-
-        // Verify the JSON file was created
-        if !output_json.as_ref().exists() {
-            return Err(Error::encoding(
-                "HDR10+ metadata extraction failed - no JSON file created".to_string(),
-            ));
-        }
-
-        info!("Successfully extracted HDR10+ metadata to {}", output_path);
-        Ok(())
+            .map(|_| ())
     }
 
     /// Inject HDR10+ metadata from JSON into video stream
@@ -178,34 +100,14 @@ impl Hdr10PlusTool {
             output_path.to_string(),
         ];
 
-        // Add custom inject arguments if configured
         if let Some(ref custom_args) = self.config.inject_args {
             args.extend_from_slice(custom_args);
         }
 
-        let output = TokioCommand::new(&self.config.path)
-            .args(&args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
+        self.runner
+            .run(&args, Some(output_video.as_ref()))
             .await
-            .map_err(|e| {
-                Error::encoding(format!("Failed to execute hdr10plus_tool inject: {}", e))
-            })?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(Error::encoding(format!(
-                "hdr10plus_tool inject failed: {}",
-                stderr
-            )));
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        debug!("hdr10plus_tool inject output: {}", stdout);
-
-        info!("Successfully injected HDR10+ metadata into {}", output_path);
-        Ok(())
+            .map(|_| ())
     }
 
     /// Remove HDR10+ metadata from video file
@@ -230,26 +132,10 @@ impl Hdr10PlusTool {
             output_path.to_string(),
         ];
 
-        let output = TokioCommand::new(&self.config.path)
-            .args(&args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
+        self.runner
+            .run(&args, Some(output_video.as_ref()))
             .await
-            .map_err(|e| {
-                Error::encoding(format!("Failed to execute hdr10plus_tool remove: {}", e))
-            })?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(Error::encoding(format!(
-                "hdr10plus_tool remove failed: {}",
-                stderr
-            )));
-        }
-
-        info!("Successfully removed HDR10+ metadata from {}", output_path);
-        Ok(())
+            .map(|_| ())
     }
 
     /// Generate a plot of HDR10+ brightness data
@@ -270,26 +156,10 @@ impl Hdr10PlusTool {
             image_path.to_string(),
         ];
 
-        let output = TokioCommand::new(&self.config.path)
-            .args(&args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
+        self.runner
+            .run(&args, Some(output_image.as_ref()))
             .await
-            .map_err(|e| {
-                Error::encoding(format!("Failed to execute hdr10plus_tool plot: {}", e))
-            })?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(Error::encoding(format!(
-                "hdr10plus_tool plot failed: {}",
-                stderr
-            )));
-        }
-
-        info!("Successfully plotted HDR10+ metadata to {}", image_path);
-        Ok(())
+            .map(|_| ())
     }
 
     /// Validate HDR10+ metadata JSON file

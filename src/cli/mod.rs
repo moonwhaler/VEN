@@ -1,5 +1,5 @@
+pub mod args;
 pub mod commands;
-pub mod simple_args;
 
+pub use args::CliArgs;
 pub use commands::handle_commands;
-pub use simple_args::CliArgs;

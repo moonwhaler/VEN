@@ -7,9 +7,10 @@ use ffmpeg_autoencoder::{
     encoding::{modes::Encoder, AbrEncoder, CbrEncoder, CrfEncoder, EncodingMode, FilterBuilder},
     metadata_workflow::MetadataWorkflowManager,
     stream::preservation::StreamPreservation,
+    progress::ProgressMonitor,
     utils::{
         find_video_files, generate_uuid_filename, setup_logging, Error, FfmpegWrapper, FileLogger,
-        ProgressMonitor, Result,
+        Result,
     },
     ContentEncodingApproach, UnifiedContentManager,
 };
@@ -52,7 +53,11 @@ async fn main() -> Result<()> {
     }
 
     // Handle encoding
-    handle_encoding(&args, &config).await
+    if args.should_encode() {
+        handle_encoding(&args, &config).await
+    } else {
+        Ok(())
+    }
 }
 
 async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
