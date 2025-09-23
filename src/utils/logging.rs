@@ -665,9 +665,9 @@ impl FileLogger {
 
         writeln!(writer, "RAW FFMPEG COMMAND:")?;
 
-        // Build the complete command with path and arguments
-        let mut full_command = vec![ffmpeg_path.to_string()];
-        full_command.push("-y".to_string()); // The -y flag is always added by start_encoding
+        // Build the complete command exactly as it will be executed
+        // start_encoding() adds -y at the beginning, so we replicate that here
+        let mut full_command = vec![ffmpeg_path.to_string(), "-y".to_string()];
         full_command.extend_from_slice(args);
 
         // Write as a single line that can be copy-pasted

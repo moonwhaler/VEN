@@ -93,11 +93,19 @@ impl RpuManager {
             )
         })?;
 
-        self.ensure_temp_dir().await?;
+        // Generate RPU file alongside the source video
+        let input_path_ref = input_path.as_ref();
+        let rpu_filename = if let Some(stem) = input_path_ref.file_stem() {
+            format!("{}_rpu_{}.bin", stem.to_string_lossy(), Uuid::new_v4())
+        } else {
+            format!("rpu_{}.bin", Uuid::new_v4())
+        };
 
-        // Generate unique temporary file name
-        let rpu_filename = format!("rpu_{}.bin", Uuid::new_v4());
-        let rpu_path = self.temp_dir.join(rpu_filename);
+        let rpu_path = if let Some(parent) = input_path_ref.parent() {
+            parent.join(rpu_filename)
+        } else {
+            PathBuf::from(rpu_filename)
+        };
 
         info!(
             "Extracting RPU metadata from: {}",

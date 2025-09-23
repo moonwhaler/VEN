@@ -65,11 +65,19 @@ impl Hdr10PlusManager {
             input_path.display()
         );
 
-        // Generate unique filename for metadata
+        // Generate HDR10+ metadata file alongside the source video
+        let input_stem = input_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("video");
         let metadata_id = Uuid::new_v4().to_string();
-        let metadata_file = self
-            .temp_dir
-            .join(format!("hdr10plus_metadata_{}.json", metadata_id));
+        let metadata_filename = format!("{}_hdr10plus_metadata_{}.json", input_stem, metadata_id);
+
+        let metadata_file = if let Some(parent) = input_path.parent() {
+            parent.join(metadata_filename)
+        } else {
+            PathBuf::from(metadata_filename)
+        };
 
         match tool.extract_metadata(input_path, &metadata_file).await {
             Ok(_) => {

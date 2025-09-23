@@ -144,9 +144,7 @@ impl CliArgs {
         // since the loading logic will handle fallbacks appropriately
         if !self.validate_config {
             // Only validate config file for commands that actually need it
-            if (self.should_encode()
-                || self.list_profiles
-                || self.show_profile.is_some())
+            if (self.should_encode() || self.list_profiles || self.show_profile.is_some())
                 && !self.config.exists()
             {
                 let default_paths = [

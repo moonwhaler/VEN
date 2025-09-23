@@ -36,7 +36,11 @@ impl ToolRunner {
         Self { config, timeout }
     }
 
-    pub async fn check_availability(&self, help_arg: &str, expected_subcommand: &str) -> Result<()> {
+    pub async fn check_availability(
+        &self,
+        help_arg: &str,
+        expected_subcommand: &str,
+    ) -> Result<()> {
         debug!("Checking tool availability at: {}", self.config.path);
 
         let output = Command::new(&self.config.path)
@@ -64,11 +68,7 @@ impl ToolRunner {
         Ok(())
     }
 
-    pub async fn run(
-        &self,
-        args: &[String],
-        output_file: Option<&Path>,
-    ) -> Result<String> {
+    pub async fn run(&self, args: &[String], output_file: Option<&Path>) -> Result<String> {
         let mut command = Command::new(&self.config.path);
         command.args(args);
 

@@ -84,7 +84,6 @@ impl Error {
         }
     }
 
-
     pub fn dolby_vision<T: Into<String>>(message: T) -> Self {
         Self::DolbyVision(message.into())
     }

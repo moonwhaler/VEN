@@ -37,7 +37,11 @@ impl DoviTool {
         ];
 
         self.tool
-            .run_with_custom_args(&base_args, &self.tool.config().extract_args, Some(output_rpu))
+            .run_with_custom_args(
+                &base_args,
+                &self.tool.config().extract_args,
+                Some(output_rpu),
+            )
             .await
             .map(|_| ())
     }
@@ -68,7 +72,11 @@ impl DoviTool {
         ];
 
         self.tool
-            .run_with_custom_args(&base_args, &self.tool.config().inject_args, Some(output_path))
+            .run_with_custom_args(
+                &base_args,
+                &self.tool.config().inject_args,
+                Some(output_path),
+            )
             .await
             .map(|_| ())
     }
