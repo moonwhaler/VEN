@@ -5,7 +5,7 @@ pub mod logging;
 pub mod tool_runner;
 
 pub use error::{Error, Result};
-pub use tool_runner::{ToolConfig, ToolRunner};
 pub use ffmpeg::FfmpegWrapper;
 pub use filesystem::{find_video_files, generate_uuid_filename};
 pub use logging::{setup_logging, FileLogger};
+pub use tool_runner::{ToolConfig, ToolRunner};

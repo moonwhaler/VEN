@@ -21,7 +21,15 @@ impl FilterChain {
         if self.filters.is_empty() {
             Vec::new()
         } else {
-            vec!["-vf".to_string(), self.filters.join(",")]
+            // Check if we have crop filter - if so, use filter_complex for better performance
+            let has_crop = self.filters.iter().any(|f| f.starts_with("crop="));
+            if has_crop {
+                // Use filter_complex with explicit input/output mapping for better stream handling
+                let filter_spec = format!("[0:v]{}[v]", self.filters.join(","));
+                vec!["-filter_complex".to_string(), filter_spec]
+            } else {
+                vec!["-vf".to_string(), self.filters.join(",")]
+            }
         }
     }
 
@@ -229,6 +237,7 @@ mod tests {
                 crop_detection: CropDetectionConfig::default(),
                 hdr_detection: HdrDetectionConfig {
                     enabled: true,
+                    passthrough_mode: false,
                     color_space_patterns: vec!["bt2020".to_string()],
                     transfer_patterns: vec!["smpte2084".to_string()],
                     crf_adjustment: 2.0,
@@ -268,9 +277,13 @@ mod tests {
         chain.add_filter("hqdn3d=1:1:2:2".to_string());
 
         assert!(!chain.is_empty());
+        // With crop filter, it should use filter_complex
         assert_eq!(
             chain.build_ffmpeg_args(),
-            vec!["-vf", "crop=1920:800:0:140,hqdn3d=1:1:2:2"]
+            vec![
+                "-filter_complex",
+                "[0:v]crop=1920:800:0:140,hqdn3d=1:1:2:2[v]"
+            ]
         );
     }
 
@@ -311,9 +324,6 @@ mod tests {
         let builder = FilterBuilder::new(&config);
         let filter_result = builder.build_deinterlace_filter();
 
-        // Clean up test file
-        let _ = std::fs::remove_file(weights_path);
-
         assert!(filter_result.is_ok());
         let filter = filter_result.unwrap();
 
@@ -321,6 +331,9 @@ mod tests {
         assert!(filter.contains("nnedi="));
         assert!(filter.contains(&format!("weights={}", weights_path)));
         assert!(filter.contains("field=-1")); // "auto" should map to -1
+
+        // Clean up test file
+        let _ = std::fs::remove_file(weights_path);
     }
 
     #[test]

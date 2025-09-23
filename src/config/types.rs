@@ -119,6 +119,8 @@ impl Default for CropDetectionConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HdrDetectionConfig {
     pub enabled: bool,
+    #[serde(default)]
+    pub passthrough_mode: bool, // Skip x265 HDR metadata injection for passthrough encoding
     pub color_space_patterns: Vec<String>,
     pub transfer_patterns: Vec<String>,
     pub crf_adjustment: f32,

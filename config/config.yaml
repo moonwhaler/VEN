@@ -40,6 +40,7 @@ analysis:
   
   hdr_detection:
     enabled: true
+    passthrough_mode: true            # Copy HDR metadata directly from source without complex processing - true passthrough
     color_space_patterns:
       - "bt2020"
       - "rec2020"
@@ -55,7 +56,7 @@ analysis:
     enabled: true                     # Enable Dolby Vision processing
     preserve_profile_7: true          # Convert Profile 7 to 8.1
     target_profile: "8.1"             # Default target profile (8.1 or 8.2)
-    require_dovi_tool: false          # Fail if dovi_tool missing (graceful fallback)
+    require_dovi_tool: true           # Fail if dovi_tool missing (ensures proper RPU handling)
     temp_dir: "/tmp"                  # RPU temporary storage location
     auto_profile_conversion: true     # Auto convert profiles for compatibility
     fallback_to_hdr10: true          # Fallback to HDR10 if DV processing fails
@@ -231,7 +232,7 @@ profiles:
       bframes: 5
       b-adapt: 2
       ref: 5
-      rc-lookahead: 60
+      rc-lookahead: 40
       ctu: 64
       rd: 4
       rdoq-level: 2
@@ -263,10 +264,10 @@ profiles:
       psy-rdoq: 2.5
       rskip: 2
       rskip-edge-threshold: 2
-      bframes: 6
+      bframes: 5
       b-adapt: 2
-      ref: 6
-      rc-lookahead: 80
+      ref: 5
+      rc-lookahead: 40
       ctu: 64
       rd: 4
       rdoq-level: 2
@@ -277,8 +278,8 @@ profiles:
       keyint: 240
       min-keyint: 24
       me: "hex"
-      subme: 6
-      merange: 57
+      subme: 3
+      merange: 35
 
   anime:
     title: "Anime"
@@ -314,9 +315,9 @@ profiles:
 
   classic_anime:
     title: "Classic 90s Anime with finer details"
-    base_crf: 22
-    base_bitrate: 10000
-    hdr_bitrate: 12000
+    base_crf: 23
+    base_bitrate: 9000
+    hdr_bitrate: 11000
     content_type: "classic_anime"
     x265_params:
       preset: "slow"

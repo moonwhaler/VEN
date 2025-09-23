@@ -120,7 +120,31 @@ impl EncodingProfile {
         master_display: Option<&String>,
         max_cll: Option<&String>,
     ) -> String {
-        self.build_x265_params_string_with_external_metadata(
+        self.build_x265_params_string_with_hdr_passthrough(
+            mode_specific_params,
+            is_hdr,
+            color_space,
+            transfer_function,
+            color_primaries,
+            master_display,
+            max_cll,
+            false, // default to non-passthrough mode for compatibility
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn build_x265_params_string_with_hdr_passthrough(
+        &self,
+        mode_specific_params: Option<&HashMap<String, String>>,
+        is_hdr: Option<bool>,
+        color_space: Option<&String>,
+        transfer_function: Option<&String>,
+        color_primaries: Option<&String>,
+        master_display: Option<&String>,
+        max_cll: Option<&String>,
+        passthrough_mode: bool,
+    ) -> String {
+        self.build_x265_params_string_with_external_metadata_passthrough(
             mode_specific_params,
             is_hdr,
             color_space,
@@ -129,6 +153,7 @@ impl EncodingProfile {
             master_display,
             max_cll,
             None, // No external metadata
+            passthrough_mode,
         )
     }
 
@@ -154,6 +179,9 @@ impl EncodingProfile {
 
         // Inject HDR-specific parameters if HDR content is detected
         if is_hdr.unwrap_or(false) {
+            // Enable HDR10 optimization for better performance
+            params.insert("hdr10_opt".to_string(), "1".to_string());
+
             // Map color_space to colormatrix parameter
             if let Some(cs) = color_space {
                 if cs.contains("bt2020") || cs.contains("rec2020") {
@@ -214,6 +242,96 @@ impl EncodingProfile {
         param_strs.join(":")
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub fn build_x265_params_string_with_external_metadata_passthrough(
+        &self,
+        mode_specific_params: Option<&HashMap<String, String>>,
+        is_hdr: Option<bool>,
+        color_space: Option<&String>,
+        transfer_function: Option<&String>,
+        color_primaries: Option<&String>,
+        master_display: Option<&String>,
+        max_cll: Option<&String>,
+        external_metadata_params: Option<&[(String, String)]>,
+        passthrough_mode: bool,
+    ) -> String {
+        let mut params = self.x265_params.clone();
+
+        if let Some(mode_params) = mode_specific_params {
+            for (key, value) in mode_params {
+                params.insert(key.clone(), value.clone());
+            }
+        }
+
+        // Inject HDR-specific parameters if HDR content is detected
+        if is_hdr.unwrap_or(false) {
+            // Enable HDR10 optimization for better performance
+            params.insert("hdr10_opt".to_string(), "1".to_string());
+
+            // Basic HDR signaling - always include for proper HDR passthrough
+            // Map color_space to colormatrix parameter
+            if let Some(cs) = color_space {
+                if cs.contains("bt2020") || cs.contains("rec2020") {
+                    params.insert("colormatrix".to_string(), "bt2020nc".to_string());
+                }
+            }
+
+            // Map transfer_function to transfer parameter
+            if let Some(tf) = transfer_function {
+                if tf.contains("smpte2084") {
+                    params.insert("transfer".to_string(), "smpte2084".to_string());
+                } else if tf.contains("arib-std-b67") {
+                    params.insert("transfer".to_string(), "arib-std-b67".to_string());
+                }
+            }
+
+            // Map color_primaries to colorprim parameter
+            if let Some(cp) = color_primaries {
+                if cp.contains("bt2020") || cp.contains("rec2020") {
+                    params.insert("colorprim".to_string(), "bt2020".to_string());
+                }
+            }
+
+            // Skip complex HDR metadata in passthrough mode (causes slowdowns)
+            if !passthrough_mode {
+                // Add master-display metadata if available
+                if let Some(md) = master_display {
+                    params.insert("master-display".to_string(), md.clone());
+                }
+
+                // Add max-cll metadata if available
+                if let Some(cll) = max_cll {
+                    params.insert("max-cll".to_string(), format!("{},400", cll));
+                }
+            }
+        }
+
+        // Add external metadata parameters (HDR10+, Dolby Vision, etc.)
+        if let Some(external_params) = external_metadata_params {
+            for (key, value) in external_params {
+                params.insert(key.clone(), value.clone());
+            }
+        }
+
+        // Remove parameters that should be separate FFmpeg parameters, not x265-params
+        params.remove("pix_fmt");
+        params.remove("preset");
+        params.remove("profile");
+
+        let param_strs: Vec<String> = params
+            .into_iter()
+            .map(|(key, value)| {
+                if value.is_empty() || value == "true" {
+                    key
+                } else {
+                    format!("{}={}", key, value)
+                }
+            })
+            .collect();
+
+        param_strs.join(":")
+    }
+
     /// Build x265 parameters with Dolby Vision support
     #[allow(clippy::too_many_arguments)]
     pub fn build_x265_params_string_with_dolby_vision(
@@ -239,6 +357,9 @@ impl EncodingProfile {
 
         // Add HDR parameters if HDR content is detected
         if is_hdr.unwrap_or(false) {
+            // Enable HDR10 optimization for better performance
+            params.insert("hdr10_opt".to_string(), "1".to_string());
+
             // Map color_space to colormatrix parameter
             if let Some(cs) = color_space {
                 if cs.contains("bt2020") || cs.contains("rec2020") {

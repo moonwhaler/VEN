@@ -487,18 +487,23 @@ impl MetadataWorkflowManager {
             .is_some_and(|dv| dv.extracted_successfully && self.tools_available.dovi_tool)
     }
 
-    /// Generate a temporary output path for post-processing
+    /// Generate a temporary output path for post-processing alongside the source file
     pub fn get_temp_output_path<P: AsRef<Path>>(&self, final_path: P) -> PathBuf {
         let final_path = final_path.as_ref();
-        let mut temp_path = self.temp_dir.clone();
 
         if let Some(filename) = final_path.file_name() {
-            temp_path.push(format!("temp_encode_{}", filename.to_string_lossy()));
+            let temp_filename = format!("temp_encode_{}", filename.to_string_lossy());
+            if let Some(parent) = final_path.parent() {
+                parent.join(temp_filename)
+            } else {
+                PathBuf::from(temp_filename)
+            }
         } else {
-            temp_path.push("temp_encode_output.mkv");
+            final_path
+                .parent()
+                .unwrap_or(Path::new("."))
+                .join("temp_encode_output.mkv")
         }
-
-        temp_path
     }
 
     /// Clean up all temporary files

@@ -8,7 +8,7 @@ use crate::{
     metadata_workflow::MetadataWorkflowManager,
     progress::ProgressMonitor,
     stream::preservation::StreamPreservation,
-    utils::{ffmpeg::VideoMetadata, Error, FileLogger, FfmpegWrapper, Result},
+    utils::{ffmpeg::VideoMetadata, Error, FfmpegWrapper, FileLogger, Result},
     ContentEncodingApproach, UnifiedContentManager,
 };
 use std::path::Path;
@@ -80,11 +80,8 @@ impl<'a> VideoProcessor<'a> {
             content_analysis.recommended_approach,
             ContentEncodingApproach::SDR
         );
-        let x265_params_preview = self.build_x265_params_preview(
-            &selected_profile,
-            &metadata,
-            is_advanced_content,
-        );
+        let x265_params_preview =
+            self.build_x265_params_preview(&selected_profile, &metadata, is_advanced_content);
         self.log_x265_params(&content_analysis, &x265_params_preview, is_advanced_content);
 
         let (crop_values, crop_sample_timestamps, crop_analysis_result) =
@@ -177,7 +174,9 @@ impl<'a> VideoProcessor<'a> {
             self.config.analysis.hdr10_plus.clone(),
             self.config.tools.hdr10plus_tool.clone(),
         );
-        content_manager.analyze_content(self.ffmpeg, self.input_path).await
+        content_manager
+            .analyze_content(self.ffmpeg, self.input_path)
+            .await
     }
 
     async fn initialize_metadata_workflow(&self) -> Result<MetadataWorkflowManager> {
@@ -291,7 +290,7 @@ impl<'a> VideoProcessor<'a> {
         metadata: &VideoMetadata,
         is_advanced_content: bool,
     ) -> String {
-        selected_profile.build_x265_params_string_with_hdr(
+        selected_profile.build_x265_params_string_with_hdr_passthrough(
             None,
             Some(is_advanced_content),
             metadata.color_space.as_ref(),
@@ -299,6 +298,7 @@ impl<'a> VideoProcessor<'a> {
             metadata.color_primaries.as_ref(),
             metadata.master_display.as_ref(),
             metadata.max_cll.as_ref(),
+            self.config.analysis.hdr_detection.passthrough_mode,
         )
     }
 
@@ -311,8 +311,12 @@ impl<'a> VideoProcessor<'a> {
         if is_advanced_content {
             match &content_analysis.recommended_approach {
                 ContentEncodingApproach::HDR(_) => info!("HDR x265 parameters injected:"),
-                ContentEncodingApproach::DolbyVision(_) => info!("Dolby Vision x265 parameters injected:"),
-                ContentEncodingApproach::DolbyVisionWithHDR10Plus(_, _) => info!("Dual format (DV+HDR10+) x265 parameters injected:"),
+                ContentEncodingApproach::DolbyVision(_) => {
+                    info!("Dolby Vision x265 parameters injected:")
+                }
+                ContentEncodingApproach::DolbyVisionWithHDR10Plus(_, _) => {
+                    info!("Dual format (DV+HDR10+) x265 parameters injected:")
+                }
                 _ => {}
             }
             let params: Vec<&str> = x265_params_preview.split(':').collect();
@@ -339,7 +343,11 @@ impl<'a> VideoProcessor<'a> {
         &self,
         is_advanced_content: bool,
         metadata: &VideoMetadata,
-    ) -> Result<(Option<String>, Vec<f64>, Option<crate::analysis::CropAnalysisResult>)> {
+    ) -> Result<(
+        Option<String>,
+        Vec<f64>,
+        Option<crate::analysis::CropAnalysisResult>,
+    )> {
         if self.config.analysis.crop_detection.enabled {
             use crate::analysis::CropDetector;
             let crop_detector = CropDetector::new(self.config.analysis.crop_detection.clone());
@@ -381,7 +389,9 @@ impl<'a> VideoProcessor<'a> {
     }
 
     async fn analyze_streams(&self) -> Result<crate::stream::preservation::StreamMapping> {
-        self.stream_preservation.analyze_streams(self.input_path).await
+        self.stream_preservation
+            .analyze_streams(self.input_path)
+            .await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -472,6 +482,7 @@ impl<'a> VideoProcessor<'a> {
                         self.args.title.as_deref(),
                         Some(file_logger),
                         external_params_ref,
+                        self.config.analysis.hdr_detection.passthrough_mode,
                     )
                     .await
             }
@@ -490,6 +501,7 @@ impl<'a> VideoProcessor<'a> {
                         self.args.title.as_deref(),
                         Some(file_logger),
                         external_params_ref,
+                        self.config.analysis.hdr_detection.passthrough_mode,
                     )
                     .await
             }
@@ -508,6 +520,7 @@ impl<'a> VideoProcessor<'a> {
                         self.args.title.as_deref(),
                         Some(file_logger),
                         external_params_ref,
+                        self.config.analysis.hdr_detection.passthrough_mode,
                     )
                     .await
             }
@@ -532,7 +545,10 @@ impl<'a> VideoProcessor<'a> {
         };
         progress_monitor.set_message(&format!(
             "Encoding {} ({}x{}, {:.1}fps, {} frames)",
-            self.input_path.file_name().unwrap_or_default().to_string_lossy(),
+            self.input_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy(),
             metadata.width,
             metadata.height,
             metadata.fps,

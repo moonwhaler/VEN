@@ -36,10 +36,7 @@ impl Config {
 
     pub fn load_default() -> Result<Self> {
         // Try to load external config.default.yaml first
-        let default_paths = [
-            "config.default.yaml",
-            "./config/config.default.yaml",
-        ];
+        let default_paths = ["config.default.yaml", "./config/config.default.yaml"];
 
         for path in &default_paths {
             if std::path::Path::new(path).exists() {

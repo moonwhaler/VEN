@@ -333,49 +333,49 @@ impl StreamPreservation {
         let mut args = Vec::new();
 
         // Map video stream (first video stream only for encoding)
-        if let Some(video_stream) = streams.iter().find(|s| s.codec_type == "video") {
+        // Note: When using filter_complex, this will be overridden to map [v] instead
+        if streams.iter().any(|s| s.codec_type == "video") {
             args.push("-map".to_string());
-            args.push(format!("0:{}", video_stream.index));
+            args.push("0:v:0".to_string()); // Use type-based mapping for first video stream
         }
 
-        // Map all audio streams with lossless copy
-        for audio_stream in streams.iter().filter(|s| s.codec_type == "audio") {
+        // Map all audio streams with lossless copy using type-based mapping
+        let audio_count = streams.iter().filter(|s| s.codec_type == "audio").count();
+        for i in 0..audio_count {
             args.push("-map".to_string());
-            args.push(format!("0:{}", audio_stream.index));
+            args.push(format!("0:a:{}", i));
         }
 
         // Audio codec settings - lossless copy
-        if streams.iter().any(|s| s.codec_type == "audio") {
+        if audio_count > 0 {
             args.push("-c:a".to_string());
             args.push("copy".to_string());
         }
 
-        // Map all subtitle streams with lossless copy
-        for subtitle_stream in streams.iter().filter(|s| s.codec_type == "subtitle") {
+        // Map all subtitle streams with lossless copy using type-based mapping
+        let subtitle_count = streams
+            .iter()
+            .filter(|s| s.codec_type == "subtitle")
+            .count();
+        for i in 0..subtitle_count {
             args.push("-map".to_string());
-            args.push(format!("0:{}", subtitle_stream.index));
+            args.push(format!("0:s:{}", i));
         }
 
         // Subtitle codec settings - lossless copy
-        if streams.iter().any(|s| s.codec_type == "subtitle") {
+        if subtitle_count > 0 {
             args.push("-c:s".to_string());
             args.push("copy".to_string());
         }
 
-        // Map data/attachment streams (fonts, images, etc.)
-        for data_stream in streams
+        // Map data/attachment streams using type-based mapping
+        let data_count = streams
             .iter()
             .filter(|s| s.codec_type == "data" || s.codec_type == "attachment")
-        {
-            args.push("-map".to_string());
-            args.push(format!("0:{}", data_stream.index));
-        }
+            .count();
 
-        // Data codec settings - lossless copy
-        if streams
-            .iter()
-            .any(|s| s.codec_type == "data" || s.codec_type == "attachment")
-        {
+        if data_count > 0 {
+            // Data codec settings - lossless copy
             args.push("-c:d".to_string());
             args.push("copy".to_string());
             args.push("-c:t".to_string());
@@ -392,11 +392,9 @@ impl StreamPreservation {
     ) -> Vec<String> {
         let mut args = Vec::new();
 
-        // Preserve all existing metadata first
-        for (key, value) in &mapping.metadata {
-            args.push("-metadata".to_string());
-            args.push(format!("{}={}", key, value));
-        }
+        // Use bulk metadata and chapter mapping for better performance
+        args.extend(vec!["-map_metadata".to_string(), "0".to_string()]);
+        args.extend(vec!["-map_chapters".to_string(), "0".to_string()]);
 
         // Override title if provided
         if let Some(title) = custom_title {
@@ -404,89 +402,15 @@ impl StreamPreservation {
             args.push(format!("title={}", title));
         }
 
-        // Preserve stream metadata and dispositions
-        let mut stream_index = 0;
+        // Note: Stream metadata and dispositions are preserved via -map_metadata 0
+        // Only add explicit overrides if needed for specific dispositions
 
-        // Video stream metadata
-        for video_stream in &mapping.video_streams {
-            if let Some(lang) = &video_stream.language {
-                args.push(format!("-metadata:s:v:{}", stream_index));
-                args.push(format!("language={}", lang));
-            }
-            if let Some(title) = &video_stream.title {
-                args.push(format!("-metadata:s:v:{}", stream_index));
-                args.push(format!("title={}", title));
-            }
-
-            // Preserve dispositions
-            if video_stream.disposition.default {
-                args.push(format!("-disposition:v:{}", stream_index));
-                args.push("default".to_string());
-            }
-            if video_stream.disposition.forced {
-                args.push(format!("-disposition:v:{}", stream_index));
-                args.push("forced".to_string());
-            }
-
-            stream_index += 1;
-        }
-
-        // Audio stream metadata
-        stream_index = 0;
-        for audio_stream in &mapping.audio_streams {
-            if let Some(lang) = &audio_stream.language {
-                args.push(format!("-metadata:s:a:{}", stream_index));
-                args.push(format!("language={}", lang));
-            }
-            if let Some(title) = &audio_stream.title {
-                args.push(format!("-metadata:s:a:{}", stream_index));
-                args.push(format!("title={}", title));
-            }
-
-            // Preserve dispositions
+        // Preserve important dispositions that might not be transferred automatically
+        for (audio_index, audio_stream) in mapping.audio_streams.iter().enumerate() {
             if audio_stream.disposition.default {
-                args.push(format!("-disposition:a:{}", stream_index));
+                args.push(format!("-disposition:a:{}", audio_index));
                 args.push("default".to_string());
             }
-            if audio_stream.disposition.original {
-                args.push(format!("-disposition:a:{}", stream_index));
-                args.push("original".to_string());
-            }
-            if audio_stream.disposition.dub {
-                args.push(format!("-disposition:a:{}", stream_index));
-                args.push("dub".to_string());
-            }
-
-            stream_index += 1;
-        }
-
-        // Subtitle stream metadata
-        stream_index = 0;
-        for subtitle_stream in &mapping.subtitle_streams {
-            if let Some(lang) = &subtitle_stream.language {
-                args.push(format!("-metadata:s:s:{}", stream_index));
-                args.push(format!("language={}", lang));
-            }
-            if let Some(title) = &subtitle_stream.title {
-                args.push(format!("-metadata:s:s:{}", stream_index));
-                args.push(format!("title={}", title));
-            }
-
-            // Preserve dispositions
-            if subtitle_stream.disposition.default {
-                args.push(format!("-disposition:s:{}", stream_index));
-                args.push("default".to_string());
-            }
-            if subtitle_stream.disposition.forced {
-                args.push(format!("-disposition:s:{}", stream_index));
-                args.push("forced".to_string());
-            }
-            if subtitle_stream.disposition.hearing_impaired {
-                args.push(format!("-disposition:s:{}", stream_index));
-                args.push("hearing_impaired".to_string());
-            }
-
-            stream_index += 1;
         }
 
         args
@@ -593,8 +517,8 @@ mod tests {
         let mapping_args = preservation.build_mapping_arguments(&streams).unwrap();
 
         assert!(mapping_args.contains(&"-map".to_string()));
-        assert!(mapping_args.contains(&"0:0".to_string()));
-        assert!(mapping_args.contains(&"0:1".to_string()));
+        assert!(mapping_args.contains(&"0:v:0".to_string())); // Type-based video mapping
+        assert!(mapping_args.contains(&"0:a:0".to_string())); // Type-based audio mapping
         assert!(mapping_args.contains(&"-c:a".to_string()));
         assert!(mapping_args.contains(&"copy".to_string()));
     }

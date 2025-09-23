@@ -49,6 +49,7 @@ pub trait Encoder {
         custom_title: Option<&str>,
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
+        hdr_passthrough_mode: bool,
     ) -> Result<tokio::process::Child>;
 }
 
@@ -69,6 +70,7 @@ impl Encoder for CrfEncoder {
         custom_title: Option<&str>,
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
+        hdr_passthrough_mode: bool,
     ) -> Result<tokio::process::Child> {
         let input_path_str = input_path.as_ref().to_string_lossy();
         let output_path_str = output_path.as_ref().to_string_lossy();
@@ -76,7 +78,7 @@ impl Encoder for CrfEncoder {
         let mut mode_params = HashMap::new();
         mode_params.insert("crf".to_string(), adaptive_crf.to_string());
 
-        let x265_params = profile.build_x265_params_string_with_external_metadata(
+        let x265_params = profile.build_x265_params_string_with_external_metadata_passthrough(
             Some(&mode_params),
             Some(metadata.is_hdr),
             metadata.color_space.as_ref(),
@@ -85,15 +87,36 @@ impl Encoder for CrfEncoder {
             metadata.master_display.as_ref(),
             metadata.max_cll.as_ref(),
             external_metadata_params,
+            hdr_passthrough_mode,
         );
 
         let mut args = vec!["-i".to_string(), input_path_str.to_string()];
 
+        // Add max muxing queue size to prevent stream sync stalling
+        args.extend(vec![
+            "-max_muxing_queue_size".to_string(),
+            "1024".to_string(),
+        ]);
+
         // Add filter chain
-        args.extend(filters.build_ffmpeg_args());
+        let filter_args = filters.build_ffmpeg_args();
+        let uses_filter_complex = filter_args.contains(&"-filter_complex".to_string());
+        args.extend(filter_args);
 
         // Add comprehensive stream mapping from stream preservation analysis
-        args.extend(stream_mapping.mapping_args.clone());
+        let mut mapping_args = stream_mapping.mapping_args.clone();
+
+        // If using filter_complex, replace the video mapping to use [v] instead of 0:v:0
+        if uses_filter_complex {
+            for i in 0..mapping_args.len() - 1 {
+                if mapping_args[i] == "-map" && mapping_args[i + 1] == "0:v:0" {
+                    mapping_args[i + 1] = "[v]".to_string();
+                    break;
+                }
+            }
+        }
+
+        args.extend(mapping_args);
 
         // Add video encoding settings
         args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
@@ -115,6 +138,12 @@ impl Encoder for CrfEncoder {
 
         // Add x265 parameters
         args.extend(vec!["-x265-params".to_string(), x265_params]);
+
+        // Add default mode for subtitle handling
+        args.extend(vec![
+            "-default_mode".to_string(),
+            "infer_no_subs".to_string(),
+        ]);
 
         // Add metadata and stream-specific settings from stream preservation
         let stream_preservation =
@@ -175,6 +204,7 @@ impl Encoder for AbrEncoder {
         custom_title: Option<&str>,
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
+        hdr_passthrough_mode: bool,
     ) -> Result<tokio::process::Child> {
         self.run_two_pass_encoding(
             ffmpeg,
@@ -190,6 +220,7 @@ impl Encoder for AbrEncoder {
             file_logger,
             external_metadata_params,
             false,
+            hdr_passthrough_mode,
         )
         .await
     }
@@ -212,6 +243,7 @@ impl AbrEncoder {
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
         is_cbr: bool,
+        hdr_passthrough_mode: bool,
     ) -> Result<tokio::process::Child> {
         let input_path_str = input_path.as_ref().to_string_lossy();
         let output_path_str = output_path.as_ref().to_string_lossy();
@@ -234,6 +266,7 @@ impl AbrEncoder {
                 external_metadata_params,
                 &stats_file,
                 is_cbr,
+                hdr_passthrough_mode,
             )
             .await;
 
@@ -258,6 +291,7 @@ impl AbrEncoder {
                 external_metadata_params,
                 &stats_file,
                 is_cbr,
+                hdr_passthrough_mode,
             )
             .await;
 
@@ -276,6 +310,7 @@ impl AbrEncoder {
         adaptive_bitrate: u32,
         external_metadata_params: Option<&[(String, String)]>,
         stats_file: &str,
+        hdr_passthrough_mode: bool,
         is_cbr: bool,
     ) -> Result<()> {
         let mut mode_params = HashMap::new();
@@ -292,7 +327,7 @@ impl AbrEncoder {
             mode_params.insert("nal-hrd".to_string(), "cbr".to_string());
         }
 
-        let x265_params = profile.build_x265_params_string_with_external_metadata(
+        let x265_params = profile.build_x265_params_string_with_external_metadata_passthrough(
             Some(&mode_params),
             Some(metadata.is_hdr),
             metadata.color_space.as_ref(),
@@ -301,9 +336,16 @@ impl AbrEncoder {
             metadata.master_display.as_ref(),
             metadata.max_cll.as_ref(),
             external_metadata_params,
+            hdr_passthrough_mode,
         );
 
         let mut args = vec!["-i".to_string(), input_path.to_string()];
+
+        // Add max muxing queue size to prevent stream sync stalling
+        args.extend(vec![
+            "-max_muxing_queue_size".to_string(),
+            "1024".to_string(),
+        ]);
 
         args.extend(filters.build_ffmpeg_args());
 
@@ -351,6 +393,7 @@ impl AbrEncoder {
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
         stats_file: &str,
+        hdr_passthrough_mode: bool,
         is_cbr: bool,
     ) -> Result<tokio::process::Child> {
         let mut mode_params = HashMap::new();
@@ -365,7 +408,7 @@ impl AbrEncoder {
             mode_params.insert("nal-hrd".to_string(), "cbr".to_string());
         }
 
-        let x265_params = profile.build_x265_params_string_with_external_metadata(
+        let x265_params = profile.build_x265_params_string_with_external_metadata_passthrough(
             Some(&mode_params),
             Some(metadata.is_hdr),
             metadata.color_space.as_ref(),
@@ -374,15 +417,36 @@ impl AbrEncoder {
             metadata.master_display.as_ref(),
             metadata.max_cll.as_ref(),
             external_metadata_params,
+            hdr_passthrough_mode,
         );
 
         let mut args = vec!["-i".to_string(), input_path.to_string()];
 
+        // Add max muxing queue size to prevent stream sync stalling
+        args.extend(vec![
+            "-max_muxing_queue_size".to_string(),
+            "1024".to_string(),
+        ]);
+
         // Add filter chain
-        args.extend(filters.build_ffmpeg_args());
+        let filter_args = filters.build_ffmpeg_args();
+        let uses_filter_complex = filter_args.contains(&"-filter_complex".to_string());
+        args.extend(filter_args);
 
         // Add comprehensive stream mapping from stream preservation analysis
-        args.extend(stream_mapping.mapping_args.clone());
+        let mut mapping_args = stream_mapping.mapping_args.clone();
+
+        // If using filter_complex, replace the video mapping to use [v] instead of 0:v:0
+        if uses_filter_complex {
+            for i in 0..mapping_args.len() - 1 {
+                if mapping_args[i] == "-map" && mapping_args[i + 1] == "0:v:0" {
+                    mapping_args[i + 1] = "[v]".to_string();
+                    break;
+                }
+            }
+        }
+
+        args.extend(mapping_args);
 
         // Add video encoding settings
         args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
@@ -404,6 +468,12 @@ impl AbrEncoder {
 
         // Add x265 parameters
         args.extend(vec!["-x265-params".to_string(), x265_params]);
+
+        // Add default mode for subtitle handling
+        args.extend(vec![
+            "-default_mode".to_string(),
+            "infer_no_subs".to_string(),
+        ]);
 
         // Add metadata and stream-specific settings from stream preservation
         let stream_preservation =
@@ -487,6 +557,7 @@ impl Encoder for CbrEncoder {
         custom_title: Option<&str>,
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
+        hdr_passthrough_mode: bool,
     ) -> Result<tokio::process::Child> {
         tracing::info!(
             "Starting CBR encoding (constant bitrate={}kbps)",
@@ -508,6 +579,7 @@ impl Encoder for CbrEncoder {
                 file_logger,
                 external_metadata_params,
                 true,
+                hdr_passthrough_mode,
             )
             .await
     }
