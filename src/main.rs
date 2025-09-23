@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    let config = Config::load(&args.config)?;
+    let config = Config::load_with_fallback(&args.config)?;
 
     setup_logging(
         args.get_log_level(&config.logging.level),

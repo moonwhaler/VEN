@@ -140,17 +140,29 @@ impl CliArgs {
             }
         }
 
-        // Only validate config file for commands that actually need it
-        if (self.should_encode()
-            || self.list_profiles
-            || self.show_profile.is_some()
-            || self.validate_config)
-            && !self.config.exists()
-        {
-            return Err(crate::utils::Error::validation(format!(
-                "Configuration file does not exist: {}",
-                self.config.display()
-            )));
+        // For validate-config command, we don't need to check if files exist
+        // since the loading logic will handle fallbacks appropriately
+        if !self.validate_config {
+            // Only validate config file for commands that actually need it
+            if (self.should_encode()
+                || self.list_profiles
+                || self.show_profile.is_some())
+                && !self.config.exists()
+            {
+                let default_paths = [
+                    std::path::Path::new("config.default.yaml"),
+                    std::path::Path::new("./config/config.default.yaml"),
+                ];
+
+                let has_default = default_paths.iter().any(|p| p.exists());
+
+                if !has_default {
+                    return Err(crate::utils::Error::validation(format!(
+                        "Configuration file does not exist: {} (and no config.default.yaml found)",
+                        self.config.display()
+                    )));
+                }
+            }
         }
 
         // Validate encoding mode
