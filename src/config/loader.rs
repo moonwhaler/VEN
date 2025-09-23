@@ -24,7 +24,10 @@ impl Config {
     }
 
     pub fn load_default() -> Result<Self> {
-        Self::load("config.yaml")
+        let default_config_str = include_str!("../../config/config.default.yaml");
+        let config: Config = serde_yaml::from_str(default_config_str)?;
+        config.validate()?;
+        Ok(config)
     }
 
     fn validate(&self) -> Result<()> {
@@ -67,78 +70,7 @@ impl Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self {
-            app: AppConfig {
-                temp_dir: "/tmp".to_string(),
-                stats_prefix: "ffmpeg_stats".to_string(),
-            },
-            tools: ToolsConfig {
-                ffmpeg: "ffmpeg".to_string(),
-                ffprobe: "ffprobe".to_string(),
-                nnedi_weights: None,
-                dovi_tool: None,
-                hdr10plus_tool: Some(crate::hdr10plus::Hdr10PlusToolConfig::default()),
-            },
-            logging: LoggingConfig {
-                level: "info".to_string(),
-                show_timestamps: true,
-                colored_output: true,
-            },
-            progress: ProgressConfig {
-                update_interval_ms: 1000,
-            },
-            analysis: AnalysisConfig {
-                crop_detection: CropDetectionConfig {
-                    enabled: true,
-                    sample_count: 3,
-                    sdr_crop_limit: 24,
-                    hdr_crop_limit: 64,
-                    min_pixel_change_percent: 1.0,
-                },
-                hdr_detection: HdrDetectionConfig {
-                    enabled: true,
-                    color_space_patterns: vec!["bt2020".to_string(), "rec2020".to_string()],
-                    transfer_patterns: vec!["smpte2084".to_string(), "arib-std-b67".to_string()],
-                    crf_adjustment: 2.0,
-                },
-                hdr: Some(UnifiedHdrConfig::default()),
-                dolby_vision: Some(DolbyVisionConfig::default()),
-                hdr10_plus: Some(crate::config::types::Hdr10PlusConfig::default()),
-            },
-            profiles: {
-                let mut profiles = HashMap::new();
-                let mut x265_params = HashMap::new();
-                x265_params.insert(
-                    "preset".to_string(),
-                    serde_yaml::Value::String("medium".to_string()),
-                );
-                profiles.insert(
-                    "default".to_string(),
-                    RawProfile {
-                        title: "Default Profile".to_string(),
-                        base_crf: 23.0,
-                        base_bitrate: 5000,
-                        hdr_bitrate: 6000,
-                        content_type: "film".to_string(),
-                        x265_params,
-                    },
-                );
-                profiles
-            },
-            filters: FiltersConfig {
-                deinterlace: DeinterlaceConfig {
-                    primary_method: "nnedi".to_string(),
-                    fallback_method: "yadif".to_string(),
-                    nnedi_settings: NnediSettings {
-                        field: "auto".to_string(),
-                    },
-                },
-                denoise: DenoiseConfig {
-                    filter: "hqdn3d".to_string(),
-                    params: "1:1:2:2".to_string(),
-                },
-            },
-        }
+        Self::load_default().expect("Failed to load default configuration")
     }
 }
 

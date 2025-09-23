@@ -22,6 +22,7 @@ pub mod encoding;
 pub mod hdr;
 pub mod hdr10plus;
 pub mod metadata_workflow;
+pub mod processing;
 pub mod progress;
 pub mod stream;
 pub mod utils;

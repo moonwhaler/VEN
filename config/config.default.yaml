@@ -1,0 +1,90 @@
+app:
+  temp_dir: "/tmp"
+  stats_prefix: "ffmpeg_stats"
+
+tools:
+  ffmpeg: "ffmpeg"
+  ffprobe: "ffprobe"
+  nnedi_weights: null
+  dovi_tool: null
+  hdr10plus_tool:
+    path: "hdr10plus_tool"
+    timeout_seconds: 300
+    extract_args: null
+    inject_args: null
+
+logging:
+  level: "info"
+  show_timestamps: true
+  colored_output: true
+
+progress:
+  update_interval_ms: 1000
+
+analysis:
+  crop_detection:
+    enabled: true
+    sample_count: 3
+    sdr_crop_limit: 24
+    hdr_crop_limit: 64
+    min_pixel_change_percent: 1.0
+  hdr_detection:
+    enabled: true
+    color_space_patterns: ["bt2020", "rec2020"]
+    transfer_patterns: ["smpte2084", "arib-std-b67"]
+    crf_adjustment: 2.0
+  hdr:
+    enabled: true
+    auto_detect_format: true
+    preserve_metadata: true
+    fallback_to_sdr: true
+    encoding_optimization: true
+    crf_adjustment: 2.0
+    bitrate_multiplier: 1.5
+    force_10bit: true
+    detection_method: "metadata"
+    tonemap_algorithm: "hable"
+  dolby_vision:
+    enabled: true
+    preserve_profile_7: true
+    target_profile: "8.1"
+    require_dovi_tool: true
+    auto_profile_conversion: true
+    fallback_to_hdr10: true
+    crf_adjustment: 2.0
+    bitrate_multiplier: 1.5
+    vbv_bufsize: 160000
+    vbv_maxrate: 160000
+    profile_specific_adjustments: true
+    rpu_extraction_mode: "lossless"
+    profile_conversion: "none"
+  hdr10_plus:
+    enabled: true
+    require_tool: true
+    fallback_to_hdr10: true
+    crf_adjustment: 2.0
+    bitrate_multiplier: 1.5
+    encoding_complexity: 1.0
+    validate_curves: true
+    metadata_source: "generate"
+    processing_mode: "standard"
+
+profiles:
+  default:
+    title: "Default Profile"
+    base_crf: 23.0
+    base_bitrate: 5000
+    hdr_bitrate: 6000
+    content_type: "film"
+    x265_params:
+      preset: "medium"
+
+filters:
+  deinterlace:
+    primary_method: "nnedi"
+    fallback_method: "yadif"
+    nnedi_settings:
+      field: "auto"
+  denoise:
+    filter: "hqdn3d"
+    params: "1:1:2:2"

@@ -1,27 +1,45 @@
 use crate::utils::{Error, Result};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::time::Duration;
 use tokio::process::Command;
 use tracing::{debug, error};
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ToolConfig {
+    pub path: String,
+    pub timeout_seconds: u64,
+    pub extract_args: Option<Vec<String>>,
+    pub inject_args: Option<Vec<String>>,
+}
+
+impl Default for ToolConfig {
+    fn default() -> Self {
+        Self {
+            path: "tool".to_string(),
+            timeout_seconds: 300,
+            extract_args: None,
+            inject_args: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ToolRunner {
-    tool_path: String,
+    config: ToolConfig,
     timeout: Duration,
 }
 
 impl ToolRunner {
-    pub fn new(tool_path: String, timeout_seconds: u64) -> Self {
-        Self {
-            tool_path,
-            timeout: Duration::from_secs(timeout_seconds),
-        }
+    pub fn new(config: ToolConfig) -> Self {
+        let timeout = Duration::from_secs(config.timeout_seconds);
+        Self { config, timeout }
     }
 
     pub async fn check_availability(&self, help_arg: &str, expected_subcommand: &str) -> Result<()> {
-        debug!("Checking tool availability at: {}", self.tool_path);
+        debug!("Checking tool availability at: {}", self.config.path);
 
-        let output = Command::new(&self.tool_path)
+        let output = Command::new(&self.config.path)
             .arg(help_arg)
             .output()
             .await
@@ -51,10 +69,10 @@ impl ToolRunner {
         args: &[String],
         output_file: Option<&Path>,
     ) -> Result<String> {
-        let mut command = Command::new(&self.tool_path);
+        let mut command = Command::new(&self.config.path);
         command.args(args);
 
-        debug!("Running: {} {}", self.tool_path, args.join(" "));
+        debug!("Running: {} {}", self.config.path, args.join(" "));
 
         let child = command
             .spawn()
@@ -97,5 +115,28 @@ impl ToolRunner {
         debug!("Tool output: {}", stdout);
 
         Ok(stdout)
+    }
+
+    pub async fn run_with_custom_args<P: AsRef<Path>>(
+        &self,
+        base_args: &[String],
+        custom_args: &Option<Vec<String>>,
+        output_path: Option<P>,
+    ) -> Result<String> {
+        let mut args = base_args.to_vec();
+        if let Some(ref custom) = custom_args {
+            args.extend(custom.clone());
+        }
+
+        self.run(&args, output_path.as_ref().map(|p| p.as_ref()))
+            .await
+    }
+
+    pub async fn get_version(&self) -> Result<String> {
+        self.run(&["--version".to_string()], None).await
+    }
+
+    pub fn config(&self) -> &ToolConfig {
+        &self.config
     }
 }

@@ -1,49 +1,27 @@
-use crate::utils::tool_runner::ToolRunner;
-use crate::utils::Result;
-use serde::{Deserialize, Serialize};
+use crate::utils::{Result, ToolConfig, ToolRunner};
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Hdr10PlusToolConfig {
-    pub path: String,
-    pub timeout_seconds: u64,
-    pub extract_args: Option<Vec<String>>,
-    pub inject_args: Option<Vec<String>>,
-}
+pub type Hdr10PlusToolConfig = ToolConfig;
 
-impl Default for Hdr10PlusToolConfig {
-    fn default() -> Self {
-        Self {
-            path: "hdr10plus_tool".to_string(),
-            timeout_seconds: 300, // 5 minutes for processing
-            extract_args: None,
-            inject_args: None,
-        }
-    }
-}
-
-/// Wrapper for hdr10plus_tool external binary
 pub struct Hdr10PlusTool {
-    runner: ToolRunner,
-    config: Hdr10PlusToolConfig,
+    tool: ToolRunner,
 }
 
 impl Hdr10PlusTool {
     pub fn new(config: Hdr10PlusToolConfig) -> Self {
-        let runner = ToolRunner::new(config.path.clone(), config.timeout_seconds);
-        Self { runner, config }
+        Self {
+            tool: ToolRunner::new(config),
+        }
     }
 
-    /// Check if hdr10plus_tool is available
     pub async fn check_availability(&self) -> Result<bool> {
-        match self.runner.check_availability("--help", "extract").await {
+        match self.tool.check_availability("--help", "extract").await {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
         }
     }
 
-    /// Extract HDR10+ metadata from video file to JSON
     pub async fn extract_metadata<P1: AsRef<Path>, P2: AsRef<Path>>(
         &self,
         input_video: P1,
@@ -57,24 +35,23 @@ impl Hdr10PlusTool {
             input_path, output_path
         );
 
-        let mut args = vec![
+        let base_args = vec![
             "extract".to_string(),
             input_path.to_string(),
             "-o".to_string(),
             output_path.to_string(),
         ];
 
-        if let Some(ref custom_args) = self.config.extract_args {
-            args.extend_from_slice(custom_args);
-        }
-
-        self.runner
-            .run(&args, Some(output_json.as_ref()))
+        self.tool
+            .run_with_custom_args(
+                &base_args,
+                &self.tool.config().extract_args,
+                Some(output_json),
+            )
             .await
             .map(|_| ())
     }
 
-    /// Inject HDR10+ metadata from JSON into video stream
     pub async fn inject_metadata<P1: AsRef<Path>, P2: AsRef<Path>, P3: AsRef<Path>>(
         &self,
         input_video: P1,
@@ -90,7 +67,7 @@ impl Hdr10PlusTool {
             input_path, json_path, output_path
         );
 
-        let mut args = vec![
+        let base_args = vec![
             "inject".to_string(),
             "-i".to_string(),
             input_path.to_string(),
@@ -100,17 +77,16 @@ impl Hdr10PlusTool {
             output_path.to_string(),
         ];
 
-        if let Some(ref custom_args) = self.config.inject_args {
-            args.extend_from_slice(custom_args);
-        }
-
-        self.runner
-            .run(&args, Some(output_video.as_ref()))
+        self.tool
+            .run_with_custom_args(
+                &base_args,
+                &self.tool.config().inject_args,
+                Some(output_video),
+            )
             .await
             .map(|_| ())
     }
 
-    /// Remove HDR10+ metadata from video file
     pub async fn remove_metadata<P1: AsRef<Path>, P2: AsRef<Path>>(
         &self,
         input_video: P1,
@@ -132,13 +108,12 @@ impl Hdr10PlusTool {
             output_path.to_string(),
         ];
 
-        self.runner
-            .run(&args, Some(output_video.as_ref()))
+        self.tool
+            .run_with_custom_args(&args, &None, Some(output_video))
             .await
             .map(|_| ())
     }
 
-    /// Generate a plot of HDR10+ brightness data
     pub async fn plot_metadata<P1: AsRef<Path>, P2: AsRef<Path>>(
         &self,
         metadata_json: P1,
@@ -156,25 +131,21 @@ impl Hdr10PlusTool {
             image_path.to_string(),
         ];
 
-        self.runner
-            .run(&args, Some(output_image.as_ref()))
+        self.tool
+            .run_with_custom_args(&args, &None, Some(output_image))
             .await
             .map(|_| ())
     }
 
-    /// Validate HDR10+ metadata JSON file
     pub async fn validate_metadata<P: AsRef<Path>>(&self, metadata_json: P) -> Result<bool> {
         let json_path = metadata_json.as_ref().to_string_lossy();
 
         debug!("Validating HDR10+ metadata: {}", json_path);
 
-        // hdr10plus_tool doesn't have a separate validation command,
-        // but we can try to plot it to verify it's valid
         let temp_plot = PathBuf::from("/tmp/hdr10plus_validation_plot.png");
 
         match self.plot_metadata(&metadata_json, &temp_plot).await {
             Ok(_) => {
-                // Clean up temp file
                 if temp_plot.exists() {
                     let _ = tokio::fs::remove_file(&temp_plot).await;
                 }

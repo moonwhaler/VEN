@@ -302,23 +302,24 @@ mod tests {
     fn test_nnedi_filter_construction() {
         let mut config = create_test_config();
         // Set up NNEDI weights file path for the test
-        config.tools.nnedi_weights = Some("/tmp/test_weights.bin".to_string());
+        let weights_path = "/tmp/test_weights.bin";
+        config.tools.nnedi_weights = Some(weights_path.to_string());
 
         // Create a dummy weights file for the test
-        std::fs::write("/tmp/test_weights.bin", "test").unwrap();
+        std::fs::write(weights_path, "test").unwrap();
 
         let builder = FilterBuilder::new(&config);
         let filter_result = builder.build_deinterlace_filter();
 
         // Clean up test file
-        let _ = std::fs::remove_file("/tmp/test_weights.bin");
+        let _ = std::fs::remove_file(weights_path);
 
         assert!(filter_result.is_ok());
         let filter = filter_result.unwrap();
 
         // Should contain the NNEDI filter with correct field mapping
         assert!(filter.contains("nnedi="));
-        assert!(filter.contains("weights=/tmp/test_weights.bin"));
+        assert!(filter.contains(&format!("weights={}", weights_path)));
         assert!(filter.contains("field=-1")); // "auto" should map to -1
     }
 

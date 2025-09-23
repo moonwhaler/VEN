@@ -65,7 +65,7 @@ mod tests {
     #[test]
     fn test_dovi_tool_configuration() {
         let config = DoviToolConfig::default();
-        assert_eq!(config.path, "dovi_tool");
+        assert_eq!(config.path, "tool");
         assert_eq!(config.timeout_seconds, 300);
 
         let custom_config = DoviToolConfig {
