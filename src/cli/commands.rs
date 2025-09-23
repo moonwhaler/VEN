@@ -120,7 +120,7 @@ async fn show_profile(config: &Config, name: &str) -> Result<()> {
 }
 
 async fn validate_config(config_path: &std::path::Path) -> Result<()> {
-    match Config::load(config_path) {
+    match Config::load_with_fallback(config_path) {
         Ok(config) => {
             println!("✓ Configuration file is valid: {}", config_path.display());
             println!();

@@ -23,7 +23,34 @@ impl Config {
         Ok(config)
     }
 
+    pub fn load_with_fallback<P: AsRef<Path>>(config_path: P) -> Result<Self> {
+        // Try to load the specified config file
+        match Self::load(&config_path) {
+            Ok(config) => Ok(config),
+            Err(_) => {
+                // If the specified config doesn't exist, try default configs
+                Self::load_default()
+            }
+        }
+    }
+
     pub fn load_default() -> Result<Self> {
+        // Try to load external config.default.yaml first
+        let default_paths = [
+            "config.default.yaml",
+            "./config/config.default.yaml",
+        ];
+
+        for path in &default_paths {
+            if std::path::Path::new(path).exists() {
+                match Self::load(path) {
+                    Ok(config) => return Ok(config),
+                    Err(_) => continue, // Try next path or fall back to embedded
+                }
+            }
+        }
+
+        // Fall back to embedded default configuration
         let default_config_str = include_str!("../../config/config.default.yaml");
         let config: Config = serde_yaml::from_str(default_config_str)?;
         config.validate()?;
