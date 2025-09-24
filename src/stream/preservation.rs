@@ -332,6 +332,7 @@ impl StreamPreservation {
     fn build_mapping_arguments(&self, streams: &[StreamInfo]) -> Result<Vec<String>> {
         let mut args = Vec::new();
 
+        // Simple 1:1 mapping: copy everything from input to output
         // Map video stream (first video stream only for encoding)
         // Note: When using filter_complex, this will be overridden to map [v] instead
         if streams.iter().any(|s| s.codec_type == "video") {
@@ -339,48 +340,30 @@ impl StreamPreservation {
             args.push("0:v:0".to_string()); // Use type-based mapping for first video stream
         }
 
-        // Map all audio streams with lossless copy using type-based mapping
-        let audio_count = streams.iter().filter(|s| s.codec_type == "audio").count();
-        for i in 0..audio_count {
-            args.push("-map".to_string());
-            args.push(format!("0:a:{}", i));
-        }
+        // Simple 1:1 copy of all other streams (audio, subtitles, data, attachments)
+        // This is much faster than individual stream analysis
+        args.extend(vec![
+            "-map".to_string(),
+            "0:a".to_string(), // Copy all audio streams
+            "-map".to_string(),
+            "0:s?".to_string(), // Copy all subtitle streams (optional)
+            "-map".to_string(),
+            "0:d?".to_string(), // Copy all data streams (optional)
+            "-map".to_string(),
+            "0:t?".to_string(), // Copy all attachment streams (optional)
+        ]);
 
-        // Audio codec settings - lossless copy
-        if audio_count > 0 {
-            args.push("-c:a".to_string());
-            args.push("copy".to_string());
-        }
-
-        // Map all subtitle streams with lossless copy using type-based mapping
-        let subtitle_count = streams
-            .iter()
-            .filter(|s| s.codec_type == "subtitle")
-            .count();
-        for i in 0..subtitle_count {
-            args.push("-map".to_string());
-            args.push(format!("0:s:{}", i));
-        }
-
-        // Subtitle codec settings - lossless copy
-        if subtitle_count > 0 {
-            args.push("-c:s".to_string());
-            args.push("copy".to_string());
-        }
-
-        // Map data/attachment streams using type-based mapping
-        let data_count = streams
-            .iter()
-            .filter(|s| s.codec_type == "data" || s.codec_type == "attachment")
-            .count();
-
-        if data_count > 0 {
-            // Data codec settings - lossless copy
-            args.push("-c:d".to_string());
-            args.push("copy".to_string());
-            args.push("-c:t".to_string());
-            args.push("copy".to_string());
-        }
+        // Set codecs for 1:1 copy (no transcoding except video)
+        args.extend(vec![
+            "-c:a".to_string(),
+            "copy".to_string(), // Copy audio streams as-is
+            "-c:s".to_string(),
+            "copy".to_string(), // Copy subtitle streams as-is
+            "-c:d".to_string(),
+            "copy".to_string(), // Copy data streams as-is
+            "-c:t".to_string(),
+            "copy".to_string(), // Copy attachment streams as-is
+        ]);
 
         Ok(args)
     }
@@ -518,7 +501,8 @@ mod tests {
 
         assert!(mapping_args.contains(&"-map".to_string()));
         assert!(mapping_args.contains(&"0:v:0".to_string())); // Type-based video mapping
-        assert!(mapping_args.contains(&"0:a:0".to_string())); // Type-based audio mapping
+        assert!(mapping_args.contains(&"0:a".to_string())); // Bulk audio mapping
+        assert!(mapping_args.contains(&"0:s?".to_string())); // Optional subtitle mapping
         assert!(mapping_args.contains(&"-c:a".to_string()));
         assert!(mapping_args.contains(&"copy".to_string()));
     }

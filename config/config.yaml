@@ -62,8 +62,11 @@ analysis:
     fallback_to_hdr10: true          # Fallback to HDR10 if DV processing fails
     crf_adjustment: 1.0               # Lower than HDR10's +2.0 (DV needs conservative encoding)
     bitrate_multiplier: 1.8           # Higher than HDR10's 1.3x (DV requires more bitrate)
-    vbv_bufsize: 160000               # Mandatory VBV buffer size for Level 5.1 High Tier
-    vbv_maxrate: 160000               # Mandatory VBV max rate (required for DV compliance)
+    # Mode-specific VBV settings for optimal performance vs compliance balance
+    vbv_crf_bufsize: 80000            # Relaxed VBV buffer for CRF mode (50% reduction for speed)
+    vbv_crf_maxrate: 60000            # Relaxed VBV max rate for CRF mode (62% reduction for speed)
+    vbv_abr_bufsize: 120000           # Tighter VBV buffer for ABR/CBR modes (25% reduction)
+    vbv_abr_maxrate: 100000           # Tighter VBV max rate for ABR/CBR modes (37% reduction)
     profile_specific_adjustments: true # Different settings per DV profile
 
   hdr10_plus:

@@ -366,7 +366,7 @@ impl MetadataWorkflowManager {
             if dv_meta.extracted_successfully && dv_meta.temp_file.exists() {
                 // Note: x265 has limited built-in DV support, but we store the path for potential future use
                 // The main workflow is: extract -> encode without DV -> inject RPU post-encoding
-                info!(
+                debug!(
                     "Dolby Vision RPU available for post-encoding injection: {}",
                     dv_meta.temp_file.display()
                 );

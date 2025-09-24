@@ -188,11 +188,13 @@ mod tests {
             Some(&rpu_metadata),            // rpu_metadata
         );
 
-        // Verify Dolby Vision parameters are included with proper Level 5.1 High Tier VBV values
+        // Verify Dolby Vision parameters are included
         assert!(params_str.contains("dolby-vision-rpu=/tmp/test.rpu"));
         assert!(params_str.contains("dolby-vision-profile=8.1"));
-        assert!(params_str.contains("vbv-bufsize=160000")); // Updated from 20000 to proper DV values
-        assert!(params_str.contains("vbv-maxrate=160000")); // Updated from 20000 to proper DV values
+        // VBV values are now handled dynamically by UnifiedContentManager based on encoding mode
+        // They should NOT appear in the base x265 params string
+        assert!(!params_str.contains("vbv-bufsize"));
+        assert!(!params_str.contains("vbv-maxrate"));
         assert!(params_str.contains("output-depth=10"));
         assert!(params_str.contains("colorprim=bt2020"));
         assert!(params_str.contains("transfer=smpte2084"));
@@ -381,10 +383,11 @@ pub async fn demo_dolby_vision_workflow() -> Result<(), Box<dyn std::error::Erro
     println!("✓ Final x265 parameters with Dolby Vision support:");
     println!("  {}", final_params);
 
-    // Verify that proper Level 5.1 High Tier VBV constraints are applied
-    assert!(final_params.contains("vbv-bufsize=160000"));
-    assert!(final_params.contains("vbv-maxrate=160000"));
-    println!("✓ Verified Level 5.1 High Tier VBV constraints (160,000 kbps)");
+    // VBV constraints are now handled dynamically by UnifiedContentManager
+    // They should NOT appear in the base x265 params string
+    assert!(!final_params.contains("vbv-bufsize"));
+    assert!(!final_params.contains("vbv-maxrate"));
+    println!("✓ Verified VBV constraints are handled dynamically (not in base params)");
 
     // 9. Processing overhead estimation
     let overhead = rpu_manager.estimate_processing_overhead(&dv_info);

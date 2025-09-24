@@ -157,7 +157,7 @@ impl Encoder for CrfEncoder {
             progress_file,
             "-nostats".to_string(),
             "-stats_period".to_string(),
-            "0.5".to_string(),
+            "1.0".to_string(),
         ]);
 
         // Add container optimization
@@ -167,7 +167,7 @@ impl Encoder for CrfEncoder {
             output_path_str.to_string(),
         ]);
 
-        tracing::info!(
+        tracing::debug!(
             "Starting CRF encoding with CRF={} ({} streams)",
             adaptive_crf,
             stream_mapping.video_streams.len()
@@ -249,7 +249,7 @@ impl AbrEncoder {
         let output_path_str = output_path.as_ref().to_string_lossy();
         let stats_file = format!("/tmp/ffmpeg2pass_{}", uuid::Uuid::new_v4());
 
-        tracing::info!(
+        tracing::debug!(
             "Starting two-pass {} encoding (bitrate={}kbps)",
             if is_cbr { "CBR" } else { "ABR" },
             adaptive_bitrate
@@ -366,7 +366,7 @@ impl AbrEncoder {
             "/dev/null".to_string(),
         ]);
 
-        tracing::info!("Running pass 1/2...");
+        tracing::debug!("Running pass 1/2...");
         let mut child = ffmpeg.start_encoding(input_path, "/dev/null", args).await?;
         let status = child.wait().await?;
 
@@ -487,7 +487,7 @@ impl AbrEncoder {
             progress_file,
             "-nostats".to_string(),
             "-stats_period".to_string(),
-            "0.5".to_string(),
+            "1.0".to_string(),
         ]);
 
         // Add container optimization
@@ -497,7 +497,7 @@ impl AbrEncoder {
             output_path.to_string(),
         ]);
 
-        tracing::info!("Running pass 2/2...");
+        tracing::debug!("Running pass 2/2...");
 
         // Log the raw ffmpeg command to the log file
         if let Some(logger) = file_logger {
@@ -559,7 +559,7 @@ impl Encoder for CbrEncoder {
         external_metadata_params: Option<&[(String, String)]>,
         hdr_passthrough_mode: bool,
     ) -> Result<tokio::process::Child> {
-        tracing::info!(
+        tracing::debug!(
             "Starting CBR encoding (constant bitrate={}kbps)",
             adaptive_bitrate
         );

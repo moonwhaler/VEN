@@ -263,6 +263,9 @@ impl EncodingProfile {
             }
         }
 
+        // Suppress x265's verbose output for cleaner console
+        params.insert("log-level".to_string(), "error".to_string());
+
         // Inject HDR-specific parameters if HDR content is detected
         if is_hdr.unwrap_or(false) {
             // Enable HDR10 optimization for better performance
@@ -355,6 +358,9 @@ impl EncodingProfile {
             }
         }
 
+        // Suppress x265's verbose output for cleaner console
+        params.insert("log-level".to_string(), "error".to_string());
+
         // Add HDR parameters if HDR content is detected
         if is_hdr.unwrap_or(false) {
             // Enable HDR10 optimization for better performance
@@ -420,15 +426,9 @@ impl EncodingProfile {
                     _ => {} // Skip profile 7 and others not directly supported by x265
                 }
 
-                // Ensure mandatory VBV settings for Dolby Vision compliance
-                // Based on "docs/Dolby Vision CRF Requirements.md" - VBV is MANDATORY for DV
-                if !params.contains_key("vbv-bufsize") {
-                    // Use proper Level 5.1 High Tier values (160,000 kbps) instead of 20,000
-                    params.insert("vbv-bufsize".to_string(), "160000".to_string());
-                }
-                if !params.contains_key("vbv-maxrate") {
-                    params.insert("vbv-maxrate".to_string(), "160000".to_string());
-                }
+                // NOTE: VBV settings for Dolby Vision are now handled dynamically
+                // by UnifiedContentManager.get_vbv_settings() based on encoding mode
+                // This ensures optimal performance vs compliance balance
 
                 // Force 10-bit output for Dolby Vision
                 params.insert("output-depth".to_string(), "10".to_string());
