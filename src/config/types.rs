@@ -230,7 +230,6 @@ pub struct Hdr10PlusConfig {
 
     /// Maximum number of scenes for Samsung compatibility
     pub max_scenes: Option<u32>,
-
 }
 
 impl Default for Hdr10PlusConfig {
