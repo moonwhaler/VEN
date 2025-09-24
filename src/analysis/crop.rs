@@ -201,7 +201,7 @@ impl CropDetector {
         let output = Command::new("ffmpeg")
             .args([
                 "-loglevel",
-                "error",        // Only show errors, suppress all warnings/info
+                "info",         // Need info level for cropdetect filter output
                 "-hide_banner", // Hide FFmpeg banner
                 "-ss",
                 &timestamp.to_string(),
