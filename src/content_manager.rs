@@ -5,7 +5,7 @@
 /// in "docs/Dolby Vision CRF Requirements.md"
 use crate::analysis::dolby_vision::{DolbyVisionDetector, DolbyVisionInfo, DolbyVisionProfile};
 use crate::config::UnifiedHdrConfig;
-use crate::config::{DolbyVisionConfig, Hdr10PlusConfig};
+use crate::config::DolbyVisionConfig;
 use crate::hdr::{HdrAnalysisResult, HdrFormat, HdrManager};
 use crate::hdr10plus::{Hdr10PlusManager, Hdr10PlusProcessingResult};
 use crate::utils::{FfmpegWrapper, Result};
@@ -60,14 +60,12 @@ pub struct UnifiedContentManager {
     dv_detector: Option<DolbyVisionDetector>,
     dv_config: Option<DolbyVisionConfig>,
     hdr10plus_manager: Option<Hdr10PlusManager>,
-    _hdr10plus_config: Option<Hdr10PlusConfig>,
 }
 
 impl UnifiedContentManager {
     pub fn new(
         hdr_config: UnifiedHdrConfig,
         dv_config: Option<DolbyVisionConfig>,
-        _hdr10plus_config: Option<Hdr10PlusConfig>,
         hdr10plus_tool_config: Option<crate::hdr10plus::Hdr10PlusToolConfig>,
     ) -> Self {
         let hdr_manager = HdrManager::new(hdr_config);
@@ -76,15 +74,10 @@ impl UnifiedContentManager {
             .filter(|config| config.enabled)
             .map(|config| DolbyVisionDetector::new(config.clone()));
 
-        let hdr10plus_manager = _hdr10plus_config
+        let hdr10plus_manager = hdr10plus_tool_config
             .as_ref()
-            .filter(|config| config.enabled)
-            .map(|config| {
-                let temp_dir = config
-                    .temp_dir
-                    .as_deref()
-                    .map(std::path::PathBuf::from)
-                    .unwrap_or_else(|| std::path::PathBuf::from("/tmp"));
+            .map(|_| {
+                let temp_dir = std::path::PathBuf::from("/tmp");
                 Hdr10PlusManager::new(temp_dir, hdr10plus_tool_config.clone())
             });
 
@@ -93,7 +86,6 @@ impl UnifiedContentManager {
             dv_detector,
             dv_config,
             hdr10plus_manager,
-            _hdr10plus_config,
         }
     }
 

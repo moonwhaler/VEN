@@ -171,7 +171,6 @@ impl<'a> VideoProcessor<'a> {
         let content_manager = UnifiedContentManager::new(
             self.config.analysis.hdr.clone().unwrap_or_default(),
             self.config.analysis.dolby_vision.clone(),
-            self.config.analysis.hdr10_plus.clone(),
             self.config.tools.hdr10plus_tool.clone(),
         );
         content_manager
