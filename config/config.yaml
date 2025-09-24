@@ -33,14 +33,14 @@ progress:
 analysis:
   crop_detection:
     enabled: true
-    sample_count: 3 # Number of evenly distributed sample points across video duration 
+    sample_count: 8 # Number of evenly distributed sample points across video duration
     sdr_crop_limit: 24 # Crop detection threshold for SDR content
     hdr_crop_limit: 64 # Crop detection threshold for HDR content  
     min_pixel_change_percent: 2.0  # Only apply crops that remove >n% of pixels
   
   hdr_detection:
     enabled: true
-    passthrough_mode: true            # Copy HDR metadata directly from source without complex processing - true passthrough
+    passthrough_mode: true
     color_space_patterns:
       - "bt2020"
       - "rec2020"
@@ -60,8 +60,8 @@ analysis:
     temp_dir: "/tmp"                  # RPU temporary storage location
     auto_profile_conversion: true     # Auto convert profiles for compatibility
     fallback_to_hdr10: true          # Fallback to HDR10 if DV processing fails
-    crf_adjustment: 1.0               # Lower than HDR10's +2.0 (DV needs conservative encoding)
-    bitrate_multiplier: 1.8           # Higher than HDR10's 1.3x (DV requires more bitrate)
+    crf_adjustment: 0.0               # Respect profile CRF settings (was 1.0)
+    bitrate_multiplier: 1.2           # Moderate increase for DV (was 1.8 = 80% increase)
     # Mode-specific VBV settings for optimal performance vs compliance balance
     vbv_crf_bufsize: 80000            # Relaxed VBV buffer for CRF mode (50% reduction for speed)
     vbv_crf_maxrate: 60000            # Relaxed VBV max rate for CRF mode (62% reduction for speed)
@@ -75,9 +75,9 @@ analysis:
     fallback_to_hdr10: true          # Fallback to HDR10 if HDR10+ processing fails
     temp_dir: "/tmp"                  # Temporary directory for metadata files
     validate_curves: true             # Validate tone mapping curves
-    crf_adjustment: 2.5               # Higher than HDR10's +2.0 (complexity of dynamic metadata)
-    bitrate_multiplier: 1.4           # 40% bitrate increase for dynamic metadata preservation
-    encoding_complexity: 1.4          # Processing complexity multiplier
+    crf_adjustment: 0.0               # Respect profile CRF settings (was 2.5)
+    bitrate_multiplier: 1.1           # Minimal increase for HDR10+ (was 1.4 = 40% increase)
+    encoding_complexity: 1.1          # Reduced complexity multiplier (was 1.4)
     # max_scenes: 100                 # Optional maximum scenes for Samsung compatibility    
 
 # Video Filter Settings
@@ -129,8 +129,8 @@ profiles:
   movie_mid_grain:
     title: "Movies with lighter grain"
     base_crf: 21
-    base_bitrate: 11000
-    hdr_bitrate: 14000
+    base_bitrate: 10000
+    hdr_bitrate: 12000
     content_type: "film"
     x265_params:
       preset: "slow"

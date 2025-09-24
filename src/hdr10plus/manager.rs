@@ -11,21 +11,22 @@ use uuid::Uuid;
 pub struct Hdr10PlusManager {
     tool: Option<Hdr10PlusTool>,
     temp_dir: PathBuf,
-    _config: Hdr10PlusToolConfig,
+    _tool_config: Hdr10PlusToolConfig,
 }
 
 impl Hdr10PlusManager {
     /// Create a new HDR10+ manager
     pub fn new(temp_dir: PathBuf, tool_config: Option<Hdr10PlusToolConfig>) -> Self {
-        let config = tool_config.unwrap_or_default();
-        let tool = Some(Hdr10PlusTool::new(config.clone()));
+        let tool_cfg = tool_config.unwrap_or_default();
+        let tool = Some(Hdr10PlusTool::new(tool_cfg.clone()));
 
         Self {
             tool,
             temp_dir,
-            _config: config,
+            _tool_config: tool_cfg,
         }
     }
+
 
     /// Check if HDR10+ processing capability is available
     pub async fn check_hdr10plus_capability(&self) -> Result<bool> {
@@ -250,9 +251,8 @@ impl Hdr10PlusManager {
         let hdr10plus_params = self.build_hdr10plus_x265_params(hdr10plus_result)?;
         params.extend(hdr10plus_params);
 
-        // Mandatory VBV constraints for dual format (Level 5.1 High Tier)
-        params.push(("vbv-bufsize".to_string(), "160000".to_string()));
-        params.push(("vbv-maxrate".to_string(), "160000".to_string()));
+        // VBV constraints now come from profile settings only
+        // No hardcoded VBV constraints - profiles control VBV settings
 
         // Ultra-conservative quality settings for dual metadata preservation
         params.push(("crf".to_string(), "16".to_string())); // Very low CRF
