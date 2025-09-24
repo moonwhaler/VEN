@@ -4,8 +4,8 @@
 /// detection, analysis, and parameter adjustments based on the requirements documented
 /// in "docs/Dolby Vision CRF Requirements.md"
 use crate::analysis::dolby_vision::{DolbyVisionDetector, DolbyVisionInfo, DolbyVisionProfile};
-use crate::config::UnifiedHdrConfig;
 use crate::config::DolbyVisionConfig;
+use crate::config::UnifiedHdrConfig;
 use crate::hdr::{HdrAnalysisResult, HdrFormat, HdrManager};
 use crate::hdr10plus::{Hdr10PlusManager, Hdr10PlusProcessingResult};
 use crate::utils::{FfmpegWrapper, Result};
@@ -74,12 +74,10 @@ impl UnifiedContentManager {
             .filter(|config| config.enabled)
             .map(|config| DolbyVisionDetector::new(config.clone()));
 
-        let hdr10plus_manager = hdr10plus_tool_config
-            .as_ref()
-            .map(|_| {
-                let temp_dir = std::path::PathBuf::from("/tmp");
-                Hdr10PlusManager::new(temp_dir, hdr10plus_tool_config.clone())
-            });
+        let hdr10plus_manager = hdr10plus_tool_config.as_ref().map(|_| {
+            let temp_dir = std::path::PathBuf::from("/tmp");
+            Hdr10PlusManager::new(temp_dir, hdr10plus_tool_config.clone())
+        });
 
         Self {
             hdr_manager,
@@ -419,7 +417,7 @@ mod tests {
     #[test]
     fn test_sdr_content_adjustments() {
         let hdr_config = UnifiedHdrConfig::default();
-        let manager = UnifiedContentManager::new(hdr_config, None, None, None);
+        let manager = UnifiedContentManager::new(hdr_config, None, None);
 
         let hdr_analysis = HdrAnalysisResult {
             metadata: HdrMetadata::sdr_default(),
@@ -447,7 +445,7 @@ mod tests {
     fn test_dolby_vision_profile_specific_adjustments() {
         let hdr_config = UnifiedHdrConfig::default();
         let dv_config = DolbyVisionConfig::default();
-        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config.clone()), None, None);
+        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config.clone()), None);
 
         // Test Profile 7 (more conservative)
         let (crf_range_p7, complexity_p7) = manager.get_profile_specific_adjustments(
@@ -476,7 +474,7 @@ mod tests {
     fn test_vbv_constraints_for_dolby_vision() {
         let hdr_config = UnifiedHdrConfig::default();
         let dv_config = DolbyVisionConfig::default();
-        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config), None, None);
+        let manager = UnifiedContentManager::new(hdr_config, Some(dv_config), None);
 
         let dv_info = DolbyVisionInfo {
             profile: DolbyVisionProfile::Profile81,

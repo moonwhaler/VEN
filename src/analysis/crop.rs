@@ -201,7 +201,7 @@ impl CropDetector {
         let output = Command::new("ffmpeg")
             .args([
                 "-loglevel",
-                "error", // Only show errors, suppress all warnings/info
+                "error",        // Only show errors, suppress all warnings/info
                 "-hide_banner", // Hide FFmpeg banner
                 "-ss",
                 &timestamp.to_string(),
@@ -321,6 +321,7 @@ impl CropDetector {
         input_path: &Path,
         crop_values: &CropValues,
         duration: f64,
+        is_hdr: bool,
     ) -> Result<bool> {
         // Additional validation by testing crop at random points
         let validation_points = vec![duration * 0.2, duration * 0.5, duration * 0.8];
@@ -329,7 +330,7 @@ impl CropDetector {
 
         for timestamp in validation_points {
             let result = self
-                .detect_crop_at_timestamp(input_path, timestamp, false)
+                .detect_crop_at_timestamp(input_path, timestamp, is_hdr)
                 .await?;
             validation_results.push(result);
         }

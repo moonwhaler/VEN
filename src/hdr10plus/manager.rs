@@ -27,7 +27,6 @@ impl Hdr10PlusManager {
         }
     }
 
-
     /// Check if HDR10+ processing capability is available
     pub async fn check_hdr10plus_capability(&self) -> Result<bool> {
         if let Some(ref tool) = self.tool {

@@ -325,7 +325,9 @@ impl AbrEncoder {
 
         if is_cbr {
             // Only add automatic VBV if profile doesn't already specify them
-            if !profile.x265_params.contains_key("vbv-bufsize") && !profile.x265_params.contains_key("vbv-maxrate") {
+            if !profile.x265_params.contains_key("vbv-bufsize")
+                && !profile.x265_params.contains_key("vbv-maxrate")
+            {
                 let vbv_bufsize = adaptive_bitrate * 15 / 10;
                 mode_params.insert("vbv-bufsize".to_string(), vbv_bufsize.to_string());
                 mode_params.insert("vbv-maxrate".to_string(), adaptive_bitrate.to_string());
@@ -409,7 +411,9 @@ impl AbrEncoder {
 
         if is_cbr {
             // Only add automatic VBV if profile doesn't already specify them
-            if !profile.x265_params.contains_key("vbv-bufsize") && !profile.x265_params.contains_key("vbv-maxrate") {
+            if !profile.x265_params.contains_key("vbv-bufsize")
+                && !profile.x265_params.contains_key("vbv-maxrate")
+            {
                 let vbv_bufsize = adaptive_bitrate * 15 / 10;
                 mode_params.insert("vbv-bufsize".to_string(), vbv_bufsize.to_string());
                 mode_params.insert("vbv-maxrate".to_string(), adaptive_bitrate.to_string());
