@@ -261,8 +261,8 @@ impl UnifiedContentManager {
                         bitrate_multiplier: config.bitrate_multiplier,
                         encoding_complexity: complexity_multiplier,
                         requires_vbv: true, // MANDATORY for Dolby Vision
-                        vbv_bufsize: Some(config.vbv_bufsize),
-                        vbv_maxrate: Some(config.vbv_maxrate),
+                        vbv_bufsize: None,  // Now handled dynamically by get_vbv_settings()
+                        vbv_maxrate: None,  // Now handled dynamically by get_vbv_settings()
                         recommended_crf_range: crf_range,
                     }
                 } else {
@@ -272,8 +272,8 @@ impl UnifiedContentManager {
                         bitrate_multiplier: 1.8,
                         encoding_complexity: 1.5,
                         requires_vbv: true,
-                        vbv_bufsize: Some(160_000),
-                        vbv_maxrate: Some(160_000),
+                        vbv_bufsize: None, // Now handled dynamically by get_vbv_settings()
+                        vbv_maxrate: None, // Now handled dynamically by get_vbv_settings()
                         recommended_crf_range: (16.0, 20.0), // Conservative DV range
                     }
                 }
@@ -293,8 +293,8 @@ impl UnifiedContentManager {
                         bitrate_multiplier: config.bitrate_multiplier * 1.2, // 20% extra for HDR10+
                         encoding_complexity: dv_complexity * 1.3, // Higher complexity for dual metadata
                         requires_vbv: true,                       // MANDATORY for both formats
-                        vbv_bufsize: Some(config.vbv_bufsize),
-                        vbv_maxrate: Some(config.vbv_maxrate),
+                        vbv_bufsize: None, // Now handled dynamically by get_vbv_settings()
+                        vbv_maxrate: None, // Now handled dynamically by get_vbv_settings()
                         recommended_crf_range: (dv_crf_range.0 - 1.0, dv_crf_range.1 - 0.5), // More conservative range
                     }
                 } else {
@@ -304,8 +304,8 @@ impl UnifiedContentManager {
                         bitrate_multiplier: 2.2,  // High bitrate for dual metadata
                         encoding_complexity: 2.0, // High complexity
                         requires_vbv: true,
-                        vbv_bufsize: Some(160_000),
-                        vbv_maxrate: Some(160_000),
+                        vbv_bufsize: None, // Now handled dynamically by get_vbv_settings()
+                        vbv_maxrate: None, // Now handled dynamically by get_vbv_settings()
                         recommended_crf_range: (15.0, 18.0), // Very conservative range
                     }
                 }
@@ -387,13 +387,32 @@ impl UnifiedContentManager {
         result.encoding_adjustments.requires_vbv
     }
 
-    /// Get VBV settings if required
-    pub fn get_vbv_settings(&self, result: &ContentAnalysisResult) -> Option<(u32, u32)> {
+    /// Get VBV settings if required, mode-specific for optimal performance
+    pub fn get_vbv_settings(
+        &self,
+        result: &ContentAnalysisResult,
+        encoding_mode: &crate::encoding::EncodingMode,
+    ) -> Option<(u32, u32)> {
+        use crate::encoding::EncodingMode;
+
         if result.encoding_adjustments.requires_vbv {
-            Some((
-                result.encoding_adjustments.vbv_bufsize.unwrap_or(160_000),
-                result.encoding_adjustments.vbv_maxrate.unwrap_or(160_000),
-            ))
+            // Use mode-specific VBV settings from config if available
+            if let Some(ref config) = self.dv_config {
+                let (bufsize, maxrate) = match encoding_mode {
+                    EncodingMode::CRF => (config.vbv_crf_bufsize, config.vbv_crf_maxrate),
+                    EncodingMode::ABR | EncodingMode::CBR => {
+                        (config.vbv_abr_bufsize, config.vbv_abr_maxrate)
+                    }
+                };
+                Some((bufsize, maxrate))
+            } else {
+                // Fallback mode-specific defaults
+                let (bufsize, maxrate) = match encoding_mode {
+                    EncodingMode::CRF => (80_000, 60_000), // Relaxed for CRF
+                    EncodingMode::ABR | EncodingMode::CBR => (120_000, 100_000), // Tighter for bitrate modes
+                };
+                Some((bufsize, maxrate))
+            }
         } else {
             None
         }
@@ -485,9 +504,34 @@ mod tests {
             manager.calculate_encoding_adjustments(&approach, &hdr_analysis, &dv_info);
 
         assert!(adjustments.requires_vbv);
-        assert_eq!(adjustments.vbv_bufsize, Some(160_000));
-        assert_eq!(adjustments.vbv_maxrate, Some(160_000));
+        // VBV values are now handled dynamically by get_vbv_settings() based on encoding mode
+        assert_eq!(adjustments.vbv_bufsize, None);
+        assert_eq!(adjustments.vbv_maxrate, None);
         assert_eq!(adjustments.crf_adjustment, 1.0); // Lower than HDR's 2.0
         assert_eq!(adjustments.bitrate_multiplier, 1.8); // Higher than HDR's 1.3
+
+        // Test mode-specific VBV settings
+        use crate::encoding::EncodingMode;
+
+        // Create mock content analysis result
+        let content_result = ContentAnalysisResult {
+            hdr_analysis: hdr_analysis.clone(),
+            dolby_vision: dv_info.clone(),
+            hdr10_plus: None,
+            recommended_approach: approach,
+            encoding_adjustments: adjustments,
+        };
+
+        // Test CRF mode VBV settings (relaxed)
+        let crf_vbv = manager.get_vbv_settings(&content_result, &EncodingMode::CRF);
+        assert_eq!(crf_vbv, Some((80_000, 60_000))); // Relaxed values for CRF
+
+        // Test ABR mode VBV settings (tighter)
+        let abr_vbv = manager.get_vbv_settings(&content_result, &EncodingMode::ABR);
+        assert_eq!(abr_vbv, Some((120_000, 100_000))); // Tighter values for ABR
+
+        // Test CBR mode VBV settings (tighter)
+        let cbr_vbv = manager.get_vbv_settings(&content_result, &EncodingMode::CBR);
+        assert_eq!(cbr_vbv, Some((120_000, 100_000))); // Same as ABR
     }
 }

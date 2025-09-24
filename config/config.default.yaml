@@ -53,8 +53,11 @@ analysis:
     fallback_to_hdr10: true
     crf_adjustment: 2.0
     bitrate_multiplier: 1.5
-    vbv_bufsize: 160000
-    vbv_maxrate: 160000
+    # Mode-specific VBV settings for optimal performance vs compliance balance
+    vbv_crf_bufsize: 80000            # Relaxed VBV buffer for CRF mode (50% reduction for speed)
+    vbv_crf_maxrate: 60000            # Relaxed VBV max rate for CRF mode (62% reduction for speed)
+    vbv_abr_bufsize: 120000           # Tighter VBV buffer for ABR/CBR modes (25% reduction)
+    vbv_abr_maxrate: 100000           # Tighter VBV max rate for ABR/CBR modes (37% reduction)
     profile_specific_adjustments: true
     rpu_extraction_mode: "lossless"
     profile_conversion: "none"

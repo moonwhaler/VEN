@@ -94,7 +94,7 @@ impl ProgressMonitor {
         let progress_file = format!("/tmp/ffmpeg_progress_{}.txt", std::process::id());
 
         // Monitor progress file for encoding updates
-        let mut interval_timer = interval(Duration::from_millis(500));
+        let mut interval_timer = interval(Duration::from_millis(1000));
 
         loop {
             interval_timer.tick().await;

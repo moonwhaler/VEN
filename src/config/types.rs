@@ -175,8 +175,10 @@ pub struct DolbyVisionConfig {
     // NEW: Dolby Vision-specific encoding adjustments
     pub crf_adjustment: f32, // CRF adjustment for DV content (+0.5 to +1.0)
     pub bitrate_multiplier: f32, // Bitrate multiplier for DV (1.5-2.0x)
-    pub vbv_bufsize: u32,    // VBV buffer size (mandatory for DV)
-    pub vbv_maxrate: u32,    // VBV max rate (mandatory for DV)
+    pub vbv_crf_bufsize: u32, // VBV buffer size for CRF mode (relaxed)
+    pub vbv_crf_maxrate: u32, // VBV max rate for CRF mode (relaxed)
+    pub vbv_abr_bufsize: u32, // VBV buffer size for ABR/CBR modes (tighter)
+    pub vbv_abr_maxrate: u32, // VBV max rate for ABR/CBR modes (tighter)
     pub profile_specific_adjustments: bool, // Different settings per profile
 }
 
@@ -194,8 +196,11 @@ impl Default for DolbyVisionConfig {
             // Dolby Vision encoding adjustments based on research
             crf_adjustment: 1.0,     // Lower than HDR10's +2.0, use +1.0 for DV
             bitrate_multiplier: 1.8, // Higher than HDR10's 1.3x, use 1.8x for DV
-            vbv_bufsize: 160_000,    // Required for Level 5.1 High Tier DV
-            vbv_maxrate: 160_000,    // Mandatory VBV constraint for DV compliance
+            // Mode-specific VBV settings for optimal performance vs compliance
+            vbv_crf_bufsize: 80_000,  // Relaxed for CRF mode (50% reduction)
+            vbv_crf_maxrate: 60_000,  // Relaxed for CRF mode (62% reduction)
+            vbv_abr_bufsize: 120_000, // Tighter for ABR/CBR modes (25% reduction)
+            vbv_abr_maxrate: 100_000, // Tighter for ABR/CBR modes (37% reduction)
             profile_specific_adjustments: true,
         }
     }

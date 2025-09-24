@@ -120,7 +120,12 @@ impl FfmpegWrapper {
         _output_path: P,
         args: Vec<String>,
     ) -> Result<Child> {
-        let mut cmd_args = vec!["-y".to_string()];
+        let mut cmd_args = vec![
+            "-y".to_string(),
+            "-loglevel".to_string(),
+            "error".to_string(), // Only show errors, suppress all info/warnings
+            "-hide_banner".to_string(), // Hide FFmpeg banner and build info
+        ];
         cmd_args.extend(args);
 
         // Log the complete FFmpeg command for debugging
@@ -131,8 +136,8 @@ impl FfmpegWrapper {
         command
             .args(&cmd_args)
             .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stdout(Stdio::inherit()) // Allow FFmpeg to write directly to terminal
+            .stderr(Stdio::inherit()); // Allow FFmpeg to write directly to terminal
 
         let child = command.spawn()?;
         Ok(child)
@@ -424,10 +429,14 @@ impl FfmpegWrapper {
     pub async fn run_ffmpeg(&self, args: &[&str]) -> Result<Child> {
         debug!("Running ffmpeg with args: {:?}", args);
 
+        // Prepend loglevel to reduce verbose output
+        let mut cmd_args = vec!["-loglevel", "error", "-hide_banner"];
+        cmd_args.extend(args);
+
         let child = TokioCommand::new(&self.ffmpeg_path)
-            .args(args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .args(&cmd_args)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
             .spawn()?;
 
         Ok(child)

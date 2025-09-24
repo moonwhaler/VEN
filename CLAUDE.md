@@ -524,3 +524,36 @@ This codebase is optimized for Claude Code development with:
 - **Performance optimization** in utils modules
 
 This technical documentation should provide Claude Code users with comprehensive understanding of the codebase architecture, development patterns, and integration points for extending the FFmpeg Autoencoder tool.
+- We still have some overhead info showing... Could we exclude this from the output programmatically? Here: 2025-09-24T14:36:34.869060589+00:00  INFO Starting CRF encoding with CRF=23 (8 streams)
+⠁ [00:00:00] [                                    ]   0.0% | Encoding Arcane - League of Legends - Season 1_t00.mkv (3840x2160, 24.0fps, 55041 frames)[matroska,webm @ 0x5555555f8780] Invalid Block Addition value 0x0 for unknown Block Addition Mapping type 68766345, name ""
+[matroska,webm @ 0x5555555f8780] Could not find codec parameters for stream 3 (Subtitle: hdmv_pgs_subtitle (pgssub)): unspecified size
+Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
+[matroska,webm @ 0x5555555f8780] Could not find codec parameters for stream 4 (Subtitle: hdmv_pgs_subtitle (pgssub)): unspecified size
+Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
+[matroska,webm @ 0x5555555f8780] Could not find codec parameters for stream 5 (Subtitle: hdmv_pgs_subtitle (pgssub)): unspecified size
+Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
+[matroska,webm @ 0x5555555f8780] Could not find codec parameters for stream 6 (Subtitle: hdmv_pgs_subtitle (pgssub)): unspecified size
+Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
+[matroska,webm @ 0x5555555f8780] Could not find codec parameters for stream 7 (Subtitle: hdmv_pgs_subtitle (pgssub)): unspecified size
+Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
+x265 [info]: HEVC encoder version 4.1
+x265 [info]: build info [Linux][GCC 15.1.1][64 bit] 10bit
+x265 [info]: using cpu capabilities: MMX2 SSE2Fast LZCNT SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2
+x265 [warning]: Turning on repeat-headers for HDR compatibility
+x265 [info]: Main 10 profile, Level-5 (Main tier)
+x265 [info]: Thread pool created using 24 threads
+x265 [info]: Slices                              : 1
+x265 [info]: frame threads / pool features       : 4 / wpp(34 rows)
+x265 [info]: Coding QT: max CU size, min CU size : 64 / 8
+x265 [info]: Residual QT: max TU size, max depth : 32 / 1 inter / 1 intra
+x265 [info]: ME / range / subpel / merge         : hex / 35 / 3 / 3
+x265 [info]: Keyframe min / max / scenecut / bias  : 24 / 240 / 40 / 5.00 
+x265 [info]: Lookahead / bframes / badapt        : 40 / 5 / 2
+x265 [info]: b-pyramid / weightp / weightb       : 1 / 1 / 1
+x265 [info]: References / ref-limit  cu / depth  : 5 / on / on
+x265 [info]: AQ: mode / str / qg-size / cu-tree  : 3 / 1.0 / 32 / 1
+x265 [info]: Rate Control / qCompress            : CRF-23.0 / 0.75
+x265 [info]: tools: rect limit-modes rd=4 psy-rd=2.00 rdoq=2 psy-rdoq=2.50
+x265 [info]: tools: rskip mode=2 rskip-edge-threshold=0.02 signhide tmvp
+x265 [info]: tools: strong-intra-smoothing lslices=4 deblock(tC=1:B=1)
+x265 [info]: tools: dhdr10-info
