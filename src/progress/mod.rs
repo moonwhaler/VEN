@@ -12,6 +12,8 @@ pub struct ProgressMonitor {
     is_two_pass: bool,
     last_progress: f64,
     source_fps: f32,
+    last_time: f64,
+    stall_counter: u32,
 }
 
 impl ProgressMonitor {
@@ -58,6 +60,8 @@ impl ProgressMonitor {
             is_two_pass,
             last_progress: 0.0,
             source_fps: fps,
+            last_time: 0.0,
+            stall_counter: 0,
         }
     }
 
@@ -87,6 +91,8 @@ impl ProgressMonitor {
         if self.is_two_pass {
             self.start_time = Instant::now();
             self.last_progress = 0.0; // Reset progress for Pass 2
+            self.last_time = 0.0; // Reset time tracking for Pass 2
+            self.stall_counter = 0; // Reset stall counter for Pass 2
             self.start_pass_two();
         }
 
@@ -144,28 +150,38 @@ impl ProgressMonitor {
 
                     match key {
                         "frame" => {
-                            progress.frame = value.parse().ok();
+                            if value.trim() != "N/A" {
+                                progress.frame = value.parse().ok();
+                            }
                         }
                         "fps" => {
-                            progress.fps = value.parse().ok();
+                            if value.trim() != "N/A" {
+                                progress.fps = value.parse().ok();
+                            }
                         }
                         "out_time_us" => {
-                            if let Ok(time_us) = value.parse::<u64>() {
-                                progress.time = time_us as f64 / 1_000_000.0; // Convert microseconds to seconds
-                                if self.total_duration > 0.0 {
-                                    progress.progress_percentage =
-                                        ((progress.time / self.total_duration) * 100.0).min(100.0)
-                                            as f32;
+                            if value.trim() != "N/A" {
+                                if let Ok(time_us) = value.parse::<u64>() {
+                                    progress.time = time_us as f64 / 1_000_000.0; // Convert microseconds to seconds
+                                    if self.total_duration > 0.0 {
+                                        progress.progress_percentage =
+                                            ((progress.time / self.total_duration) * 100.0).min(100.0)
+                                                as f32;
+                                    }
                                 }
                             }
                         }
                         "speed" => {
-                            // Remove 'x' suffix if present
-                            let speed_str = value.trim_end_matches('x');
-                            progress.speed = speed_str.parse().ok();
+                            if value.trim() != "N/A" {
+                                // Remove 'x' suffix if present
+                                let speed_str = value.trim_end_matches('x');
+                                progress.speed = speed_str.parse().ok();
+                            }
                         }
                         "total_size" => {
-                            progress.total_size = value.parse().ok();
+                            if value.trim() != "N/A" {
+                                progress.total_size = value.parse().ok();
+                            }
                         }
                         _ => {} // Ignore other keys
                     }
@@ -186,10 +202,19 @@ impl ProgressMonitor {
         let mut current_progress = info.progress_percentage as f64 / 100.0;
         let time_based_progress = current_progress;
 
-        // Frame-based progress can be unreliable with deinterlacing/complex filters
-        // Only use frame-based as a fallback if time-based isn't working
+        // Detect time stalls: if time hasn't changed for multiple updates, use frame-based progress
+        let time_stalled = if info.time > 0.0 && (info.time - self.last_time).abs() < 0.1 {
+            self.stall_counter += 1;
+            self.stall_counter > 3 // Consider stalled after 3+ updates with same time
+        } else {
+            self.last_time = info.time;
+            self.stall_counter = 0;
+            false
+        };
+
+        // Use frame-based progress as fallback when time-based fails, shows N/A, or stalls
         let mut frame_based_progress = None;
-        if current_progress <= 0.0 {
+        if current_progress <= 0.0 || info.time <= 0.0 || time_stalled {
             if let (Some(current_frame), Some(total_frames)) = (info.frame, self.total_frames) {
                 if current_frame > 0 && total_frames > 0 {
                     let frame_progress = current_frame as f64 / total_frames as f64;
@@ -205,23 +230,27 @@ impl ProgressMonitor {
         if tracing::enabled!(tracing::Level::DEBUG) && current_progress > 0.01 {
             let debug_msg = if let Some(fb_prog) = frame_based_progress {
                 format!(
-                    "Progress debug: time={:.1}% frame={:.1}% using=frame final={:.1}% last={:.1}%",
+                    "Progress debug: time={:.1}% frame={:.1}% using=frame final={:.1}% last={:.1}% stalled={} counter={}",
                     time_based_progress * 100.0,
                     fb_prog * 100.0,
                     current_progress * 100.0,
-                    self.last_progress * 100.0
+                    self.last_progress * 100.0,
+                    time_stalled,
+                    self.stall_counter
                 )
             } else {
                 format!(
-                    "Progress debug: time={:.1}% using=time final={:.1}% last={:.1}%",
+                    "Progress debug: time={:.1}% using=time final={:.1}% last={:.1}% stalled={} counter={}",
                     time_based_progress * 100.0,
                     current_progress * 100.0,
-                    self.last_progress * 100.0
+                    self.last_progress * 100.0,
+                    time_stalled,
+                    self.stall_counter
                 )
             };
 
             // Only log if progress changes significantly to avoid spam
-            if (current_progress - self.last_progress).abs() > 0.02 {
+            if (current_progress - self.last_progress).abs() > 0.02 || time_stalled {
                 tracing::debug!("{}", debug_msg);
             }
         }
