@@ -1,4 +1,6 @@
+use crate::config::types::{AudioSelectionConfig, StreamSelectionConfig, SubtitleSelectionConfig};
 use crate::utils::{Error, FfmpegWrapper, Result};
+use regex::Regex;
 use serde_json::{from_str, Value};
 use std::path::Path;
 use tracing::{debug, info, warn};
@@ -92,7 +94,7 @@ impl StreamPreservation {
             .cloned()
             .collect();
 
-        // Build mapping arguments
+        // Build mapping arguments (default behavior - copy all streams)
         let mapping_args = self.build_mapping_arguments(&streams)?;
 
         info!(
@@ -100,6 +102,97 @@ impl StreamPreservation {
             video_streams.len(),
             audio_streams.len(),
             subtitle_streams.len(),
+            data_streams.len(),
+            chapters.len()
+        );
+
+        Ok(StreamMapping {
+            video_streams,
+            audio_streams,
+            subtitle_streams,
+            data_streams,
+            chapters,
+            metadata,
+            mapping_args,
+        })
+    }
+
+    pub async fn analyze_streams_with_filtering<P: AsRef<Path>>(
+        &self,
+        input_path: P,
+        stream_config: &StreamSelectionConfig,
+    ) -> Result<StreamMapping> {
+        let input_path = input_path.as_ref();
+
+        info!(
+            "Analyzing stream structure with filtering: {}",
+            input_path.display()
+        );
+
+        // Get comprehensive stream information
+        let streams = self.get_stream_info(input_path).await?;
+        let chapters = self.get_chapter_info(input_path).await?;
+        let metadata = self.get_global_metadata(input_path).await?;
+
+        // Categorize streams
+        let video_streams: Vec<StreamInfo> = streams
+            .iter()
+            .filter(|s| s.codec_type == "video")
+            .cloned()
+            .collect();
+
+        let mut audio_streams: Vec<StreamInfo> = streams
+            .iter()
+            .filter(|s| s.codec_type == "audio")
+            .cloned()
+            .collect();
+
+        let mut subtitle_streams: Vec<StreamInfo> = streams
+            .iter()
+            .filter(|s| s.codec_type == "subtitle")
+            .cloned()
+            .collect();
+
+        let data_streams: Vec<StreamInfo> = streams
+            .iter()
+            .filter(|s| s.codec_type == "data" || s.codec_type == "attachment")
+            .cloned()
+            .collect();
+
+        // Apply stream filtering if enabled
+        if stream_config.enabled {
+            audio_streams = self.filter_audio_streams(audio_streams, &stream_config.audio)?;
+            subtitle_streams =
+                self.filter_subtitle_streams(subtitle_streams, &stream_config.subtitle)?;
+        }
+
+        // Build mapping arguments with filtered streams
+        let filtered_streams: Vec<StreamInfo> = video_streams
+            .iter()
+            .chain(audio_streams.iter())
+            .chain(subtitle_streams.iter())
+            .chain(data_streams.iter())
+            .cloned()
+            .collect();
+
+        let mapping_args = if stream_config.enabled {
+            self.build_filtered_mapping_arguments(
+                &video_streams,
+                &audio_streams,
+                &subtitle_streams,
+                &data_streams,
+            )?
+        } else {
+            self.build_mapping_arguments(&filtered_streams)?
+        };
+
+        info!(
+            "Stream filtering complete: {} video, {} audio (filtered from {}), {} subtitle (filtered from {}), {} data, {} chapters",
+            video_streams.len(),
+            audio_streams.len(),
+            streams.iter().filter(|s| s.codec_type == "audio").count(),
+            subtitle_streams.len(),
+            streams.iter().filter(|s| s.codec_type == "subtitle").count(),
             data_streams.len(),
             chapters.len()
         );
@@ -379,6 +472,267 @@ impl StreamPreservation {
         Ok(args)
     }
 
+    fn build_filtered_mapping_arguments(
+        &self,
+        video_streams: &[StreamInfo],
+        audio_streams: &[StreamInfo],
+        subtitle_streams: &[StreamInfo],
+        data_streams: &[StreamInfo],
+    ) -> Result<Vec<String>> {
+        let mut args = Vec::new();
+
+        // Map video stream (first video stream only for encoding)
+        if !video_streams.is_empty() {
+            args.push("-map".to_string());
+            args.push("0:v:0".to_string());
+        }
+
+        // Map filtered audio streams by their original indices
+        for stream in audio_streams {
+            args.push("-map".to_string());
+            args.push(format!("0:{}", stream.index));
+        }
+
+        // Map filtered subtitle streams by their original indices
+        for stream in subtitle_streams {
+            args.push("-map".to_string());
+            args.push(format!("0:{}", stream.index));
+        }
+
+        // Copy all data/attachment streams (these are usually small and important)
+        if !data_streams.is_empty() {
+            args.extend(vec![
+                "-map".to_string(),
+                "0:d?".to_string(), // Copy all data streams (optional)
+                "-map".to_string(),
+                "0:t?".to_string(), // Copy all attachment streams (optional)
+            ]);
+        }
+
+        // Set codecs for stream copying
+        if !audio_streams.is_empty() {
+            args.extend(vec!["-c:a".to_string(), "copy".to_string()]);
+        }
+
+        if !subtitle_streams.is_empty() {
+            args.extend(vec!["-c:s".to_string(), "copy".to_string()]);
+        }
+
+        if !data_streams.is_empty() {
+            args.extend(vec![
+                "-c:d".to_string(),
+                "copy".to_string(),
+                "-c:t".to_string(),
+                "copy".to_string(),
+            ]);
+        }
+
+        Ok(args)
+    }
+
+    fn filter_audio_streams(
+        &self,
+        streams: Vec<StreamInfo>,
+        config: &AudioSelectionConfig,
+    ) -> Result<Vec<StreamInfo>> {
+        let original_count = streams.len();
+        let mut filtered_streams = streams;
+
+        // Filter by languages
+        if let Some(languages) = &config.languages {
+            filtered_streams.retain(|stream| {
+                if let Some(lang) = &stream.language {
+                    languages.iter().any(|pattern_lang| {
+                        lang.to_lowercase().contains(&pattern_lang.to_lowercase())
+                    })
+                } else {
+                    // If no language specified in stream, decide based on config
+                    // For now, include streams with no language info
+                    false
+                }
+            });
+        }
+
+        // Filter by codecs
+        if let Some(codecs) = &config.codecs {
+            filtered_streams.retain(|stream| {
+                codecs.iter().any(|pattern_codec| {
+                    stream
+                        .codec_name
+                        .to_lowercase()
+                        .contains(&pattern_codec.to_lowercase())
+                })
+            });
+        }
+
+        // Filter by dispositions
+        if let Some(dispositions) = &config.dispositions {
+            filtered_streams.retain(|stream| {
+                dispositions
+                    .iter()
+                    .any(|disposition| match disposition.to_lowercase().as_str() {
+                        "default" => stream.disposition.default,
+                        "forced" => stream.disposition.forced,
+                        "original" => stream.disposition.original,
+                        "dub" => stream.disposition.dub,
+                        "comment" => stream.disposition.comment,
+                        "lyrics" => stream.disposition.lyrics,
+                        "karaoke" => stream.disposition.karaoke,
+                        "visual_impaired" => stream.disposition.visual_impaired,
+                        "hearing_impaired" => stream.disposition.hearing_impaired,
+                        _ => false,
+                    })
+            });
+        }
+
+        // Filter by title patterns (regex)
+        if let Some(title_patterns) = &config.title_patterns {
+            filtered_streams.retain(|stream| {
+                if let Some(title) = &stream.title {
+                    title_patterns.iter().any(|pattern| {
+                        match Regex::new(pattern) {
+                            Ok(regex) => regex.is_match(title),
+                            Err(_) => {
+                                warn!(
+                                    "Invalid regex pattern for audio title filtering: {}",
+                                    pattern
+                                );
+                                // Fall back to simple substring matching
+                                title.to_lowercase().contains(&pattern.to_lowercase())
+                            }
+                        }
+                    })
+                } else {
+                    false
+                }
+            });
+        }
+
+        // Exclude commentary tracks
+        if config.exclude_commentary {
+            filtered_streams.retain(|stream| {
+                !stream.disposition.comment
+                    && stream.title.as_ref().is_none_or(|title| {
+                        !title.to_lowercase().contains("commentary")
+                            && !title.to_lowercase().contains("director")
+                    })
+            });
+        }
+
+        // Limit number of streams
+        if let Some(max_streams) = config.max_streams {
+            filtered_streams.truncate(max_streams);
+        }
+
+        debug!(
+            "Audio streams filtered: {} -> {}",
+            original_count,
+            filtered_streams.len()
+        );
+        Ok(filtered_streams)
+    }
+
+    fn filter_subtitle_streams(
+        &self,
+        streams: Vec<StreamInfo>,
+        config: &SubtitleSelectionConfig,
+    ) -> Result<Vec<StreamInfo>> {
+        let original_count = streams.len();
+        let mut filtered_streams = streams;
+
+        // Filter by languages
+        if let Some(languages) = &config.languages {
+            filtered_streams.retain(|stream| {
+                if let Some(lang) = &stream.language {
+                    languages.iter().any(|pattern_lang| {
+                        lang.to_lowercase().contains(&pattern_lang.to_lowercase())
+                    })
+                } else {
+                    false
+                }
+            });
+        }
+
+        // Filter by codecs
+        if let Some(codecs) = &config.codecs {
+            filtered_streams.retain(|stream| {
+                codecs.iter().any(|pattern_codec| {
+                    stream
+                        .codec_name
+                        .to_lowercase()
+                        .contains(&pattern_codec.to_lowercase())
+                })
+            });
+        }
+
+        // Filter by dispositions
+        if let Some(dispositions) = &config.dispositions {
+            filtered_streams.retain(|stream| {
+                dispositions
+                    .iter()
+                    .any(|disposition| match disposition.to_lowercase().as_str() {
+                        "default" => stream.disposition.default,
+                        "forced" => stream.disposition.forced,
+                        "original" => stream.disposition.original,
+                        "comment" => stream.disposition.comment,
+                        "hearing_impaired" => stream.disposition.hearing_impaired,
+                        "visual_impaired" => stream.disposition.visual_impaired,
+                        _ => false,
+                    })
+            });
+        }
+
+        // Include forced subtitles only
+        if config.include_forced_only {
+            filtered_streams.retain(|stream| stream.disposition.forced);
+        }
+
+        // Filter by title patterns (regex)
+        if let Some(title_patterns) = &config.title_patterns {
+            filtered_streams.retain(|stream| {
+                if let Some(title) = &stream.title {
+                    title_patterns
+                        .iter()
+                        .any(|pattern| match Regex::new(pattern) {
+                            Ok(regex) => regex.is_match(title),
+                            Err(_) => {
+                                warn!(
+                                    "Invalid regex pattern for subtitle title filtering: {}",
+                                    pattern
+                                );
+                                title.to_lowercase().contains(&pattern.to_lowercase())
+                            }
+                        })
+                } else {
+                    false
+                }
+            });
+        }
+
+        // Exclude commentary subtitles
+        if config.exclude_commentary {
+            filtered_streams.retain(|stream| {
+                !stream.disposition.comment
+                    && stream.title.as_ref().is_none_or(|title| {
+                        !title.to_lowercase().contains("commentary")
+                            && !title.to_lowercase().contains("director")
+                    })
+            });
+        }
+
+        // Limit number of streams
+        if let Some(max_streams) = config.max_streams {
+            filtered_streams.truncate(max_streams);
+        }
+
+        debug!(
+            "Subtitle streams filtered: {} -> {}",
+            original_count,
+            filtered_streams.len()
+        );
+        Ok(filtered_streams)
+    }
+
     pub fn get_metadata_args(
         &self,
         mapping: &StreamMapping,
@@ -552,5 +906,192 @@ mod tests {
         assert!(!mapping_args.contains(&"0:a".to_string())); // Should not map audio streams
         assert!(mapping_args.contains(&"0:s?".to_string())); // Optional subtitle mapping
         assert!(!mapping_args.contains(&"-c:a".to_string())); // Should not set audio codec
+    }
+
+    #[test]
+    fn test_audio_stream_filtering_by_language() {
+        let ffmpeg = FfmpegWrapper::new("ffmpeg".to_string(), "ffprobe".to_string());
+        let preservation = StreamPreservation::new(ffmpeg);
+
+        let streams = vec![
+            StreamInfo {
+                index: 1,
+                codec_type: "audio".to_string(),
+                codec_name: "aac".to_string(),
+                language: Some("eng".to_string()),
+                title: Some("English Audio".to_string()),
+                disposition: StreamDisposition {
+                    default: true,
+                    forced: false,
+                    comment: false,
+                    lyrics: false,
+                    karaoke: false,
+                    original: true,
+                    dub: false,
+                    visual_impaired: false,
+                    hearing_impaired: false,
+                },
+            },
+            StreamInfo {
+                index: 2,
+                codec_type: "audio".to_string(),
+                codec_name: "aac".to_string(),
+                language: Some("jpn".to_string()),
+                title: Some("Japanese Audio".to_string()),
+                disposition: StreamDisposition {
+                    default: false,
+                    forced: false,
+                    comment: false,
+                    lyrics: false,
+                    karaoke: false,
+                    original: true,
+                    dub: false,
+                    visual_impaired: false,
+                    hearing_impaired: false,
+                },
+            },
+            StreamInfo {
+                index: 3,
+                codec_type: "audio".to_string(),
+                codec_name: "aac".to_string(),
+                language: Some("ger".to_string()),
+                title: Some("German Audio".to_string()),
+                disposition: StreamDisposition {
+                    default: false,
+                    forced: false,
+                    comment: false,
+                    lyrics: false,
+                    karaoke: false,
+                    original: false,
+                    dub: true,
+                    visual_impaired: false,
+                    hearing_impaired: false,
+                },
+            },
+        ];
+
+        let config = AudioSelectionConfig {
+            languages: Some(vec!["eng".to_string(), "jpn".to_string()]),
+            ..Default::default()
+        };
+
+        let filtered = preservation.filter_audio_streams(streams, &config).unwrap();
+
+        assert_eq!(filtered.len(), 2);
+        assert_eq!(filtered[0].language.as_ref().unwrap(), "eng");
+        assert_eq!(filtered[1].language.as_ref().unwrap(), "jpn");
+    }
+
+    #[test]
+    fn test_audio_stream_filtering_exclude_commentary() {
+        let ffmpeg = FfmpegWrapper::new("ffmpeg".to_string(), "ffprobe".to_string());
+        let preservation = StreamPreservation::new(ffmpeg);
+
+        let streams = vec![
+            StreamInfo {
+                index: 1,
+                codec_type: "audio".to_string(),
+                codec_name: "aac".to_string(),
+                language: Some("eng".to_string()),
+                title: Some("English Audio".to_string()),
+                disposition: StreamDisposition {
+                    default: true,
+                    forced: false,
+                    comment: false,
+                    lyrics: false,
+                    karaoke: false,
+                    original: true,
+                    dub: false,
+                    visual_impaired: false,
+                    hearing_impaired: false,
+                },
+            },
+            StreamInfo {
+                index: 2,
+                codec_type: "audio".to_string(),
+                codec_name: "aac".to_string(),
+                language: Some("eng".to_string()),
+                title: Some("Director Commentary".to_string()),
+                disposition: StreamDisposition {
+                    default: false,
+                    forced: false,
+                    comment: true,
+                    lyrics: false,
+                    karaoke: false,
+                    original: false,
+                    dub: false,
+                    visual_impaired: false,
+                    hearing_impaired: false,
+                },
+            },
+        ];
+
+        let config = AudioSelectionConfig {
+            exclude_commentary: true,
+            ..Default::default()
+        };
+
+        let filtered = preservation.filter_audio_streams(streams, &config).unwrap();
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].title.as_ref().unwrap(), "English Audio");
+    }
+
+    #[test]
+    fn test_subtitle_stream_filtering_forced_only() {
+        let ffmpeg = FfmpegWrapper::new("ffmpeg".to_string(), "ffprobe".to_string());
+        let preservation = StreamPreservation::new(ffmpeg);
+
+        let streams = vec![
+            StreamInfo {
+                index: 4,
+                codec_type: "subtitle".to_string(),
+                codec_name: "subrip".to_string(),
+                language: Some("eng".to_string()),
+                title: Some("English Subtitles".to_string()),
+                disposition: StreamDisposition {
+                    default: true,
+                    forced: false,
+                    comment: false,
+                    lyrics: false,
+                    karaoke: false,
+                    original: false,
+                    dub: false,
+                    visual_impaired: false,
+                    hearing_impaired: false,
+                },
+            },
+            StreamInfo {
+                index: 5,
+                codec_type: "subtitle".to_string(),
+                codec_name: "subrip".to_string(),
+                language: Some("eng".to_string()),
+                title: Some("English Forced".to_string()),
+                disposition: StreamDisposition {
+                    default: false,
+                    forced: true,
+                    comment: false,
+                    lyrics: false,
+                    karaoke: false,
+                    original: false,
+                    dub: false,
+                    visual_impaired: false,
+                    hearing_impaired: false,
+                },
+            },
+        ];
+
+        let config = SubtitleSelectionConfig {
+            include_forced_only: true,
+            ..Default::default()
+        };
+
+        let filtered = preservation
+            .filter_subtitle_streams(streams, &config)
+            .unwrap();
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].title.as_ref().unwrap(), "English Forced");
+        assert!(filtered[0].disposition.forced);
     }
 }

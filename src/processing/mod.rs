@@ -54,7 +54,9 @@ impl<'a> VideoProcessor<'a> {
             self.config.analysis.dolby_vision.clone(),
             self.config.tools.hdr10plus_tool.clone(),
         );
-        let hdr_analysis = content_manager.analyze_hdr_only(self.ffmpeg, self.input_path).await?;
+        let hdr_analysis = content_manager
+            .analyze_hdr_only(self.ffmpeg, self.input_path)
+            .await?;
 
         // Use HDR result for crop detection (before expensive DV/HDR10+ tools)
         let is_advanced_content = hdr_analysis.metadata.format != crate::hdr::HdrFormat::None;
@@ -176,7 +178,6 @@ impl<'a> VideoProcessor<'a> {
         info!("Getting video metadata for: {}", self.input_path.display());
         self.ffmpeg.get_video_metadata(self.input_path).await
     }
-
 
     async fn initialize_metadata_workflow(&self) -> Result<MetadataWorkflowManager> {
         info!("Initializing metadata workflow manager...");
@@ -388,9 +389,24 @@ impl<'a> VideoProcessor<'a> {
     }
 
     async fn analyze_streams(&self) -> Result<crate::stream::preservation::StreamMapping> {
-        self.stream_preservation
-            .analyze_streams(self.input_path)
-            .await
+        // Check if stream filtering is enabled via config only
+        if let Some(stream_config) = &self.config.stream_selection {
+            if stream_config.enabled {
+                self.stream_preservation
+                    .analyze_streams_with_filtering(self.input_path, stream_config)
+                    .await
+            } else {
+                // Use default behavior (copy all streams)
+                self.stream_preservation
+                    .analyze_streams(self.input_path)
+                    .await
+            }
+        } else {
+            // Use default behavior (copy all streams)
+            self.stream_preservation
+                .analyze_streams(self.input_path)
+                .await
+        }
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -35,9 +35,9 @@ analysis:
     enabled: true
     sample_count: 8 # Number of evenly distributed sample points across video duration
     sdr_crop_limit: 24 # Crop detection threshold for SDR content
-    hdr_crop_limit: 64 # Crop detection threshold for HDR content  
+    hdr_crop_limit: 64 # Crop detection threshold for HDR content
     min_pixel_change_percent: 2.0  # Only apply crops that remove >n% of pixels
-  
+
   hdr_detection:
     enabled: true
     passthrough_mode: true
@@ -47,10 +47,29 @@ analysis:
     transfer_patterns:
       - "smpte2084"
       - "arib-std-b67"
-    crf_adjustment: 1.0 
+    crf_adjustment: 1.0
     # See paper https://openaccess.thecvf.com/content/CVPR2024/papers/
     # Cao_Perceptual_Assessment_and_Optimization_of_HDR_Image_Rendering_C
     # VPR_2024_paper.pdf  
+
+# Stream Selection Configuration (optional)
+# stream_selection:
+#   enabled: false  # Set to true to enable stream filtering
+#   audio:
+#     languages: ["eng", "jpn"]           # ISO 639-1/639-2 language codes
+#     codecs: ["aac", "ac3", "dts"]       # Codec filters
+#     dispositions: ["default", "original"] # Disposition filters
+#     title_patterns: ["^(?!.*Commentary).*$"] # Regex patterns (exclude commentary)
+#     exclude_commentary: true            # Exclude commentary tracks
+#     max_streams: 2                      # Limit number of audio streams
+#   subtitle:
+#     languages: ["eng", "jpn"]           # Language filters
+#     codecs: ["subrip", "ass"]           # Codec filters (SRT, ASS, etc.)
+#     dispositions: ["forced", "default"] # Include forced and default
+#     title_patterns: ["^(?!.*Commentary).*$"] # Exclude commentary subs
+#     exclude_commentary: true            # Exclude commentary subtitles
+#     include_forced_only: false          # Set true to include only forced subs
+#     max_streams: 4                      # Limit number of subtitle streams 
 
   dolby_vision:
     enabled: true                     # Enable Dolby Vision processing

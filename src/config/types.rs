@@ -275,6 +275,50 @@ pub struct DenoiseConfig {
     pub params: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct StreamSelectionConfig {
+    #[serde(default)]
+    pub enabled: bool, // Disabled by default to preserve current behavior
+    #[serde(default)]
+    pub audio: AudioSelectionConfig,
+    #[serde(default)]
+    pub subtitle: SubtitleSelectionConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct AudioSelectionConfig {
+    #[serde(default)]
+    pub languages: Option<Vec<String>>, // ISO 639-1/639-2 language codes (e.g., ["eng", "jpn"])
+    #[serde(default)]
+    pub codecs: Option<Vec<String>>, // Codec filters (e.g., ["aac", "ac3"])
+    #[serde(default)]
+    pub dispositions: Option<Vec<String>>, // Disposition filters (e.g., ["default", "original"])
+    #[serde(default)]
+    pub title_patterns: Option<Vec<String>>, // Regex patterns for title matching
+    #[serde(default)]
+    pub exclude_commentary: bool, // Exclude commentary tracks
+    #[serde(default)]
+    pub max_streams: Option<usize>, // Limit number of audio streams
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SubtitleSelectionConfig {
+    #[serde(default)]
+    pub languages: Option<Vec<String>>, // ISO 639-1/639-2 language codes
+    #[serde(default)]
+    pub codecs: Option<Vec<String>>, // Codec filters (e.g., ["subrip", "ass"])
+    #[serde(default)]
+    pub dispositions: Option<Vec<String>>, // Disposition filters (e.g., ["forced", "hearing_impaired"])
+    #[serde(default)]
+    pub title_patterns: Option<Vec<String>>, // Regex patterns for title matching
+    #[serde(default)]
+    pub exclude_commentary: bool, // Exclude commentary subtitles
+    #[serde(default)]
+    pub include_forced_only: bool, // Only include forced subtitles
+    #[serde(default)]
+    pub max_streams: Option<usize>, // Limit number of subtitle streams
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FiltersConfig {
     pub deinterlace: DeinterlaceConfig,

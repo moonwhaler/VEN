@@ -295,9 +295,11 @@ impl ProgressMonitor {
 
                 // Format as "source > estimated output" if we have source size
                 if let Some(source_size) = self.source_file_size {
-                    message_parts.push(format!("{} > ~{}",
+                    message_parts.push(format!(
+                        "{} > ~{}",
                         format_size(source_size),
-                        format_size(estimated_final_size)));
+                        format_size(estimated_final_size)
+                    ));
                 } else {
                     message_parts.push(format!("~{}", format_size(estimated_final_size)));
                 }
