@@ -126,6 +126,42 @@ profiles:
       me: "hex"
       subme: 3
 
+  movie_new:
+    title: "Standard Movie (clean content) tweaked"
+    base_crf: 22
+    base_bitrate: 10000
+    hdr_bitrate: 12000
+    content_type: "film"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      limit-sao: true              # Better than no-sao for clean content[87][2]
+      bframes: 8                   # Optimal compression efficiency[2][60]
+      b-adapt: 2
+      b-pyramid: true              # Improved compression[2]
+      ref: 5                       # Increased for better motion[2]
+      psy-rd: 1.0                  # Lower for clean content[87][2]
+      psy-rdoq: 1.0                # Conservative for non-grain[87][2]
+      aq-mode: 2                   # Optimal for mixed content[2][93]
+      aq-strength: 1.0             # Strong AQ for quality[2]
+      deblock: "0,0"               # Default for clean content[2]
+      rc-lookahead: 60             # Enhanced motion prediction[2]
+      merange: 57
+      max-tu-size: 32
+      ctu: 64                      # Optimal for clean 1080p+[2]
+      rd: 4
+      rdoq-level: 2
+      qcomp: 0.70
+      me: "umh"                    # Better motion estimation[88][93]
+      subme: 6                     # Enhanced detail preservation[88][2]
+      weightb: true
+      weightp: true
+      cutree: true
+      strong-intra-smoothing: false # Better detail preservation[89][2]
+      rect: true                   # Keep enabled for efficiency[2]
+      amp: true                    # Additional compression gains[2]
+
   movie_mid_grain:
     title: "Movies with lighter grain"
     base_crf: 21
@@ -164,9 +200,9 @@ profiles:
 
   movie_mid_grain_new:
     title: "Movies with lighter grain tweaked"
-    base_crf: 21
-    base_bitrate: 10000
-    hdr_bitrate: 12000
+    base_crf: 22
+    base_bitrate: 8000
+    hdr_bitrate: 10000
     content_type: "film"
     x265_params:
       preset: "slow"
@@ -219,6 +255,42 @@ profiles:
       me: "hex"
       subme: 4
 
+  movie_size_focused_new:
+    title: "Standard Movie (smaller size) tweaked"
+    base_crf: 23
+    base_bitrate: 9000
+    hdr_bitrate: 12000
+    content_type: "film"
+    x265_params:
+      preset: "slow"                    # Optimal size/speed balance[2][62]
+      pix_fmt: "yuv420p10le"           # 10-bit for better compression[74]
+      profile: "main10"
+      rc-lookahead: 80                 # Increased for better efficiency[2]
+      aq-mode: 3                       # Better size efficiency than mode 2[73][83]
+      aq-strength: 1.0                 # Aggressive AQ for size reduction[73]
+      repeat-headers: false
+      strong-intra-smoothing: false    # Disabled preserves detail[74][78]
+      bframes: 8                       # Optimal compression efficiency[2][60]
+      b-adapt: 2
+      b-pyramid: true                  # Better compression[67]
+      ref: 4                           # Balanced for efficiency[2]
+      frame-threads: 1                 # Slight size improvement[75]
+      qcomp: 0.75                      # Higher for better size control[2][64]
+      qg-size: 16                      # Smaller for better efficiency[78]
+      me: "hex"
+      subme: 4
+      merange: 44                      # Optimized range[78]
+      rd: 4                           # Optimal for size/quality[2]
+      rdoq-level: 2
+      rect: true                      # Better compression[2]
+      amp: true                       # Additional compression gains[2]
+      limit-sao: true                 # Size-focused SAO[2]
+      weightb: true
+      weightp: true
+      cutree: true
+      psy-rd: 1.0                     # Balanced for size control[2]
+      psy-rdoq: 1.0                   # Conservative for size[2]
+
   heavy_grain:
     title: "4K heavy grain (consider using --denoise)"
     base_crf: 21
@@ -250,7 +322,48 @@ profiles:
       subme: 7
       merange: 57
 
-  "3d_cgi":
+  heavy_grain_new:
+    title: "Heavy grain preservation tweaked"
+    base_crf: 20               # Lower CRF for grain preservation[51][6]
+    base_bitrate: 11000        # Increased for grain detail
+    hdr_bitrate: 14000         # Higher bitrate for HDR grain
+    content_type: "heavy_grain"
+    x265_params:
+      preset: "slower"         # Essential for grain quality[3][6]
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      no-sao: true             # Mandatory for heavy grain[51][6][36]
+      deblock: "-2,-2"         # Aggressive deblocking disable[51][6]
+      aq-mode: 1               # Best for film grain[51][6]
+      psy-rd: 1.8              # Optimal heavy grain value[51][6] 
+      psy-rdoq: 5.0            # Strong grain preservation[51][6]
+      rskip: 0                 # Disable for maximum grain detail[6]
+      recursion-skip: 0        # Critical for grain handling[6]
+      bframes: 8               # Optimal for grain content[51][2]
+      b-adapt: 2
+      ref: 6                   # Maximum beneficial references[51]
+      rc-lookahead: 80         # Increased for complex grain[51]
+      ctu: 32                  # Critical for grain preservation[51][50]
+      max-tu-size: 16          # Essential with CTU 32[51][50]
+      tu-intra-depth: 2        # Grain-optimized transform[51]
+      tu-inter-depth: 2        # Better grain handling[51]
+      rd: 5                    # Optimal for grain at 1080p+[51][6]
+      rdoq-level: 1            # Balanced for grain[51]
+      qcomp: 0.8               # Higher for grain content[51][6]
+      qg-size: 16              # Smaller for better grain[51]
+      keyint: 360              # Reasonable maximum[51]
+      min-keyint: 24
+      me: "hex"                # Efficient motion estimation[51]
+      subme: 7                 # Maximum beneficial detail[39]
+      merange: 44              # Optimized for grain content[51]
+      ipratio: 1.1             # Better grain consistency[6][51]
+      pbratio: 1.0             # Balanced frame quality[6][51]
+      strong-intra-smoothing: false
+      weightb: true
+      weightp: true
+      cutree: true             # Keep enabled for efficiency[51]
+      
+  3d_cgi:
     title: "3D CGI (Pixar-like)"
     base_crf: 22
     base_bitrate: 9000
@@ -285,7 +398,43 @@ profiles:
       subme: 7
       merange: 57
 
-  "3d_complex":
+  3d_cgi_new:
+    title: "3D CGI (Pixar-like) tweaked"
+    base_crf: 22
+    base_bitrate: 9000
+    hdr_bitrate: 12000
+    content_type: "3d_animation"
+    x265_params:
+      preset: "slow"                     # Good speed/quality balance for animation
+      tune: "animation"                  # Built-in optimizations for CGI animation
+      pix_fmt: "yuv420p10le"            # 10-bit for smoother gradients
+      profile: "main10"
+      limit-sao: true                    # SAO useful for clean CGI edges
+      deblock: "1,1"                     # Light deblocking for smooth surfaces
+      aq-mode: 3                         # Best for animation due to flat & complex areas
+      aq-strength: 0.8                   # Balanced adaptive quantization
+      psy-rd: 0.8                        # Lower psychovisual to avoid noise
+      psy-rdoq: 1.0                      # Conservative RDOQ for clean shapes
+      rskip: 2                           # Helps skip blocks in flat regions
+      rskip-edge-threshold: 2           # Refines block skipping near edges
+      bframes: 8                         # Improved compression on static frames
+      b-adapt: 2
+      ref: 6                             # More references for consistent quality
+      rc-lookahead: 60                  # Better motion prediction for camera moves
+      ctu: 64                            # Default good for animation
+      rd: 4                              # Balanced RD optimization
+      rdoq-level: 2
+      qcomp: 0.75                        # Smooth quality transitions
+      weightb: true
+      weightp: true
+      cutree: true                       # Enables CU tree depth optimization
+      keyint: 240
+      min-keyint: 24
+      me: "umh"                          # Ultra-high motion search for camera pans
+      subme: 5                           # Good detail without extreme slowdown
+      merange: 44                        # Optimal search range for CGI motion
+
+  3d_complex:
     title: "3D complex content (Arcane-like)"
     base_crf: 22
     base_bitrate: 10000
@@ -319,6 +468,43 @@ profiles:
       me: "hex"
       subme: 3
       merange: 35
+
+  3d_complex_new:
+    title: "3D Complex Content (Arcane-like) tweaked"
+    base_crf: 22
+    base_bitrate: 10000
+    hdr_bitrate: 12000
+    content_type: "3d_animation"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      limit-sao: true                   # Use SAO for clean/CGI-detail balance
+      deblock: "1,1"                    # Light deblocking for crisp edges
+      aq-mode: 3                        # Best for mixed animation complexity
+      aq-strength: 0.9                  # Slightly reduced from 1.0 for tighter bitrate
+      psy-rd: 1.2                       # Manual psychovisual for shading fidelity
+      psy-rdoq: 1.5                     # Conservative RDOQ for sharp textures
+      rskip: 2                          # Skip blocks in flat regions
+      rskip-edge-threshold: 2          # Refine skipping near lines
+      bframes: 8                        # Improved compression on static frames
+      b-adapt: 2
+      b-pyramid: true                   # Additional compression gains
+      ref: 6                            # More references for consistent quality
+      rc-lookahead: 60                 # Better prediction for complex motion
+      merange: 44                       # Wider search for varied motion
+      me: "umh"                         # Ultra-motion for detailed moves
+      subme: 5                          # Detail without excessive slowdown
+      ctu: 64                           # Balanced CTU size for animation
+      rd: 4                             # Balanced RD optimization
+      rdoq-level: 2
+      qcomp: 0.75                       # Smooth QP transitions
+      weightb: true
+      weightp: true
+      cutree: true                      # CU tree depth optimization
+      keyint: 240
+      min-keyint: 24
+      strong-intra-smoothing: false     # Preserve drawn line sharpness
 
   anime:
     title: "Anime"
@@ -401,6 +587,44 @@ profiles:
       me: "hex"
       subme: 5
       merange: 57
+
+  classic_anime_new:
+    title: "Classic 90s Anime with finer details, tweaked"
+    base_crf: 22
+    base_bitrate: 9000
+    hdr_bitrate: 11000
+    content_type: "classic_anime"
+    x265_params:
+      preset: "slower"                  # Essential for preserving line art & grain
+      tune: "animation"                 # Optimized for cel-shaded content
+      pix_fmt: "yuv420p10le"           # 10-bit for smooth gradients in backgrounds
+      profile: "main10"
+      selective-sao: 2                  # Preserves grain without over-smoothing
+      deblock: "0,0"                    # Neutral deblocking for original texture
+      aq-mode: 3                        # Best for flat & detailed regions in anime
+      aq-strength: 0.8                  # Balanced AQ for softer backgrounds
+      psy-rd: 0.6                       # Lower to avoid noise in clean cels
+      psy-rdoq: 1.0                     # Conservative RDOQ for fine detail
+      rskip: 2                          # Enables skipping uniform blocks
+      rskip-edge-threshold: 2          # Avoids skipping at line art edges
+      bframes: 8                        # More B-frames for compression efficiency
+      b-adapt: 2
+      b-pyramid: true                   # Improves compression on static shots
+      ref: 6                            # Increased references for stable detail
+      rc-lookahead: 80                 # Higher lookahead for scene changes
+      me: "hex"                         # Efficient motion estimation for limited motion
+      subme: 6                         # Higher subme for crisp line edges
+      merange: 57                       # Wider search for minor motion
+      ctu: 64                           # Default CTU size balances speed & quality
+      rd: 4                             # Balanced RD optimization
+      rdoq-level: 2
+      qcomp: 0.75                       # Smooth QP transitions in color gradients
+      keyint: 240
+      min-keyint: 24
+      weightb: true
+      weightp: true
+      cutree: true                      # CU-tree for optimal CU sizes
+      strong-intra-smoothing: false     # Maintains sharp line art clarity
 
   "4k":
     title: "General 4K balanced optimization"
