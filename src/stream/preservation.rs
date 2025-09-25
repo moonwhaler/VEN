@@ -340,11 +340,16 @@ impl StreamPreservation {
             args.push("0:v:0".to_string()); // Use type-based mapping for first video stream
         }
 
-        // Simple 1:1 copy of all other streams (audio, subtitles, data, attachments)
-        // This is much faster than individual stream analysis
+        // Check if audio streams exist before mapping
+        let has_audio = streams.iter().any(|s| s.codec_type == "audio");
+
+        // Only map streams that actually exist
+        if has_audio {
+            args.push("-map".to_string());
+            args.push("0:a".to_string()); // Copy all audio streams
+        }
+
         args.extend(vec![
-            "-map".to_string(),
-            "0:a".to_string(), // Copy all audio streams
             "-map".to_string(),
             "0:s?".to_string(), // Copy all subtitle streams (optional)
             "-map".to_string(),
@@ -354,9 +359,15 @@ impl StreamPreservation {
         ]);
 
         // Set codecs for 1:1 copy (no transcoding except video)
+        // Only set audio codec if we have audio streams
+        if has_audio {
+            args.extend(vec![
+                "-c:a".to_string(),
+                "copy".to_string(), // Copy audio streams as-is
+            ]);
+        }
+
         args.extend(vec![
-            "-c:a".to_string(),
-            "copy".to_string(), // Copy audio streams as-is
             "-c:s".to_string(),
             "copy".to_string(), // Copy subtitle streams as-is
             "-c:d".to_string(),
@@ -505,5 +516,41 @@ mod tests {
         assert!(mapping_args.contains(&"0:s?".to_string())); // Optional subtitle mapping
         assert!(mapping_args.contains(&"-c:a".to_string()));
         assert!(mapping_args.contains(&"copy".to_string()));
+    }
+
+    #[test]
+    fn test_mapping_arguments_video_only() {
+        let ffmpeg = FfmpegWrapper::new("ffmpeg".to_string(), "ffprobe".to_string());
+        let preservation = StreamPreservation::new(ffmpeg);
+
+        let streams = vec![
+            // Sample video stream only
+            StreamInfo {
+                index: 0,
+                codec_type: "video".to_string(),
+                codec_name: "h264".to_string(),
+                language: None,
+                title: None,
+                disposition: StreamDisposition {
+                    default: true,
+                    forced: false,
+                    comment: false,
+                    lyrics: false,
+                    karaoke: false,
+                    original: false,
+                    dub: false,
+                    visual_impaired: false,
+                    hearing_impaired: false,
+                },
+            },
+        ];
+
+        let mapping_args = preservation.build_mapping_arguments(&streams).unwrap();
+
+        assert!(mapping_args.contains(&"-map".to_string()));
+        assert!(mapping_args.contains(&"0:v:0".to_string())); // Type-based video mapping
+        assert!(!mapping_args.contains(&"0:a".to_string())); // Should not map audio streams
+        assert!(mapping_args.contains(&"0:s?".to_string())); // Optional subtitle mapping
+        assert!(!mapping_args.contains(&"-c:a".to_string())); // Should not set audio codec
     }
 }
