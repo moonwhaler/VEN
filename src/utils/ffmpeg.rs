@@ -25,6 +25,37 @@ static BITRATE_REGEX: LazyLock<Regex> =
 
 static FPS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"fps=\s*([0-9.]+)").unwrap());
 
+/// Filter out FFmpeg diagnostic messages that don't provide user value
+fn filter_ffmpeg_stderr(stderr: &str) -> String {
+    stderr
+        .lines()
+        .filter(|line| {
+            // Filter out common diagnostic messages
+            !line.contains("Invalid Block Addition") &&
+            !line.contains("Could not find codec parameters") &&
+            !line.contains("Consider increasing the value for") &&
+            !line.contains("analyzeduration") &&
+            !line.contains("probesize") &&
+            // Keep error messages but filter info messages
+            !(line.contains("x265 [info]:") && (
+                line.contains("encoder version") ||
+                line.contains("build info") ||
+                line.contains("using cpu capabilities") ||
+                line.contains("Thread pool created") ||
+                line.contains("Coding QT:") ||
+                line.contains("Residual QT:") ||
+                line.contains("ME / range") ||
+                line.contains("Keyframe min") ||
+                line.contains("Lookahead") ||
+                line.contains("b-pyramid") ||
+                line.contains("References") ||
+                line.contains("tools:")
+            ))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 #[derive(Debug, Clone)]
 pub struct VideoMetadata {
     pub width: u32,
@@ -103,7 +134,8 @@ impl FfmpegWrapper {
             .await?;
 
         if !output.status.success() {
-            let error_msg = String::from_utf8_lossy(&output.stderr);
+            let raw_error_msg = String::from_utf8_lossy(&output.stderr);
+            let error_msg = filter_ffmpeg_stderr(&raw_error_msg);
             return Err(Error::ffmpeg(format!("ffprobe failed: {}", error_msg)));
         }
 
@@ -418,7 +450,8 @@ impl FfmpegWrapper {
             .await?;
 
         if !output.status.success() {
-            let error_msg = String::from_utf8_lossy(&output.stderr);
+            let raw_error_msg = String::from_utf8_lossy(&output.stderr);
+            let error_msg = filter_ffmpeg_stderr(&raw_error_msg);
             return Err(Error::ffmpeg(format!("ffprobe failed: {}", error_msg)));
         }
 
@@ -459,7 +492,9 @@ impl FfmpegWrapper {
             .map_err(|e| Error::ffmpeg(format!("Failed to run ffprobe for duration: {}", e)))?;
 
         if !output.status.success() {
-            return Err(Error::ffmpeg("ffprobe failed for duration extraction"));
+            let raw_error_msg = String::from_utf8_lossy(&output.stderr);
+            let error_msg = filter_ffmpeg_stderr(&raw_error_msg);
+            return Err(Error::ffmpeg(format!("ffprobe failed for duration extraction: {}", error_msg)));
         }
 
         let text_output = String::from_utf8_lossy(&output.stdout);

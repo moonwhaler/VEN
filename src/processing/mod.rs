@@ -1,4 +1,5 @@
 use crate::{
+    analysis::ContentAnalyzer,
     cli::CliArgs,
     config::{Config, EncodingProfile, ProfileManager, StreamSelectionProfileManager},
     encoding::{
@@ -218,12 +219,22 @@ impl<'a> VideoProcessor<'a> {
     async fn select_profile(&self, metadata: &VideoMetadata) -> Result<EncodingProfile> {
         if self.args.profile == "auto" {
             info!("Auto-selecting profile based on content analysis...");
-            let content_type = self.classify_content_from_metadata(metadata).await?;
+
+            // Use existing ContentAnalyzer instead of duplicated logic
+            let content_analyzer = ContentAnalyzer::new();
+            let classification = content_analyzer.classify_content(metadata).await?;
+            let content_type = classification.content_type;
+
             if let Some(profile) = self.profile_manager.recommend_profile_for_resolution(
                 metadata.width,
                 metadata.height,
                 content_type,
             ) {
+                info!(
+                    "Selected profile based on content analysis: {} (confidence: {:.1}%)",
+                    profile.name,
+                    classification.confidence * 100.0
+                );
                 Ok(profile.clone())
             } else {
                 info!("No specific profile found for content type, using default 'movie' profile");
@@ -240,21 +251,6 @@ impl<'a> VideoProcessor<'a> {
         }
     }
 
-    async fn classify_content_from_metadata(
-        &self,
-        metadata: &VideoMetadata,
-    ) -> Result<crate::config::ContentType> {
-        use crate::config::ContentType;
-        let bitrate_per_pixel =
-            metadata.bitrate.unwrap_or(0) as f64 / (metadata.width as f64 * metadata.height as f64);
-        if bitrate_per_pixel > 0.02 {
-            Ok(ContentType::HeavyGrain)
-        } else if bitrate_per_pixel > 0.015 {
-            Ok(ContentType::LightGrain)
-        } else {
-            Ok(ContentType::Film)
-        }
-    }
 
     fn log_parameter_adjustments(
         &self,
