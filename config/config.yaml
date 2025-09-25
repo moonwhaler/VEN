@@ -162,6 +162,42 @@ profiles:
       rect: true
       strong-intra-smoothing: false
 
+  movie_mid_grain_new:
+    title: "Movies with lighter grain tweaked"
+    base_crf: 21
+    base_bitrate: 10000
+    hdr_bitrate: 12000
+    content_type: "film"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      selective-sao: 2        # Better than no-sao for mild grain[36][2]
+      bframes: 6              # Optimal for grain content[37][2]  
+      b-adapt: 2
+      ref: 5                  # Increased from 4 for better grain handling[2]
+      psy-rd: 1.5             # Optimal for mild grain preservation[2][24]
+      psy-rdoq: 2.0           # Balanced for grain without excessive bitrate[2][24]
+      aq-mode: 1              # Best for film grain content[24][39]
+      aq-strength: 0.9        # Strong adaptive quantization for grain
+      deblock: "-1,-1"        # Preserve fine grain detail[2][39]
+      rc-lookahead: 60        # Increased for better motion prediction[4]
+      merange: 57
+      max-tu-size: 32
+      ctu: 64                 # Keep at 64 for efficiency[2]
+      rd: 4                   # Optimal for most content[39]
+      rdoq-level: 2
+      qcomp: 0.65
+      weightb: true
+      weightp: true
+      cutree: true
+      me: "hex"
+      subme: 5                # Increased from 4 for better detail[39]
+      rskip: 2                # Helps with grain "onion effect"[6][39]
+      rskip-edge-threshold: 2 # Refined grain handling[6][39]
+      rect: true
+      strong-intra-smoothing: false
+
   movie_size_focused:
     title: "Standard Movie (smaller size)"
     base_crf: 23
@@ -190,7 +226,7 @@ profiles:
     hdr_bitrate: 14000
     content_type: "heavy_grain"
     x265_params:
-      preset: "slow"
+      preset: "slower"
       pix_fmt: "yuv420p10le"
       profile: "main10"
       selective-sao: 2
@@ -316,6 +352,24 @@ profiles:
       subme: 6
       merange: 57
 
+  anime_new:
+    title: "Anime Tweaked"
+    base_crf: 23
+    base_bitrate: 8000
+    hdr_bitrate: 10000
+    content_type: "anime"
+    x265_params:
+      preset: "slow"
+      pix_fmt: "yuv420p10le"
+      profile: "main10"
+      deblock: "1,1"
+      aq-mode: 3
+      aq-strength: 0.8
+      psy-rd: 1.0
+      bframes: 8
+      ref: 6
+      rc-lookahead: 60
+
   classic_anime:
     title: "Classic 90s Anime with finer details"
     base_crf: 22
@@ -323,7 +377,7 @@ profiles:
     hdr_bitrate: 11000
     content_type: "classic_anime"
     x265_params:
-      preset: "slow"
+      preset: "slower"
       pix_fmt: "yuv420p10le"
       profile: "main10"
       limit-sao: 1
@@ -387,7 +441,7 @@ profiles:
     hdr_bitrate: 18000
     content_type: "heavy_grain"
     x265_params:
-      preset: "medium"
+      preset: "slower"
       pix_fmt: "yuv420p10le"
       profile: "main10"
       selective-sao: 2

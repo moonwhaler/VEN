@@ -86,6 +86,23 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
     let mut profile_manager = ProfileManager::new();
     profile_manager.load_profiles(config.profiles.clone())?;
 
+    // Validate that the requested profile exists (unless it's "auto")
+    if args.profile != "auto" && profile_manager.get_profile(&args.profile).is_none() {
+        let available_profiles: Vec<String> = profile_manager.list_profiles()
+            .into_iter()
+            .cloned()
+            .collect();
+        let mut all_valid_profiles = vec!["auto".to_string()];
+        all_valid_profiles.extend(available_profiles);
+        all_valid_profiles.sort();
+
+        return Err(Error::validation(format!(
+            "Invalid profile: {} (valid profiles: {})",
+            args.profile,
+            all_valid_profiles.join(", ")
+        )));
+    }
+
     let mut successful_files = 0;
     let mut failed_files = Vec::new();
 

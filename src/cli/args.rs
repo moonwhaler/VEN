@@ -41,8 +41,7 @@ pub struct CliArgs {
     #[arg(short, long, value_name = "PATH")]
     pub output: Option<PathBuf>,
 
-    /// Encoding profile to use [anime, classic_anime, 3d_cgi, 3d_complex, movie, movie_mid_grain,
-    /// movie_size_focused, heavy_grain, 4k, 4k_heavy_grain, auto]
+    /// Encoding profile to use (use --list-profiles to see available profiles, or 'auto' for automatic selection)
     #[arg(short, long, default_value = "auto", value_name = "PROFILE")]
     pub profile: String,
 
@@ -94,7 +93,7 @@ pub struct CliArgs {
     #[arg(long)]
     pub validate_config: bool,
 
-    /// Stream selection profile to use [default, english_only, multilang, forced_only, minimal]
+    /// Stream selection profile to use (use --list-stream-profiles to see available profiles)
     #[arg(short = 's', long = "stream-selection-profile", value_name = "PROFILE")]
     pub stream_selection_profile: Option<String>,
 
@@ -185,27 +184,8 @@ impl CliArgs {
             )));
         }
 
-        // Validate profile name
-        let valid_profiles = [
-            "auto",
-            "anime",
-            "classic_anime",
-            "3d_cgi",
-            "3d_complex",
-            "movie",
-            "movie_mid_grain",
-            "movie_size_focused",
-            "heavy_grain",
-            "4k",
-            "4k_heavy_grain",
-        ];
-        if !valid_profiles.contains(&self.profile.as_str()) {
-            return Err(crate::utils::Error::validation(format!(
-                "Invalid profile: {} (valid profiles: {})",
-                self.profile,
-                valid_profiles.join(", ")
-            )));
-        }
+        // Note: Profile validation is performed later after config is loaded
+        // since profiles are defined dynamically in the configuration file
 
         Ok(())
     }
@@ -213,31 +193,15 @@ impl CliArgs {
     pub fn print_help_topic(&self, topic: &str) {
         match topic.to_lowercase().as_str() {
             "profiles" => {
-                println!("AVAILABLE ENCODING PROFILES:\n");
-                println!("Content-Specific Profiles:");
-                println!("  anime           - Modern anime content (CRF=23, 9000kbps)");
-                println!("  classic_anime   - 90s anime with finer details (CRF=22, 10000kbps)");
-                println!("  3d_cgi          - 3D CGI Pixar-like (CRF=22, 10000kbps)");
-                println!(
-                    "  3d_complex      - Complex 3D animation Arcane-like (CRF=22, 11000kbps)"
-                );
+                println!("ENCODING PROFILES:\n");
+                println!("Profiles are dynamically loaded from configuration file.");
+                println!("Use --list-profiles to see all available profiles with details.");
                 println!();
-                println!("Film Profiles:");
-                println!("  movie           - Standard movie (CRF=22, 10000kbps)");
-                println!("  movie_mid_grain - Movies with lighter grain (CRF=21, 11000kbps)");
-                println!("  movie_size_focused - Standard movie smaller size (CRF=22, 10000kbps)");
-                println!("  heavy_grain     - 4K heavy grain preservation (CRF=21, 12000kbps)");
+                println!("Special Profile:");
+                println!("  auto            - Intelligent profile selection based on content analysis");
                 println!();
-                println!("Resolution Profiles:");
-                println!(
-                    "  4k              - General 4K balanced optimization (CRF=22, 15000kbps)"
-                );
-                println!("  4k_heavy_grain  - 4K heavy grain preservation (CRF=21, 18000kbps)");
-                println!();
-                println!("Automatic:");
-                println!(
-                    "  auto            - Intelligent profile selection based on content analysis"
-                );
+                println!("To see detailed information about any profile:");
+                println!("  ffmpeg-encoder --show-profile <PROFILE_NAME>");
             }
             "modes" => {
                 println!("ENCODING MODES:\n");
