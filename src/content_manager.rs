@@ -104,7 +104,8 @@ impl UnifiedContentManager {
         ffmpeg: &FfmpegWrapper,
         input_path: P,
     ) -> Result<ContentAnalysisResult> {
-        self.analyze_content_with_hdr_reuse(ffmpeg, input_path, None).await
+        self.analyze_content_with_hdr_reuse(ffmpeg, input_path, None)
+            .await
     }
 
     /// Analyze content for HDR, Dolby Vision, and HDR10+ characteristics
@@ -122,17 +123,17 @@ impl UnifiedContentManager {
 
         // First, analyze HDR characteristics (reuse existing if provided)
         let hdr_analysis = if let Some(hdr_result) = existing_hdr_analysis {
-            debug!("Reusing existing HDR analysis: format={:?}", hdr_result.metadata.format);
+            debug!(
+                "Reusing existing HDR analysis: format={:?}",
+                hdr_result.metadata.format
+            );
             hdr_result
         } else {
             let result = self
                 .hdr_manager
                 .analyze_content(ffmpeg, &input_path)
                 .await?;
-            debug!(
-                "HDR analysis complete: format={:?}",
-                result.metadata.format
-            );
+            debug!("HDR analysis complete: format={:?}", result.metadata.format);
             result
         };
 
