@@ -14,6 +14,7 @@ pub struct ProgressMonitor {
     source_fps: f32,
     last_time: f64,
     stall_counter: u32,
+    source_file_size: Option<u64>,
 }
 
 impl ProgressMonitor {
@@ -22,6 +23,7 @@ impl ProgressMonitor {
         fps: f32,
         _ffmpeg: FfmpegWrapper,
         encoding_mode: EncodingMode,
+        source_file_size: Option<u64>,
     ) -> Self {
         let is_two_pass = matches!(encoding_mode, EncodingMode::ABR | EncodingMode::CBR);
         let progress_bar = ProgressBar::new(10000); // Use 10000 as max for 0.01% precision
@@ -62,6 +64,7 @@ impl ProgressMonitor {
             source_fps: fps,
             last_time: 0.0,
             stall_counter: 0,
+            source_file_size,
         }
     }
 
@@ -289,7 +292,15 @@ impl ProgressMonitor {
         if current_progress > 0.01 {
             if let Some(current_size) = info.total_size {
                 let estimated_final_size = (current_size as f64 / current_progress) as u64;
-                message_parts.push(format!("~{}", format_size(estimated_final_size)));
+
+                // Format as "source > estimated output" if we have source size
+                if let Some(source_size) = self.source_file_size {
+                    message_parts.push(format!("{} > ~{}",
+                        format_size(source_size),
+                        format_size(estimated_final_size)));
+                } else {
+                    message_parts.push(format!("~{}", format_size(estimated_final_size)));
+                }
             }
         }
 
