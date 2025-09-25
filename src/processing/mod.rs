@@ -48,12 +48,23 @@ impl<'a> VideoProcessor<'a> {
     pub async fn run(&mut self) -> Result<()> {
         let metadata = self.get_metadata().await?;
 
-        // Detect crop early, before expensive tool analysis
-        let is_basic_hdr = self.is_basic_hdr_content(&metadata);
-        let (crop_values, crop_sample_timestamps, crop_analysis_result) =
-            self.detect_crop(is_basic_hdr, &metadata).await?;
+        // Fast HDR analysis for crop detection threshold selection
+        let content_manager = UnifiedContentManager::new(
+            self.config.analysis.hdr.clone().unwrap_or_default(),
+            self.config.analysis.dolby_vision.clone(),
+            self.config.tools.hdr10plus_tool.clone(),
+        );
+        let hdr_analysis = content_manager.analyze_hdr_only(self.ffmpeg, self.input_path).await?;
 
-        let content_analysis = self.analyze_content(&metadata).await?;
+        // Use HDR result for crop detection (before expensive DV/HDR10+ tools)
+        let is_advanced_content = hdr_analysis.metadata.format != crate::hdr::HdrFormat::None;
+        let (crop_values, crop_sample_timestamps, crop_analysis_result) =
+            self.detect_crop(is_advanced_content, &metadata).await?;
+
+        // Complete content analysis, reusing the HDR analysis
+        let content_analysis = content_manager
+            .analyze_content_with_hdr_reuse(self.ffmpeg, self.input_path, Some(hdr_analysis))
+            .await?;
         let metadata_workflow = self.initialize_metadata_workflow().await?;
         let extracted_metadata = metadata_workflow
             .extract_metadata(
@@ -166,46 +177,6 @@ impl<'a> VideoProcessor<'a> {
         self.ffmpeg.get_video_metadata(self.input_path).await
     }
 
-    /// Basic HDR detection from metadata (for crop detection threshold selection)
-    fn is_basic_hdr_content(&self, metadata: &VideoMetadata) -> bool {
-        // Check for HDR indicators in metadata
-        if let Some(ref color_space) = metadata.color_space {
-            if color_space.to_lowercase().contains("bt2020")
-                || color_space.to_lowercase().contains("rec2020") {
-                return true;
-            }
-        }
-
-        if let Some(ref transfer) = metadata.transfer_function {
-            if transfer.to_lowercase().contains("smpte2084")
-                || transfer.to_lowercase().contains("arib-std-b67")
-                || transfer.to_lowercase().contains("hlg") {
-                return true;
-            }
-        }
-
-        // Check for HDR10 static metadata
-        if metadata.master_display.is_some() || metadata.max_cll.is_some() {
-            return true;
-        }
-
-        false
-    }
-
-    async fn analyze_content(
-        &self,
-        _metadata: &VideoMetadata,
-    ) -> Result<crate::ContentAnalysisResult> {
-        info!("Running comprehensive content analysis...");
-        let content_manager = UnifiedContentManager::new(
-            self.config.analysis.hdr.clone().unwrap_or_default(),
-            self.config.analysis.dolby_vision.clone(),
-            self.config.tools.hdr10plus_tool.clone(),
-        );
-        content_manager
-            .analyze_content(self.ffmpeg, self.input_path)
-            .await
-    }
 
     async fn initialize_metadata_workflow(&self) -> Result<MetadataWorkflowManager> {
         info!("Initializing metadata workflow manager...");
