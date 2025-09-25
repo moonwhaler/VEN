@@ -42,14 +42,25 @@ impl Hdr10PlusTool {
             output_path.to_string(),
         ];
 
-        self.tool
-            .run_with_custom_args(
-                &base_args,
-                &self.tool.config().extract_args,
-                Some(output_json),
-            )
-            .await
-            .map(|_| ())
+        // Use silent method to avoid scary ERROR logs for expected failures
+        match self.tool.run_with_custom_args_silent(
+            &base_args,
+            &self.tool.config().extract_args,
+            Some(output_json),
+        ).await {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                // Check if this is the expected "no dynamic metadata" case
+                let error_message = e.to_string();
+                if error_message.contains("Tool failed with exit code exit status: 1") {
+                    // This is expected when no HDR10+ metadata exists - return a custom error
+                    // that can be handled more gracefully by the caller
+                    Err(crate::utils::Error::Tool("File doesn't contain dynamic metadata".to_string()))
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     pub async fn inject_metadata<P1: AsRef<Path>, P2: AsRef<Path>, P3: AsRef<Path>>(

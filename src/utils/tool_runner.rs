@@ -69,8 +69,22 @@ impl ToolRunner {
     }
 
     pub async fn run(&self, args: &[String], output_file: Option<&Path>) -> Result<String> {
+        self.run_with_logging(args, output_file, true).await
+    }
+
+    pub async fn run_silent(&self, args: &[String], output_file: Option<&Path>) -> Result<String> {
+        self.run_with_logging(args, output_file, false).await
+    }
+
+    async fn run_with_logging(&self, args: &[String], output_file: Option<&Path>, log_errors: bool) -> Result<String> {
         let mut command = Command::new(&self.config.path);
         command.args(args);
+
+        // In silent mode, capture stdout/stderr to prevent external tool messages from showing
+        if !log_errors {
+            command.stdout(std::process::Stdio::piped());
+            command.stderr(std::process::Stdio::piped());
+        }
 
         debug!("Running: {} {}", self.config.path, args.join(" "));
 
@@ -92,10 +106,17 @@ impl ToolRunner {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
 
-            error!("Tool failed:");
-            error!("Exit code: {}", output.status);
-            error!("Stdout: {}", stdout);
-            error!("Stderr: {}", stderr);
+            if log_errors {
+                error!("Tool failed:");
+                error!("Exit code: {}", output.status);
+                error!("Stdout: {}", stdout);
+                error!("Stderr: {}", stderr);
+            } else {
+                debug!("Tool failed (expected):");
+                debug!("Exit code: {}", output.status);
+                debug!("Stdout: {}", stdout);
+                debug!("Stderr: {}", stderr);
+            }
 
             return Err(Error::Tool(format!(
                 "Tool failed with exit code {}: {}",
@@ -129,6 +150,21 @@ impl ToolRunner {
         }
 
         self.run(&args, output_path.as_ref().map(|p| p.as_ref()))
+            .await
+    }
+
+    pub async fn run_with_custom_args_silent<P: AsRef<Path>>(
+        &self,
+        base_args: &[String],
+        custom_args: &Option<Vec<String>>,
+        output_path: Option<P>,
+    ) -> Result<String> {
+        let mut args = base_args.to_vec();
+        if let Some(ref custom) = custom_args {
+            args.extend(custom.clone());
+        }
+
+        self.run_silent(&args, output_path.as_ref().map(|p| p.as_ref()))
             .await
     }
 
