@@ -165,7 +165,8 @@ impl ProgressMonitor {
                                     progress.time = time_us as f64 / 1_000_000.0; // Convert microseconds to seconds
                                     if self.total_duration > 0.0 {
                                         progress.progress_percentage =
-                                            ((progress.time / self.total_duration) * 100.0).min(100.0)
+                                            ((progress.time / self.total_duration) * 100.0)
+                                                .min(100.0)
                                                 as f32;
                                     }
                                 }
