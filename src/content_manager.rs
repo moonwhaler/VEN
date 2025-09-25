@@ -87,26 +87,54 @@ impl UnifiedContentManager {
         }
     }
 
+    /// Fast HDR analysis only (for crop detection threshold selection)
+    pub async fn analyze_hdr_only<P: AsRef<Path>>(
+        &self,
+        ffmpeg: &FfmpegWrapper,
+        input_path: P,
+    ) -> Result<HdrAnalysisResult> {
+        debug!("Running fast HDR analysis for crop detection...");
+        self.hdr_manager.analyze_content(ffmpeg, &input_path).await
+    }
+
     /// Analyze content for HDR, Dolby Vision, and HDR10+ characteristics
+    /// Optionally reuse existing HDR analysis to avoid duplication
     pub async fn analyze_content<P: AsRef<Path>>(
         &self,
         ffmpeg: &FfmpegWrapper,
         input_path: P,
+    ) -> Result<ContentAnalysisResult> {
+        self.analyze_content_with_hdr_reuse(ffmpeg, input_path, None).await
+    }
+
+    /// Analyze content for HDR, Dolby Vision, and HDR10+ characteristics
+    /// with optional HDR analysis reuse
+    pub async fn analyze_content_with_hdr_reuse<P: AsRef<Path>>(
+        &self,
+        ffmpeg: &FfmpegWrapper,
+        input_path: P,
+        existing_hdr_analysis: Option<HdrAnalysisResult>,
     ) -> Result<ContentAnalysisResult> {
         info!(
             "Starting unified content analysis for: {}",
             input_path.as_ref().display()
         );
 
-        // First, analyze HDR characteristics
-        let hdr_analysis = self
-            .hdr_manager
-            .analyze_content(ffmpeg, &input_path)
-            .await?;
-        debug!(
-            "HDR analysis complete: format={:?}",
-            hdr_analysis.metadata.format
-        );
+        // First, analyze HDR characteristics (reuse existing if provided)
+        let hdr_analysis = if let Some(hdr_result) = existing_hdr_analysis {
+            debug!("Reusing existing HDR analysis: format={:?}", hdr_result.metadata.format);
+            hdr_result
+        } else {
+            let result = self
+                .hdr_manager
+                .analyze_content(ffmpeg, &input_path)
+                .await?;
+            debug!(
+                "HDR analysis complete: format={:?}",
+                result.metadata.format
+            );
+            result
+        };
 
         // Then, check for Dolby Vision if enabled
         let dv_info = if let Some(ref detector) = self.dv_detector {
