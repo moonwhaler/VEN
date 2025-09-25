@@ -30,20 +30,11 @@ analysis:
     min_pixel_change_percent: 1.0
   hdr_detection:
     enabled: true
-    color_space_patterns: ["bt2020", "rec2020"]
-    transfer_patterns: ["smpte2084", "arib-std-b67"]
     crf_adjustment: 2.0
   hdr:
     enabled: true
-    auto_detect_format: true
-    preserve_metadata: true
-    fallback_to_sdr: true
-    encoding_optimization: true
     crf_adjustment: 2.0
     bitrate_multiplier: 1.5
-    force_10bit: true
-    detection_method: "metadata"
-    tonemap_algorithm: "hable"
   dolby_vision:
     enabled: true
     preserve_profile_7: true

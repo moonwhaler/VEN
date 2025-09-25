@@ -238,8 +238,6 @@ mod tests {
                 hdr_detection: HdrDetectionConfig {
                     enabled: true,
                     passthrough_mode: false,
-                    color_space_patterns: vec!["bt2020".to_string()],
-                    transfer_patterns: vec!["smpte2084".to_string()],
                     crf_adjustment: 2.0,
                 },
                 hdr: Some(crate::config::UnifiedHdrConfig::default()),

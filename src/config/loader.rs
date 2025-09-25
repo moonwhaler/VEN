@@ -146,8 +146,6 @@ analysis:
     min_pixel_change_percent: 1.0
   hdr_detection:
     enabled: true
-    color_space_patterns: ["bt2020"]
-    transfer_patterns: ["smpte2084"]
     crf_adjustment: 2.0
 
 
