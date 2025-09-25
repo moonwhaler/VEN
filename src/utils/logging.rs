@@ -5,16 +5,273 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tracing::Level;
 use tracing_subscriber::{
-    fmt::{self, time::ChronoUtc},
+    fmt::{self, format::Writer, FmtContext, FormatEvent, FormatFields},
     layer::SubscriberExt,
     util::SubscriberInitExt,
-    EnvFilter, Layer,
+    EnvFilter,
 };
+use console::style;
+use std::fmt::{self as std_fmt, Debug};
+
+struct CleanFormatter {
+    show_timestamps: bool,
+    use_color: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ProcessingLevel {
+    Root,        // Top level operations
+    Stage,       // Major processing stages
+    Step,        // Individual steps within stages
+    Detail,      // Detailed information
+}
+
+impl CleanFormatter {
+    fn new(show_timestamps: bool, use_color: bool) -> Self {
+        Self {
+            show_timestamps,
+            use_color,
+        }
+    }
+
+    fn format_level(&self, level: &Level) -> String {
+        if !self.use_color {
+            match *level {
+                Level::ERROR => "ERROR".to_string(),
+                Level::WARN => "WARN ".to_string(),
+                Level::INFO => "".to_string(), // Hide INFO prefix for cleaner output
+                Level::DEBUG => "DEBUG".to_string(),
+                Level::TRACE => "TRACE".to_string(),
+            }
+        } else {
+            match *level {
+                Level::ERROR => style("ERROR").red().bold().to_string(),
+                Level::WARN => style("WARN ").yellow().to_string(),
+                Level::INFO => "".to_string(), // Hide INFO prefix for cleaner output
+                Level::DEBUG => style("DEBUG").blue().to_string(),
+                Level::TRACE => style("TRACE").magenta().to_string(),
+            }
+        }
+    }
+
+    fn should_show_message(&self, message: &str) -> bool {
+        // Filter out noisy FFmpeg messages that don't add value
+        let noise_patterns = [
+            "Invalid Block Addition value",
+            "Could not find codec parameters for stream",
+            "Consider increasing the value for the 'analyzeduration'",
+            "x265 [info]: HEVC encoder version",
+            "x265 [info]: build info",
+            "x265 [info]: using cpu capabilities",
+            "x265 [info]: Thread pool created",
+            "x265 [info]: Slices",
+            "x265 [info]: frame threads",
+            "x265 [info]: Coding QT",
+            "x265 [info]: Residual QT",
+            "x265 [info]: ME / range",
+            "x265 [info]: Keyframe min",
+            "x265 [info]: Lookahead",
+            "x265 [info]: b-pyramid",
+            "x265 [info]: References",
+            "x265 [info]: AQ:",
+            "x265 [info]: Rate Control",
+            "x265 [info]: tools:",
+            "matroska,webm",
+        ];
+
+        !noise_patterns.iter().any(|pattern| message.contains(pattern))
+    }
+
+    fn determine_processing_level(&self, message: &str) -> ProcessingLevel {
+        // Root level - main operations
+        if message.contains("Processing file") ||
+           message.contains("Found") && message.contains("file(s) to process") {
+            return ProcessingLevel::Root;
+        }
+
+        // Stage level - major processing phases
+        if message.contains("Starting") && (
+            message.contains("encoding") ||
+            message.contains("CRF") ||
+            message.contains("ABR") ||
+            message.contains("CBR") ||
+            message.contains("crop detection") ||
+            message.contains("unified content analysis") ||
+            message.contains("pre-encoding metadata extraction")
+        ) {
+            return ProcessingLevel::Stage;
+        }
+
+        if message.contains("CONTENT DETECTED") ||
+           message.contains("Recommended encoding approach") ||
+           message.contains("Crop detection completed") {
+            return ProcessingLevel::Stage;
+        }
+
+        // Step level - individual processing steps
+        if message.contains("Analyzing stream structure") ||
+           message.contains("Stream filtering") && message.contains("complete") ||
+           message.contains("Getting video metadata") ||
+           message.contains("External metadata tools are ready") ||
+           message.contains("HDR/DV metadata tools ready") ||
+           message.contains("Processing SDR content") ||
+           message.contains("No external metadata extracted") {
+            return ProcessingLevel::Step;
+        }
+
+        // Detail level - supporting information
+        ProcessingLevel::Detail
+    }
+
+    fn get_tree_prefix(&self, level: ProcessingLevel) -> &'static str {
+        match level {
+            ProcessingLevel::Root => "▶",
+            ProcessingLevel::Stage => "",
+            ProcessingLevel::Step => "",
+            ProcessingLevel::Detail => "",
+        }
+    }
+
+    fn format_message(&self, message: &str) -> String {
+        let level = self.determine_processing_level(message);
+        let prefix = self.get_tree_prefix(level);
+
+        // Clean up and format the message based on its type
+        let formatted_content = match level {
+            ProcessingLevel::Root => {
+                if self.use_color {
+                    style(message).bold().cyan().to_string()
+                } else {
+                    message.to_uppercase()
+                }
+            },
+            ProcessingLevel::Stage => {
+                // Clean up stage messages
+                let clean_message = if message.contains("Starting") && message.contains("encoding") {
+                    message.replace("Starting ", "")
+                } else if message.contains("CONTENT DETECTED") {
+                    message.replace(" CONTENT DETECTED", " content detected")
+                } else {
+                    message.to_string()
+                };
+
+                if self.use_color {
+                    style(clean_message).bold().green().to_string()
+                } else {
+                    clean_message
+                }
+            },
+            ProcessingLevel::Step => {
+                // Summarize stream filtering results more concisely
+                let clean_message = if message.contains("Stream filtering") && message.contains("complete") {
+                    if let Some(summary) = self.extract_stream_summary(message) {
+                        summary
+                    } else {
+                        message.to_string()
+                    }
+                } else if message.contains("External metadata tools are ready") {
+                    "HDR/DV metadata tools ready".to_string()
+                } else if message.contains("Getting video metadata for:") {
+                    "Analyzing video metadata".to_string()
+                } else {
+                    message.to_string()
+                };
+
+                if self.use_color {
+                    style(clean_message).cyan().to_string()
+                } else {
+                    clean_message
+                }
+            },
+            ProcessingLevel::Detail => {
+                if self.use_color {
+                    style(message).dim().to_string()
+                } else {
+                    message.to_string()
+                }
+            }
+        };
+
+        format!("{} {}", prefix, formatted_content)
+    }
+
+    fn extract_stream_summary(&self, message: &str) -> Option<String> {
+        // Extract key numbers from "Stream filtering with profile 'english_only' complete: 1 video, 1 audio (filtered from 2), 0 subtitle (filtered from 1), 0 data, 20 chapters"
+        if let Some(colon_pos) = message.find(": ") {
+            let summary_part = &message[colon_pos + 2..];
+            Some(format!("Streams selected: {}", summary_part))
+        } else {
+            None
+        }
+    }
+}
+
+impl<S, N> FormatEvent<S, N> for CleanFormatter
+where
+    S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
+{
+    fn format_event(
+        &self,
+        _ctx: &FmtContext<'_, S, N>,
+        mut writer: Writer<'_>,
+        event: &tracing::Event<'_>,
+    ) -> std_fmt::Result {
+        let metadata = event.metadata();
+        let message = {
+            let mut visitor = MessageVisitor::default();
+            event.record(&mut visitor);
+            visitor.message
+        };
+
+        // Filter out noisy messages
+        if !self.should_show_message(&message) {
+            return Ok(());
+        }
+
+        let mut output = String::new();
+
+        // Add timestamp if enabled (but use shorter format)
+        if self.show_timestamps {
+            let now = chrono::Utc::now();
+            let timestamp = if self.use_color {
+                style(now.format("%H:%M:%S").to_string()).dim().to_string()
+            } else {
+                now.format("%H:%M:%S").to_string()
+            };
+            output.push_str(&format!("[{}] ", timestamp));
+        }
+
+        // Add level indicator
+        let level_str = self.format_level(metadata.level());
+        if !level_str.is_empty() {
+            output.push_str(&format!("{} ", level_str));
+        }
+
+        // Add formatted message
+        output.push_str(&self.format_message(&message));
+
+        writeln!(writer, "{}", output)
+    }
+}
+
+#[derive(Default)]
+struct MessageVisitor {
+    message: String,
+}
+
+impl tracing::field::Visit for MessageVisitor {
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn Debug) {
+        if field.name() == "message" {
+            self.message = format!("{:?}", value).trim_matches('"').to_string();
+        }
+    }
+}
 
 pub fn setup_logging(
     level: &str,
     show_timestamps: bool,
-    _colored: bool,
+    colored: bool,
 ) -> crate::utils::Result<()> {
     let level = match level.to_lowercase().as_str() {
         "trace" => Level::TRACE,
@@ -29,17 +286,12 @@ pub fn setup_logging(
         .with_default_directive(level.into())
         .from_env_lossy();
 
+    // Use our clean formatter for better console output
+    let formatter = CleanFormatter::new(show_timestamps, colored);
     let fmt_layer = fmt::layer()
         .with_target(false)
-        .with_level(true)
-        .with_ansi(false) // Disable ANSI formatting to remove emojis
-        .compact();
-
-    let fmt_layer = if show_timestamps {
-        fmt_layer.with_timer(ChronoUtc::rfc_3339()).boxed()
-    } else {
-        fmt_layer.without_time().boxed()
-    };
+        .with_level(false) // We handle level formatting in our custom formatter
+        .event_format(formatter);
 
     tracing_subscriber::registry()
         .with(env_filter)

@@ -42,9 +42,16 @@ impl Hdr10PlusManager {
         input_video: P,
         hdr_result: &HdrAnalysisResult,
     ) -> Result<Option<Hdr10PlusProcessingResult>> {
-        // Only process if this is HDR10+ content
-        if hdr_result.metadata.format != HdrFormat::HDR10Plus {
-            debug!("Skipping HDR10+ extraction - not HDR10+ content");
+        // Process HDR10+ content, and also attempt extraction for HDR10 content
+        // that may contain HDR10+ dynamic metadata
+        if !matches!(
+            hdr_result.metadata.format,
+            HdrFormat::HDR10Plus | HdrFormat::HDR10
+        ) {
+            debug!(
+                "Skipping HDR10+ extraction - content format is {:?}",
+                hdr_result.metadata.format
+            );
             return Ok(None);
         }
 
@@ -120,7 +127,16 @@ impl Hdr10PlusManager {
                 }
             }
             Err(e) => {
-                warn!("HDR10+ metadata extraction failed: {}", e);
+                // Check if this is the expected "no dynamic metadata" case
+                let error_message = e.to_string();
+                if error_message.contains("File doesn't contain dynamic metadata")
+                   || error_message.contains("No dynamic metadata found")
+                   || error_message.contains("Tool failed with exit code exit status: 1") {
+                    debug!("No HDR10+ dynamic metadata found in file - this is normal for HDR10 content");
+                    info!("No HDR10+ dynamic metadata detected (standard HDR10 content)");
+                } else {
+                    warn!("HDR10+ metadata extraction failed: {}", e);
+                }
                 Ok(None)
             }
         }
@@ -133,8 +149,11 @@ impl Hdr10PlusManager {
         dv_info: &DolbyVisionInfo,
         hdr_result: &HdrAnalysisResult,
     ) -> Result<Option<Hdr10PlusProcessingResult>> {
-        if !dv_info.is_dolby_vision() || hdr_result.metadata.format != HdrFormat::HDR10Plus {
-            debug!("Not dual DV+HDR10+ content - skipping dual processing");
+        if !dv_info.is_dolby_vision() || !matches!(
+            hdr_result.metadata.format,
+            HdrFormat::HDR10Plus | HdrFormat::HDR10
+        ) {
+            debug!("Not dual DV+HDR10/HDR10+ content - skipping dual processing");
             return self
                 .extract_hdr10plus_metadata(input_video, hdr_result)
                 .await;
