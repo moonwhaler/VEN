@@ -531,11 +531,15 @@ impl<'a> VideoProcessor<'a> {
         metadata: &VideoMetadata,
         encoding_mode: EncodingMode,
     ) -> ProgressMonitor {
+        // Get source file size
+        let source_file_size = std::fs::metadata(self.input_path).map(|m| m.len()).ok();
+
         let progress_monitor = ProgressMonitor::new(
             metadata.duration,
             metadata.fps,
             self.ffmpeg.clone(),
             encoding_mode,
+            source_file_size,
         );
         let total_frames = if metadata.fps > 0.0 && metadata.duration > 0.0 {
             (metadata.duration * metadata.fps as f64) as u32
