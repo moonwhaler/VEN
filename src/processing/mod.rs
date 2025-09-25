@@ -1,6 +1,6 @@
 use crate::{
     cli::CliArgs,
-    config::{Config, EncodingProfile, ProfileManager},
+    config::{Config, EncodingProfile, ProfileManager, StreamSelectionProfileManager},
     encoding::{
         modes::Encoder, AbrEncoder, CbrEncoder, CrfEncoder, EncodingMode, FilterBuilder,
         FilterChain,
@@ -20,6 +20,7 @@ pub struct VideoProcessor<'a> {
     args: &'a CliArgs,
     config: &'a Config,
     profile_manager: &'a mut ProfileManager,
+    stream_profile_manager: StreamSelectionProfileManager,
     input_path: &'a Path,
     output_path: &'a Path,
 }
@@ -33,16 +34,19 @@ impl<'a> VideoProcessor<'a> {
         profile_manager: &'a mut ProfileManager,
         input_path: &'a Path,
         output_path: &'a Path,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        let stream_profile_manager = StreamSelectionProfileManager::new(config.stream_selection_profiles.clone())?;
+
+        Ok(Self {
             ffmpeg,
             stream_preservation,
             args,
             config,
             profile_manager,
+            stream_profile_manager,
             input_path,
             output_path,
-        }
+        })
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -389,18 +393,12 @@ impl<'a> VideoProcessor<'a> {
     }
 
     async fn analyze_streams(&self) -> Result<crate::stream::preservation::StreamMapping> {
-        // Check if stream filtering is enabled via config only
-        if let Some(stream_config) = &self.config.stream_selection {
-            if stream_config.enabled {
-                self.stream_preservation
-                    .analyze_streams_with_filtering(self.input_path, stream_config)
-                    .await
-            } else {
-                // Use default behavior (copy all streams)
-                self.stream_preservation
-                    .analyze_streams(self.input_path)
-                    .await
-            }
+        // Check if a stream selection profile is specified via CLI argument
+        if let Some(profile_name) = &self.args.stream_selection_profile {
+            let profile = self.stream_profile_manager.get_profile(profile_name)?;
+            self.stream_preservation
+                .analyze_streams_with_profile(self.input_path, profile)
+                .await
         } else {
             // Use default behavior (copy all streams)
             self.stream_preservation

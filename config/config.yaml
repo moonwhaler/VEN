@@ -52,24 +52,6 @@ analysis:
     # Cao_Perceptual_Assessment_and_Optimization_of_HDR_Image_Rendering_C
     # VPR_2024_paper.pdf  
 
-  stream_selection:
-    enabled: false
-    audio:
-      languages: ["eng", "jpn"]           # ISO 639-1/639-2 language codes
-      codecs: ["aac", "ac3", "dts"]       # Codec filters
-      dispositions: ["default", "original"] # Disposition filters
-      title_patterns: ["(?i)^(?!.*(commentary|director|behind|making|bonus)).*$"] # Regex patterns (exclude commentary)
-      exclude_commentary: true            # Exclude commentary tracks
-      max_streams: 2                      # Limit number of audio streams
-    subtitle:
-      languages: ["eng", "jpn"]           # Language filters
-      codecs: ["subrip", "ass"]           # Codec filters (SRT, ASS, etc.)
-      dispositions: ["forced", "default"] # Include forced and default
-      title_patterns: ["(?i)^(?!.*(commentary|director|behind|making|bonus)).*$"] # Exclude commentary subs
-      exclude_commentary: true            # Exclude commentary subtitles
-      include_forced_only: false          # Set true to include only forced subs
-      max_streams: 4                      # Limit number of subtitle streams
-
   dolby_vision:
     enabled: true                     # Enable Dolby Vision processing
     preserve_profile_7: true          # Convert Profile 7 to 8.1
@@ -429,3 +411,54 @@ profiles:
       me: "hex"
       subme: 7
       merange: 57
+
+# Stream Selection Profiles
+stream_selection_profiles:
+  english_only:
+    title: "English Only - Audio and subtitles"
+    audio:
+      languages: ["eng"]
+      exclude_commentary: true
+      max_streams: 2
+    subtitle:
+      languages: ["eng"]
+      exclude_commentary: true
+      max_streams: 2
+
+  multilang:
+    title: "Multi-language - English and Japanese"
+    audio:
+      languages: ["eng", "jpn"]
+      codecs: ["aac", "ac3", "dts"]
+      dispositions: ["default", "original"]
+      title_patterns: ["(?i)^(?!.*(commentary|director|behind|making|bonus)).*$"]
+      exclude_commentary: true
+      max_streams: 3
+    subtitle:
+      languages: ["eng", "jpn"]
+      codecs: ["subrip", "ass"]
+      dispositions: ["forced", "default"]
+      title_patterns: ["(?i)^(?!.*(commentary|director|behind|making|bonus)).*$"]
+      exclude_commentary: true
+      include_forced_only: false
+      max_streams: 4
+
+  forced_only:
+    title: "Forced Subtitles - All audio, forced subs only"
+    audio:
+      exclude_commentary: true
+    subtitle:
+      include_forced_only: true
+      exclude_commentary: true
+      max_streams: 2
+
+  minimal:
+    title: "Minimal - One audio, forced subs only"
+    audio:
+      languages: ["eng"]
+      exclude_commentary: true
+      max_streams: 1
+    subtitle:
+      include_forced_only: true
+      exclude_commentary: true
+      max_streams: 1

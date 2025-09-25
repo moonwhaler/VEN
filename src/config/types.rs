@@ -276,16 +276,6 @@ pub struct DenoiseConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct StreamSelectionConfig {
-    #[serde(default)]
-    pub enabled: bool, // Disabled by default to preserve current behavior
-    #[serde(default)]
-    pub audio: AudioSelectionConfig,
-    #[serde(default)]
-    pub subtitle: SubtitleSelectionConfig,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct AudioSelectionConfig {
     #[serde(default)]
     pub languages: Option<Vec<String>>, // ISO 639-1/639-2 language codes (e.g., ["eng", "jpn"])
@@ -333,4 +323,31 @@ pub struct RawProfile {
     pub hdr_bitrate: u32,
     pub content_type: String,
     pub x265_params: HashMap<String, serde_yaml::Value>,
+}
+
+// Stream Selection Profile Types
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StreamSelectionProfile {
+    pub name: String,
+    pub title: String,
+    pub audio: AudioSelectionConfig,
+    pub subtitle: SubtitleSelectionConfig,
+}
+
+impl StreamSelectionProfile {
+    pub fn from_raw(name: String, raw: RawStreamSelectionProfile) -> Self {
+        Self {
+            name,
+            title: raw.title,
+            audio: raw.audio.unwrap_or_default(),
+            subtitle: raw.subtitle.unwrap_or_default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RawStreamSelectionProfile {
+    pub title: String,
+    pub audio: Option<AudioSelectionConfig>,
+    pub subtitle: Option<SubtitleSelectionConfig>,
 }

@@ -180,6 +180,6 @@ async fn process_single_file(
         profile_manager,
         input_path,
         output_path,
-    );
+    )?;
     processor.run().await
 }

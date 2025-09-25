@@ -93,6 +93,18 @@ pub struct CliArgs {
     /// Validate configuration file
     #[arg(long)]
     pub validate_config: bool,
+
+    /// Stream selection profile to use [default, english_only, multilang, forced_only, minimal]
+    #[arg(short = 's', long = "stream-selection-profile", value_name = "PROFILE")]
+    pub stream_selection_profile: Option<String>,
+
+    /// List all available stream selection profiles
+    #[arg(long)]
+    pub list_stream_profiles: bool,
+
+    /// Show detailed information about a specific stream selection profile
+    #[arg(long, value_name = "PROFILE")]
+    pub show_stream_profile: Option<String>,
 }
 
 impl CliArgs {
@@ -112,6 +124,8 @@ impl CliArgs {
     pub fn is_info_command(&self) -> bool {
         self.list_profiles
             || self.show_profile.is_some()
+            || self.list_stream_profiles
+            || self.show_stream_profile.is_some()
             || self.validate_config
             || self.help_topic.is_some()
     }
