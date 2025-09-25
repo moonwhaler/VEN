@@ -52,24 +52,23 @@ analysis:
     # Cao_Perceptual_Assessment_and_Optimization_of_HDR_Image_Rendering_C
     # VPR_2024_paper.pdf  
 
-# Stream Selection Configuration (optional)
-# stream_selection:
-#   enabled: false  # Set to true to enable stream filtering
-#   audio:
-#     languages: ["eng", "jpn"]           # ISO 639-1/639-2 language codes
-#     codecs: ["aac", "ac3", "dts"]       # Codec filters
-#     dispositions: ["default", "original"] # Disposition filters
-#     title_patterns: ["^(?!.*Commentary).*$"] # Regex patterns (exclude commentary)
-#     exclude_commentary: true            # Exclude commentary tracks
-#     max_streams: 2                      # Limit number of audio streams
-#   subtitle:
-#     languages: ["eng", "jpn"]           # Language filters
-#     codecs: ["subrip", "ass"]           # Codec filters (SRT, ASS, etc.)
-#     dispositions: ["forced", "default"] # Include forced and default
-#     title_patterns: ["^(?!.*Commentary).*$"] # Exclude commentary subs
-#     exclude_commentary: true            # Exclude commentary subtitles
-#     include_forced_only: false          # Set true to include only forced subs
-#     max_streams: 4                      # Limit number of subtitle streams 
+  stream_selection:
+    enabled: false
+    audio:
+      languages: ["eng", "jpn"]           # ISO 639-1/639-2 language codes
+      codecs: ["aac", "ac3", "dts"]       # Codec filters
+      dispositions: ["default", "original"] # Disposition filters
+      title_patterns: ["(?i)^(?!.*(commentary|director|behind|making|bonus)).*$"] # Regex patterns (exclude commentary)
+      exclude_commentary: true            # Exclude commentary tracks
+      max_streams: 2                      # Limit number of audio streams
+    subtitle:
+      languages: ["eng", "jpn"]           # Language filters
+      codecs: ["subrip", "ass"]           # Codec filters (SRT, ASS, etc.)
+      dispositions: ["forced", "default"] # Include forced and default
+      title_patterns: ["(?i)^(?!.*(commentary|director|behind|making|bonus)).*$"] # Exclude commentary subs
+      exclude_commentary: true            # Exclude commentary subtitles
+      include_forced_only: false          # Set true to include only forced subs
+      max_streams: 4                      # Limit number of subtitle streams
 
   dolby_vision:
     enabled: true                     # Enable Dolby Vision processing
@@ -117,7 +116,7 @@ profiles:
     title: "Standard Movie"
     base_crf: 22
     base_bitrate: 10000
-    hdr_bitrate: 13000
+    hdr_bitrate: 12000
     content_type: "film"
     x265_params:
       preset: "slow"
@@ -183,7 +182,7 @@ profiles:
 
   movie_size_focused:
     title: "Standard Movie (smaller size)"
-    base_crf: 22
+    base_crf: 23
     base_bitrate: 10000
     hdr_bitrate: 13000
     content_type: "film"
@@ -205,8 +204,8 @@ profiles:
   heavy_grain:
     title: "4K heavy grain (consider using --denoise)"
     base_crf: 21
-    base_bitrate: 12000
-    hdr_bitrate: 15000
+    base_bitrate: 11000
+    hdr_bitrate: 14000
     content_type: "heavy_grain"
     x265_params:
       preset: "slow"
@@ -236,8 +235,8 @@ profiles:
   "3d_cgi":
     title: "3D CGI (Pixar-like)"
     base_crf: 22
-    base_bitrate: 10000
-    hdr_bitrate: 13000
+    base_bitrate: 9000
+    hdr_bitrate: 12000
     content_type: "3d_animation"
     x265_params:
       preset: "slow"
@@ -271,8 +270,8 @@ profiles:
   "3d_complex":
     title: "3D complex content (Arcane-like)"
     base_crf: 22
-    base_bitrate: 11000
-    hdr_bitrate: 14000
+    base_bitrate: 10000
+    hdr_bitrate: 12000
     content_type: "3d_animation"
     x265_params:
       preset: "slow"
@@ -306,8 +305,8 @@ profiles:
   anime:
     title: "Anime"
     base_crf: 23
-    base_bitrate: 9000
-    hdr_bitrate: 12000
+    base_bitrate: 8000
+    hdr_bitrate: 10000
     content_type: "anime"
     x265_params:
       preset: "slow"
@@ -370,8 +369,8 @@ profiles:
   "4k":
     title: "General 4K balanced optimization"
     base_crf: 22
-    base_bitrate: 15000
-    hdr_bitrate: 20000
+    base_bitrate: 12000
+    hdr_bitrate: 16000
     content_type: "mixed"
     x265_params:
       preset: "medium"
@@ -402,8 +401,8 @@ profiles:
   "4k_heavy_grain":
     title: "4K heavy grain preservation with selective SAO"
     base_crf: 21
-    base_bitrate: 18000
-    hdr_bitrate: 24000
+    base_bitrate: 14000
+    hdr_bitrate: 18000
     content_type: "heavy_grain"
     x265_params:
       preset: "medium"
