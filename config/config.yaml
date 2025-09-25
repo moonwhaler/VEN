@@ -38,16 +38,10 @@ analysis:
     hdr_crop_limit: 64 # Crop detection threshold for HDR content
     min_pixel_change_percent: 2.0  # Only apply crops that remove >n% of pixels
 
-  hdr_detection:
+  hdr:
     enabled: true
-    passthrough_mode: true
-    color_space_patterns:
-      - "bt2020"
-      - "rec2020"
-    transfer_patterns:
-      - "smpte2084"
-      - "arib-std-b67"
     crf_adjustment: 1.0
+    bitrate_multiplier: 1.3
     # See paper https://openaccess.thecvf.com/content/CVPR2024/papers/
     # Cao_Perceptual_Assessment_and_Optimization_of_HDR_Image_Rendering_C
     # VPR_2024_paper.pdf  
@@ -77,8 +71,7 @@ analysis:
     validate_curves: true             # Validate tone mapping curves
     crf_adjustment: 0.0               # Respect profile CRF settings (was 2.5)
     bitrate_multiplier: 1.1           # Minimal increase for HDR10+ (was 1.4 = 40% increase)
-    encoding_complexity: 1.1          # Reduced complexity multiplier (was 1.4)
-    # max_scenes: 100                 # Optional maximum scenes for Samsung compatibility    
+    encoding_complexity: 1.1          # Reduced complexity multiplier (was 1.4)    
 
 # Video Filter Settings
 filters:

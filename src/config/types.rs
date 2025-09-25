@@ -121,8 +121,6 @@ pub struct HdrDetectionConfig {
     pub enabled: bool,
     #[serde(default)]
     pub passthrough_mode: bool, // Skip x265 HDR metadata injection for passthrough encoding
-    pub color_space_patterns: Vec<String>,
-    pub transfer_patterns: Vec<String>,
     pub crf_adjustment: f32,
 }
 
@@ -136,13 +134,8 @@ pub struct ToneMappingConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UnifiedHdrConfig {
     pub enabled: bool,
-    pub auto_detect_format: bool,    // Auto-detect HDR10/HLG/etc
-    pub preserve_metadata: bool,     // Preserve all HDR metadata
-    pub fallback_to_sdr: bool,       // Fallback if HDR processing fails
-    pub encoding_optimization: bool, // Use HDR-optimized encoding
     pub crf_adjustment: f32,         // CRF adjustment for HDR
     pub bitrate_multiplier: f32,     // Bitrate multiplier for HDR
-    pub force_10bit: bool,           // Force 10-bit output for HDR
     pub tone_mapping: Option<ToneMappingConfig>, // Future tone mapping
 }
 
@@ -150,13 +143,8 @@ impl Default for UnifiedHdrConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            auto_detect_format: true,
-            preserve_metadata: true,
-            fallback_to_sdr: true,
-            encoding_optimization: true,
             crf_adjustment: 2.0,
             bitrate_multiplier: 1.3,
-            force_10bit: true,
             tone_mapping: None,
         }
     }
@@ -227,9 +215,6 @@ pub struct Hdr10PlusConfig {
 
     /// Validate tone mapping curves
     pub validate_curves: bool,
-
-    /// Maximum number of scenes for Samsung compatibility
-    pub max_scenes: Option<u32>,
 }
 
 impl Default for Hdr10PlusConfig {
@@ -243,7 +228,6 @@ impl Default for Hdr10PlusConfig {
             bitrate_multiplier: 1.4, // 40% increase for dynamic metadata
             encoding_complexity: 1.4,
             validate_curves: true,
-            max_scenes: None, // No limit by default
         }
     }
 }
