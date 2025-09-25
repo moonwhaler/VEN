@@ -1,4 +1,4 @@
-use crate::config::types::{AudioSelectionConfig, StreamSelectionConfig, SubtitleSelectionConfig};
+use crate::config::types::{AudioSelectionConfig, StreamSelectionProfile, SubtitleSelectionConfig};
 use crate::utils::{Error, FfmpegWrapper, Result};
 use regex::Regex;
 use serde_json::{from_str, Value};
@@ -117,15 +117,16 @@ impl StreamPreservation {
         })
     }
 
-    pub async fn analyze_streams_with_filtering<P: AsRef<Path>>(
+    pub async fn analyze_streams_with_profile<P: AsRef<Path>>(
         &self,
         input_path: P,
-        stream_config: &StreamSelectionConfig,
+        profile: &StreamSelectionProfile,
     ) -> Result<StreamMapping> {
         let input_path = input_path.as_ref();
 
         info!(
-            "Analyzing stream structure with filtering: {}",
+            "Analyzing stream structure with profile '{}': {}",
+            profile.name,
             input_path.display()
         );
 
@@ -159,35 +160,21 @@ impl StreamPreservation {
             .cloned()
             .collect();
 
-        // Apply stream filtering if enabled
-        if stream_config.enabled {
-            audio_streams = self.filter_audio_streams(audio_streams, &stream_config.audio)?;
-            subtitle_streams =
-                self.filter_subtitle_streams(subtitle_streams, &stream_config.subtitle)?;
-        }
+        // Apply stream filtering using the profile
+        audio_streams = self.filter_audio_streams(audio_streams, &profile.audio)?;
+        subtitle_streams = self.filter_subtitle_streams(subtitle_streams, &profile.subtitle)?;
 
         // Build mapping arguments with filtered streams
-        let filtered_streams: Vec<StreamInfo> = video_streams
-            .iter()
-            .chain(audio_streams.iter())
-            .chain(subtitle_streams.iter())
-            .chain(data_streams.iter())
-            .cloned()
-            .collect();
-
-        let mapping_args = if stream_config.enabled {
-            self.build_filtered_mapping_arguments(
-                &video_streams,
-                &audio_streams,
-                &subtitle_streams,
-                &data_streams,
-            )?
-        } else {
-            self.build_mapping_arguments(&filtered_streams)?
-        };
+        let mapping_args = self.build_filtered_mapping_arguments(
+            &video_streams,
+            &audio_streams,
+            &subtitle_streams,
+            &data_streams,
+        )?;
 
         info!(
-            "Stream filtering complete: {} video, {} audio (filtered from {}), {} subtitle (filtered from {}), {} data, {} chapters",
+            "Stream filtering with profile '{}' complete: {} video, {} audio (filtered from {}), {} subtitle (filtered from {}), {} data, {} chapters",
+            profile.name,
             video_streams.len(),
             audio_streams.len(),
             streams.iter().filter(|s| s.codec_type == "audio").count(),

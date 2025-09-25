@@ -1,6 +1,6 @@
 use crate::{
     cli::CliArgs,
-    config::{Config, ProfileManager},
+    config::{Config, ProfileManager, StreamSelectionProfileManager},
     utils::Result,
 };
 
@@ -13,6 +13,16 @@ pub async fn handle_commands(args: &CliArgs, config: &Config) -> Result<bool> {
 
     if let Some(profile_name) = &args.show_profile {
         show_profile(config, profile_name).await?;
+        return Ok(true);
+    }
+
+    if args.list_stream_profiles {
+        list_stream_profiles(config).await?;
+        return Ok(true);
+    }
+
+    if let Some(profile_name) = &args.show_stream_profile {
+        show_stream_profile(config, profile_name).await?;
         return Ok(true);
     }
 
@@ -157,6 +167,114 @@ async fn validate_config(config_path: &std::path::Path) -> Result<()> {
             Err(e)
         }
     }
+}
+
+async fn list_stream_profiles(config: &Config) -> Result<()> {
+    let manager = StreamSelectionProfileManager::new(config.stream_selection_profiles.clone())?;
+
+    println!("Available Stream Selection Profiles:");
+    println!("{:=<50}", "");
+
+    for (name, profile) in manager.list_profiles() {
+        println!("  {} - {}", name, profile.title);
+    }
+
+    println!();
+    println!("Use --show-stream-profile <PROFILE> for detailed information");
+    println!("Use -s/--stream-selection-profile <PROFILE> to select a profile");
+
+    Ok(())
+}
+
+async fn show_stream_profile(config: &Config, name: &str) -> Result<()> {
+    let manager = StreamSelectionProfileManager::new(config.stream_selection_profiles.clone())?;
+
+    if let Ok(profile) = manager.get_profile(name) {
+        println!("Stream Selection Profile: {}", profile.name);
+        println!("{:=<50}", "");
+        println!("Title: {}", profile.title);
+        println!();
+
+        println!("Audio Configuration:");
+        println!("{:-<30}", "");
+        if let Some(ref languages) = profile.audio.languages {
+            println!("  Languages: {}", languages.join(", "));
+        } else {
+            println!("  Languages: All");
+        }
+
+        if let Some(ref codecs) = profile.audio.codecs {
+            println!("  Codecs: {}", codecs.join(", "));
+        } else {
+            println!("  Codecs: All");
+        }
+
+        if let Some(ref dispositions) = profile.audio.dispositions {
+            println!("  Dispositions: {}", dispositions.join(", "));
+        } else {
+            println!("  Dispositions: All");
+        }
+
+        if let Some(ref patterns) = profile.audio.title_patterns {
+            println!("  Title patterns: {}", patterns.join(", "));
+        } else {
+            println!("  Title patterns: None");
+        }
+
+        println!("  Exclude commentary: {}", profile.audio.exclude_commentary);
+
+        if let Some(max) = profile.audio.max_streams {
+            println!("  Max streams: {}", max);
+        } else {
+            println!("  Max streams: Unlimited");
+        }
+
+        println!();
+
+        println!("Subtitle Configuration:");
+        println!("{:-<30}", "");
+        if let Some(ref languages) = profile.subtitle.languages {
+            println!("  Languages: {}", languages.join(", "));
+        } else {
+            println!("  Languages: All");
+        }
+
+        if let Some(ref codecs) = profile.subtitle.codecs {
+            println!("  Codecs: {}", codecs.join(", "));
+        } else {
+            println!("  Codecs: All");
+        }
+
+        if let Some(ref dispositions) = profile.subtitle.dispositions {
+            println!("  Dispositions: {}", dispositions.join(", "));
+        } else {
+            println!("  Dispositions: All");
+        }
+
+        if let Some(ref patterns) = profile.subtitle.title_patterns {
+            println!("  Title patterns: {}", patterns.join(", "));
+        } else {
+            println!("  Title patterns: None");
+        }
+
+        println!("  Exclude commentary: {}", profile.subtitle.exclude_commentary);
+        println!("  Forced only: {}", profile.subtitle.include_forced_only);
+
+        if let Some(max) = profile.subtitle.max_streams {
+            println!("  Max streams: {}", max);
+        } else {
+            println!("  Max streams: Unlimited");
+        }
+    } else {
+        println!("Stream selection profile '{}' not found.", name);
+        println!();
+        println!("Available profiles:");
+        for profile_name in manager.list_profile_names() {
+            println!("  - {}", profile_name);
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

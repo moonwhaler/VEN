@@ -13,7 +13,8 @@ pub struct Config {
     pub analysis: AnalysisConfig,
     pub profiles: HashMap<String, RawProfile>,
     pub filters: FiltersConfig,
-    pub stream_selection: Option<StreamSelectionConfig>,
+    #[serde(default)]
+    pub stream_selection_profiles: HashMap<String, RawStreamSelectionProfile>,
 }
 
 impl Config {

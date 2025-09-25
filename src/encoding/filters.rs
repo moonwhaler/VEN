@@ -260,7 +260,7 @@ mod tests {
                     params: "1:1:2:2".to_string(),
                 },
             },
-            stream_selection: None,
+            stream_selection_profiles: HashMap::new(),
         }
     }
 
