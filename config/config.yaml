@@ -318,7 +318,7 @@ profiles:
 
   classic_anime:
     title: "Classic 90s Anime with finer details"
-    base_crf: 23
+    base_crf: 22
     base_bitrate: 9000
     hdr_bitrate: 11000
     content_type: "classic_anime"
