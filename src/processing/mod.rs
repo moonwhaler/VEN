@@ -47,6 +47,12 @@ impl<'a> VideoProcessor<'a> {
 
     pub async fn run(&mut self) -> Result<()> {
         let metadata = self.get_metadata().await?;
+
+        // Detect crop early, before expensive tool analysis
+        let is_basic_hdr = self.is_basic_hdr_content(&metadata);
+        let (crop_values, crop_sample_timestamps, crop_analysis_result) =
+            self.detect_crop(is_basic_hdr, &metadata).await?;
+
         let content_analysis = self.analyze_content(&metadata).await?;
         let metadata_workflow = self.initialize_metadata_workflow().await?;
         let extracted_metadata = metadata_workflow
@@ -83,9 +89,6 @@ impl<'a> VideoProcessor<'a> {
         let x265_params_preview =
             self.build_x265_params_preview(&selected_profile, &metadata, is_advanced_content);
         self.log_x265_params(&content_analysis, &x265_params_preview, is_advanced_content);
-
-        let (crop_values, crop_sample_timestamps, crop_analysis_result) =
-            self.detect_crop(is_advanced_content, &metadata).await?;
 
         let filter_chain = self.build_filter_chain(crop_values.as_deref())?;
         let encoding_mode = self.get_encoding_mode()?;
@@ -161,6 +164,32 @@ impl<'a> VideoProcessor<'a> {
     async fn get_metadata(&self) -> Result<VideoMetadata> {
         info!("Getting video metadata for: {}", self.input_path.display());
         self.ffmpeg.get_video_metadata(self.input_path).await
+    }
+
+    /// Basic HDR detection from metadata (for crop detection threshold selection)
+    fn is_basic_hdr_content(&self, metadata: &VideoMetadata) -> bool {
+        // Check for HDR indicators in metadata
+        if let Some(ref color_space) = metadata.color_space {
+            if color_space.to_lowercase().contains("bt2020")
+                || color_space.to_lowercase().contains("rec2020") {
+                return true;
+            }
+        }
+
+        if let Some(ref transfer) = metadata.transfer_function {
+            if transfer.to_lowercase().contains("smpte2084")
+                || transfer.to_lowercase().contains("arib-std-b67")
+                || transfer.to_lowercase().contains("hlg") {
+                return true;
+            }
+        }
+
+        // Check for HDR10 static metadata
+        if metadata.master_display.is_some() || metadata.max_cll.is_some() {
+            return true;
+        }
+
+        false
     }
 
     async fn analyze_content(
