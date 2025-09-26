@@ -36,7 +36,8 @@ impl<'a> VideoProcessor<'a> {
         input_path: &'a Path,
         output_path: &'a Path,
     ) -> Result<Self> {
-        let stream_profile_manager = StreamSelectionProfileManager::new(config.stream_selection_profiles.clone())?;
+        let stream_profile_manager =
+            StreamSelectionProfileManager::new(config.stream_selection_profiles.clone())?;
 
         Ok(Self {
             ffmpeg,
@@ -251,7 +252,6 @@ impl<'a> VideoProcessor<'a> {
         }
     }
 
-
     fn log_parameter_adjustments(
         &self,
         content_analysis: &crate::ContentAnalysisResult,
@@ -298,7 +298,7 @@ impl<'a> VideoProcessor<'a> {
             metadata.color_primaries.as_ref(),
             metadata.master_display.as_ref(),
             metadata.max_cll.as_ref(),
-            self.config.analysis.hdr_detection.passthrough_mode,
+            false, // Default to non-passthrough mode
         )
     }
 
@@ -491,7 +491,7 @@ impl<'a> VideoProcessor<'a> {
                         self.args.title.as_deref(),
                         Some(file_logger),
                         external_params_ref,
-                        self.config.analysis.hdr_detection.passthrough_mode,
+                        false, // Default to non-passthrough mode
                     )
                     .await
             }
@@ -510,7 +510,7 @@ impl<'a> VideoProcessor<'a> {
                         self.args.title.as_deref(),
                         Some(file_logger),
                         external_params_ref,
-                        self.config.analysis.hdr_detection.passthrough_mode,
+                        false, // Default to non-passthrough mode
                     )
                     .await
             }
@@ -529,7 +529,7 @@ impl<'a> VideoProcessor<'a> {
                         self.args.title.as_deref(),
                         Some(file_logger),
                         external_params_ref,
-                        self.config.analysis.hdr_detection.passthrough_mode,
+                        false, // Default to non-passthrough mode
                     )
                     .await
             }

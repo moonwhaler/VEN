@@ -26,9 +26,6 @@ analysis:
     sdr_crop_limit: 24
     hdr_crop_limit: 64
     min_pixel_change_percent: 1.0
-  hdr_detection:
-    enabled: true
-    crf_adjustment: 2.0
   hdr:
     enabled: true
     crf_adjustment: 2.0

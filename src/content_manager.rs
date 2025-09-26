@@ -313,25 +313,15 @@ impl UnifiedContentManager {
         }
 
         match dv_info.profile {
-            DolbyVisionProfile::Profile7 => {
-                ((16.0, 19.0), 1.8)
-            }
+            DolbyVisionProfile::Profile7 => ((16.0, 19.0), 1.8),
 
-            DolbyVisionProfile::Profile81 => {
-                ((16.0, 20.0), 1.5)
-            }
+            DolbyVisionProfile::Profile81 => ((16.0, 20.0), 1.5),
 
-            DolbyVisionProfile::Profile82 => {
-                ((16.0, 19.0), 1.6)
-            }
+            DolbyVisionProfile::Profile82 => ((16.0, 19.0), 1.6),
 
-            DolbyVisionProfile::Profile84 => {
-                ((16.0, 20.0), 1.5)
-            }
+            DolbyVisionProfile::Profile84 => ((16.0, 20.0), 1.5),
 
-            DolbyVisionProfile::Profile5 => {
-                ((17.0, 21.0), 1.4)
-            }
+            DolbyVisionProfile::Profile5 => ((17.0, 21.0), 1.4),
 
             _ => {
                 warn!(

@@ -198,7 +198,9 @@ impl CliArgs {
                 println!("Use --list-profiles to see all available profiles with details.");
                 println!();
                 println!("Special Profile:");
-                println!("  auto            - Intelligent profile selection based on content analysis");
+                println!(
+                    "  auto            - Intelligent profile selection based on content analysis"
+                );
                 println!();
                 println!("To see detailed information about any profile:");
                 println!("  ffmpeg-encoder --show-profile <PROFILE_NAME>");

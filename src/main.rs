@@ -80,7 +80,8 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
     profile_manager.load_profiles(config.profiles.clone())?;
 
     if args.profile != "auto" && profile_manager.get_profile(&args.profile).is_none() {
-        let available_profiles: Vec<String> = profile_manager.list_profiles()
+        let available_profiles: Vec<String> = profile_manager
+            .list_profiles()
             .into_iter()
             .cloned()
             .collect();
