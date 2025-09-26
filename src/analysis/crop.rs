@@ -56,34 +56,28 @@ impl CropValues {
 }
 
 impl CropDetectionConfig {
-    /// Generate evenly distributed sample timestamps across video duration
     pub fn get_sample_timestamps(&self, video_duration: f64) -> Vec<f64> {
         if self.sample_count == 0 {
             return vec![];
         }
 
         if self.sample_count == 1 {
-            // Single sample at middle
             return vec![video_duration / 2.0];
         }
 
-        // Generate evenly distributed timestamps
         let mut timestamps = Vec::new();
 
-        // For multiple samples, distribute evenly across the video
-        // Use smart margins based on video duration
         let margin_seconds = if video_duration < 60.0 {
-            // For short videos, use smaller margins
-            (video_duration * 0.1).max(1.0) // 10% margin, minimum 1 second
+            (video_duration * 0.1).max(1.0)
         } else {
-            30.0 // 30 seconds margin for longer videos
+            30.0
         };
 
         let effective_duration = (video_duration - 2.0 * margin_seconds).max(video_duration * 0.5);
         let start_time = margin_seconds;
 
         for i in 0..self.sample_count {
-            let ratio = i as f64 / (self.sample_count - 1) as f64; // Evenly distributed from 0.0 to 1.0
+            let ratio = i as f64 / (self.sample_count - 1) as f64;
             let timestamp = start_time + (ratio * effective_duration);
             timestamps.push(timestamp);
         }
@@ -142,7 +136,6 @@ impl CropDetector {
             sample_timestamps.len()
         );
 
-        // Multi-temporal sampling for crop detection
         let mut sample_results = Vec::new();
 
         for timestamp in &sample_timestamps {

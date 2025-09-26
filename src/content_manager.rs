@@ -1,8 +1,3 @@
-/// Unified content manager for HDR and Dolby Vision
-///
-/// This module provides a high-level interface that coordinates HDR and Dolby Vision
-/// detection, analysis, and parameter adjustments based on the requirements documented
-/// in "docs/Dolby Vision CRF Requirements.md"
 use crate::analysis::dolby_vision::{DolbyVisionDetector, DolbyVisionInfo, DolbyVisionProfile};
 use crate::config::DolbyVisionConfig;
 use crate::config::UnifiedHdrConfig;
@@ -49,12 +44,11 @@ impl EncodingAdjustments {
             requires_vbv: false,
             vbv_bufsize: None,
             vbv_maxrate: None,
-            recommended_crf_range: (18.0, 28.0), // Standard SDR range
+            recommended_crf_range: (18.0, 28.0),
         }
     }
 }
 
-/// Unified content manager that handles HDR, Dolby Vision, and HDR10+ analysis
 pub struct UnifiedContentManager {
     hdr_manager: HdrManager,
     dv_detector: Option<DolbyVisionDetector>,
@@ -87,7 +81,6 @@ impl UnifiedContentManager {
         }
     }
 
-    /// Fast HDR analysis only (for crop detection threshold selection)
     pub async fn analyze_hdr_only<P: AsRef<Path>>(
         &self,
         ffmpeg: &FfmpegWrapper,
@@ -97,8 +90,6 @@ impl UnifiedContentManager {
         self.hdr_manager.analyze_content(ffmpeg, &input_path).await
     }
 
-    /// Analyze content for HDR, Dolby Vision, and HDR10+ characteristics
-    /// Optionally reuse existing HDR analysis to avoid duplication
     pub async fn analyze_content<P: AsRef<Path>>(
         &self,
         ffmpeg: &FfmpegWrapper,
@@ -108,8 +99,6 @@ impl UnifiedContentManager {
             .await
     }
 
-    /// Analyze content for HDR, Dolby Vision, and HDR10+ characteristics
-    /// with optional HDR analysis reuse
     pub async fn analyze_content_with_hdr_reuse<P: AsRef<Path>>(
         &self,
         ffmpeg: &FfmpegWrapper,
@@ -121,7 +110,6 @@ impl UnifiedContentManager {
             input_path.as_ref().display()
         );
 
-        // First, analyze HDR characteristics (reuse existing if provided)
         let hdr_analysis = if let Some(hdr_result) = existing_hdr_analysis {
             debug!(
                 "Reusing existing HDR analysis: format={:?}",
@@ -137,7 +125,6 @@ impl UnifiedContentManager {
             result
         };
 
-        // Then, check for Dolby Vision if enabled
         let dv_info = if let Some(ref detector) = self.dv_detector {
             detector.analyze(ffmpeg, &input_path).await?
         } else {
@@ -148,21 +135,17 @@ impl UnifiedContentManager {
             dv_info.profile
         );
 
-        // Process HDR10+ dynamic metadata if enabled and detected
         let hdr10plus_result = if let Some(ref manager) = self.hdr10plus_manager {
-            // Try HDR10+ analysis for any HDR content (might be dual DV+HDR10+)
             if hdr_analysis.metadata.format == HdrFormat::HDR10Plus
                 || hdr_analysis.metadata.format == HdrFormat::HDR10
                 || dv_info.is_dolby_vision()
             {
                 info!("HDR10+ content detected - extracting dynamic metadata");
                 if dv_info.is_dolby_vision() {
-                    // Dual format processing
                     manager
                         .process_dual_format(&input_path, &dv_info, &hdr_analysis)
                         .await?
                 } else {
-                    // HDR10+ only processing
                     manager
                         .extract_hdr10plus_metadata(&input_path, &hdr_analysis)
                         .await?
@@ -183,12 +166,10 @@ impl UnifiedContentManager {
             );
         }
 
-        // Determine the recommended encoding approach with all metadata
         let approach =
             self.determine_encoding_approach(&hdr_analysis, &dv_info, hdr10plus_result.as_ref());
         info!("Recommended encoding approach: {:?}", approach);
 
-        // Calculate encoding adjustments based on the approach
         let adjustments = self.calculate_encoding_adjustments(&approach, &hdr_analysis, &dv_info);
 
         Ok(ContentAnalysisResult {
@@ -206,14 +187,11 @@ impl UnifiedContentManager {
         dv: &DolbyVisionInfo,
         hdr10plus_result: Option<&Hdr10PlusProcessingResult>,
     ) -> ContentEncodingApproach {
-        // Enhanced priority logic: DV+HDR10+ > DV > HDR10+ > HDR10 > SDR
         if dv.is_dolby_vision() {
             if let Some(ref config) = self.dv_config {
                 if config.enabled {
                     if let Some(ref detector) = self.dv_detector {
                         if detector.should_preserve_dolby_vision(dv) {
-                            // Check if we also have HDR10+ for dual encoding
-                            // We check both the HDR format and if we successfully extracted HDR10+ metadata
                             let has_hdr10plus = hdr.metadata.format == HdrFormat::HDR10Plus
                                 || hdr10plus_result.is_some();
 
@@ -229,7 +207,6 @@ impl UnifiedContentManager {
                     }
                 }
             }
-            // Fallback: if DV can't be preserved, treat as HDR
             if hdr.metadata.format != HdrFormat::None {
                 warn!("Dolby Vision detected but can't be preserved, falling back to HDR");
                 return ContentEncodingApproach::HDR(hdr.clone());
@@ -253,7 +230,6 @@ impl UnifiedContentManager {
             ContentEncodingApproach::SDR => EncodingAdjustments::sdr_default(),
 
             ContentEncodingApproach::HDR(hdr_result) => {
-                // Standard HDR adjustments
                 let crf_adjustment = self.hdr_manager.get_crf_adjustment(hdr_result);
                 let bitrate_multiplier = self.hdr_manager.get_bitrate_multiplier(hdr_result);
                 let encoding_complexity = self.hdr_manager.get_encoding_complexity(hdr_result);
@@ -265,12 +241,11 @@ impl UnifiedContentManager {
                     requires_vbv: false,
                     vbv_bufsize: None,
                     vbv_maxrate: None,
-                    recommended_crf_range: (18.0, 24.0), // HDR range
+                    recommended_crf_range: (18.0, 24.0),
                 }
             }
 
             ContentEncodingApproach::DolbyVision(dv_info) => {
-                // Dolby Vision-specific adjustments based on documentation
                 if let Some(ref config) = self.dv_config {
                     let (crf_range, complexity_multiplier) =
                         self.get_profile_specific_adjustments(dv_info, config);
@@ -279,53 +254,49 @@ impl UnifiedContentManager {
                         crf_adjustment: config.crf_adjustment,
                         bitrate_multiplier: config.bitrate_multiplier,
                         encoding_complexity: complexity_multiplier,
-                        requires_vbv: true, // MANDATORY for Dolby Vision
-                        vbv_bufsize: None,  // Now handled dynamically by get_vbv_settings()
-                        vbv_maxrate: None,  // Now handled dynamically by get_vbv_settings()
+                        requires_vbv: true,
+                        vbv_bufsize: None,
+                        vbv_maxrate: None,
                         recommended_crf_range: crf_range,
                     }
                 } else {
-                    // Fallback to conservative DV settings
                     EncodingAdjustments {
                         crf_adjustment: 1.0,
                         bitrate_multiplier: 1.8,
                         encoding_complexity: 1.5,
                         requires_vbv: true,
-                        vbv_bufsize: None, // Now handled dynamically by get_vbv_settings()
-                        vbv_maxrate: None, // Now handled dynamically by get_vbv_settings()
-                        recommended_crf_range: (16.0, 20.0), // Conservative DV range
+                        vbv_bufsize: None,
+                        vbv_maxrate: None,
+                        recommended_crf_range: (16.0, 20.0),
                     }
                 }
             }
 
             ContentEncodingApproach::DolbyVisionWithHDR10Plus(dv_info, _hdr_result) => {
-                // Dual format: even more conservative settings needed
                 info!("Applying dual Dolby Vision + HDR10+ encoding adjustments");
 
                 if let Some(ref config) = self.dv_config {
                     let (dv_crf_range, dv_complexity) =
                         self.get_profile_specific_adjustments(dv_info, config);
 
-                    // Combine adjustments for both formats - very conservative
                     EncodingAdjustments {
-                        crf_adjustment: config.crf_adjustment - 0.5, // Even lower CRF for dual format
-                        bitrate_multiplier: config.bitrate_multiplier * 1.2, // 20% extra for HDR10+
-                        encoding_complexity: dv_complexity * 1.3, // Higher complexity for dual metadata
-                        requires_vbv: true,                       // MANDATORY for both formats
-                        vbv_bufsize: None, // Now handled dynamically by get_vbv_settings()
-                        vbv_maxrate: None, // Now handled dynamically by get_vbv_settings()
-                        recommended_crf_range: (dv_crf_range.0 - 1.0, dv_crf_range.1 - 0.5), // More conservative range
+                        crf_adjustment: config.crf_adjustment - 0.5,
+                        bitrate_multiplier: config.bitrate_multiplier * 1.2,
+                        encoding_complexity: dv_complexity * 1.3,
+                        requires_vbv: true,
+                        vbv_bufsize: None,
+                        vbv_maxrate: None,
+                        recommended_crf_range: (dv_crf_range.0 - 1.0, dv_crf_range.1 - 0.5),
                     }
                 } else {
-                    // Fallback to very conservative dual format settings
                     EncodingAdjustments {
-                        crf_adjustment: 0.5,      // Very conservative CRF
-                        bitrate_multiplier: 2.2,  // High bitrate for dual metadata
-                        encoding_complexity: 2.0, // High complexity
+                        crf_adjustment: 0.5,
+                        bitrate_multiplier: 2.2,
+                        encoding_complexity: 2.0,
                         requires_vbv: true,
-                        vbv_bufsize: None, // Now handled dynamically by get_vbv_settings()
-                        vbv_maxrate: None, // Now handled dynamically by get_vbv_settings()
-                        recommended_crf_range: (15.0, 18.0), // Very conservative range
+                        vbv_bufsize: None,
+                        vbv_maxrate: None,
+                        recommended_crf_range: (15.0, 18.0),
                     }
                 }
             }
@@ -338,42 +309,31 @@ impl UnifiedContentManager {
         config: &DolbyVisionConfig,
     ) -> ((f32, f32), f32) {
         if !config.profile_specific_adjustments {
-            return ((16.0, 20.0), 1.5); // Default DV settings
+            return ((16.0, 20.0), 1.5);
         }
 
         match dv_info.profile {
             DolbyVisionProfile::Profile7 => {
-                // Profile 7 (dual-layer) - more conservative encoding needed
-                // Base layer quality is critical since EL will be discarded
-                ((16.0, 19.0), 1.8) // Lower CRF range, higher complexity
+                ((16.0, 19.0), 1.8)
             }
 
             DolbyVisionProfile::Profile81 => {
-                // Profile 8.1 (single-layer with HDR10 compatibility)
-                // Standard DV encoding range
                 ((16.0, 20.0), 1.5)
             }
 
             DolbyVisionProfile::Profile82 => {
-                // Profile 8.2 (single-layer with SDR compatibility)
-                // Similar to 8.1 but may need slightly more conservative approach
                 ((16.0, 19.0), 1.6)
             }
 
             DolbyVisionProfile::Profile84 => {
-                // Profile 8.4 (HDMI streaming)
-                // Similar requirements to 8.1
                 ((16.0, 20.0), 1.5)
             }
 
             DolbyVisionProfile::Profile5 => {
-                // Profile 5 (single-layer DV only, no HDR10 compatibility)
-                // Can be slightly more aggressive since no compatibility constraints
                 ((17.0, 21.0), 1.4)
             }
 
             _ => {
-                // Fallback for unknown profiles
                 warn!(
                     "Unknown Dolby Vision profile: {:?}, using conservative settings",
                     dv_info.profile
@@ -388,7 +348,6 @@ impl UnifiedContentManager {
         let adjusted_crf = base_crf + result.encoding_adjustments.crf_adjustment;
         let (min_crf, max_crf) = result.encoding_adjustments.recommended_crf_range;
 
-        // Clamp to the recommended range for the content type
         adjusted_crf.clamp(min_crf, max_crf)
     }
 
@@ -401,12 +360,10 @@ impl UnifiedContentManager {
         (base_bitrate as f32 * result.encoding_adjustments.bitrate_multiplier) as u32
     }
 
-    /// Check if VBV constraints should be applied
     pub fn requires_vbv_constraints(&self, result: &ContentAnalysisResult) -> bool {
         result.encoding_adjustments.requires_vbv
     }
 
-    /// Get VBV settings if required, mode-specific for optimal performance
     pub fn get_vbv_settings(
         &self,
         result: &ContentAnalysisResult,
@@ -415,7 +372,6 @@ impl UnifiedContentManager {
         use crate::encoding::EncodingMode;
 
         if result.encoding_adjustments.requires_vbv {
-            // Use mode-specific VBV settings from config if available
             if let Some(ref config) = self.dv_config {
                 let (bufsize, maxrate) = match encoding_mode {
                     EncodingMode::CRF => (config.vbv_crf_bufsize, config.vbv_crf_maxrate),
@@ -425,10 +381,9 @@ impl UnifiedContentManager {
                 };
                 Some((bufsize, maxrate))
             } else {
-                // Fallback mode-specific defaults
                 let (bufsize, maxrate) = match encoding_mode {
-                    EncodingMode::CRF => (80_000, 60_000), // Relaxed for CRF
-                    EncodingMode::ABR | EncodingMode::CBR => (120_000, 100_000), // Tighter for bitrate modes
+                    EncodingMode::CRF => (80_000, 60_000),
+                    EncodingMode::ABR | EncodingMode::CBR => (120_000, 100_000),
                 };
                 Some((bufsize, maxrate))
             }
@@ -476,7 +431,6 @@ mod tests {
         let dv_config = DolbyVisionConfig::default();
         let manager = UnifiedContentManager::new(hdr_config, Some(dv_config.clone()), None);
 
-        // Test Profile 7 (more conservative)
         let (crf_range_p7, complexity_p7) = manager.get_profile_specific_adjustments(
             &DolbyVisionInfo {
                 profile: DolbyVisionProfile::Profile7,
@@ -484,10 +438,9 @@ mod tests {
             },
             &dv_config,
         );
-        assert_eq!(crf_range_p7, (16.0, 19.0)); // More conservative range
-        assert_eq!(complexity_p7, 1.8); // Higher complexity
+        assert_eq!(crf_range_p7, (16.0, 19.0));
+        assert_eq!(complexity_p7, 1.8);
 
-        // Test Profile 8.1 (standard)
         let (crf_range_p81, complexity_p81) = manager.get_profile_specific_adjustments(
             &DolbyVisionInfo {
                 profile: DolbyVisionProfile::Profile81,
@@ -495,8 +448,8 @@ mod tests {
             },
             &dv_config,
         );
-        assert_eq!(crf_range_p81, (16.0, 20.0)); // Standard DV range
-        assert_eq!(complexity_p81, 1.5); // Standard complexity
+        assert_eq!(crf_range_p81, (16.0, 20.0));
+        assert_eq!(complexity_p81, 1.5);
     }
 
     #[test]
@@ -526,13 +479,11 @@ mod tests {
         // VBV values are now handled dynamically by get_vbv_settings() based on encoding mode
         assert_eq!(adjustments.vbv_bufsize, None);
         assert_eq!(adjustments.vbv_maxrate, None);
-        assert_eq!(adjustments.crf_adjustment, 1.0); // Lower than HDR's 2.0
-        assert_eq!(adjustments.bitrate_multiplier, 1.8); // Higher than HDR's 1.3
+        assert_eq!(adjustments.crf_adjustment, 1.0);
+        assert_eq!(adjustments.bitrate_multiplier, 1.8);
 
-        // Test mode-specific VBV settings
         use crate::encoding::EncodingMode;
 
-        // Create mock content analysis result
         let content_result = ContentAnalysisResult {
             hdr_analysis: hdr_analysis.clone(),
             dolby_vision: dv_info.clone(),
@@ -541,16 +492,13 @@ mod tests {
             encoding_adjustments: adjustments,
         };
 
-        // Test CRF mode VBV settings (relaxed)
         let crf_vbv = manager.get_vbv_settings(&content_result, &EncodingMode::CRF);
-        assert_eq!(crf_vbv, Some((80_000, 60_000))); // Relaxed values for CRF
+        assert_eq!(crf_vbv, Some((80_000, 60_000)));
 
-        // Test ABR mode VBV settings (tighter)
         let abr_vbv = manager.get_vbv_settings(&content_result, &EncodingMode::ABR);
-        assert_eq!(abr_vbv, Some((120_000, 100_000))); // Tighter values for ABR
+        assert_eq!(abr_vbv, Some((120_000, 100_000)));
 
-        // Test CBR mode VBV settings (tighter)
         let cbr_vbv = manager.get_vbv_settings(&content_result, &EncodingMode::CBR);
-        assert_eq!(cbr_vbv, Some((120_000, 100_000))); // Same as ABR
+        assert_eq!(cbr_vbv, Some((120_000, 100_000)));
     }
 }

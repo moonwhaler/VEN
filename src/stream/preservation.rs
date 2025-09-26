@@ -64,12 +64,10 @@ impl StreamPreservation {
 
         info!("Analyzing stream structure: {}", input_path.display());
 
-        // Get comprehensive stream information
         let streams = self.get_stream_info(input_path).await?;
         let chapters = self.get_chapter_info(input_path).await?;
         let metadata = self.get_global_metadata(input_path).await?;
 
-        // Categorize streams
         let video_streams: Vec<StreamInfo> = streams
             .iter()
             .filter(|s| s.codec_type == "video")
@@ -94,7 +92,6 @@ impl StreamPreservation {
             .cloned()
             .collect();
 
-        // Build mapping arguments (default behavior - copy all streams)
         let mapping_args = self.build_mapping_arguments(&streams)?;
 
         info!(
@@ -130,12 +127,10 @@ impl StreamPreservation {
             input_path.display()
         );
 
-        // Get comprehensive stream information
         let streams = self.get_stream_info(input_path).await?;
         let chapters = self.get_chapter_info(input_path).await?;
         let metadata = self.get_global_metadata(input_path).await?;
 
-        // Categorize streams
         let video_streams: Vec<StreamInfo> = streams
             .iter()
             .filter(|s| s.codec_type == "video")

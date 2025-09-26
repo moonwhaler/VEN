@@ -25,18 +25,15 @@ static BITRATE_REGEX: LazyLock<Regex> =
 
 static FPS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"fps=\s*([0-9.]+)").unwrap());
 
-/// Filter out FFmpeg diagnostic messages that don't provide user value
 fn filter_ffmpeg_stderr(stderr: &str) -> String {
     stderr
         .lines()
         .filter(|line| {
-            // Filter out common diagnostic messages
             !line.contains("Invalid Block Addition") &&
             !line.contains("Could not find codec parameters") &&
             !line.contains("Consider increasing the value for") &&
             !line.contains("analyzeduration") &&
             !line.contains("probesize") &&
-            // Keep error messages but filter info messages
             !(line.contains("x265 [info]:") && (
                 line.contains("encoder version") ||
                 line.contains("build info") ||
@@ -64,8 +61,8 @@ pub struct VideoMetadata {
     pub fps: f32,
     pub bitrate: Option<u32>,
     pub codec: Option<String>,
-    pub is_hdr: bool, // Legacy - kept for backward compatibility
-    pub hdr_analysis: Option<HdrAnalysisResult>, // New comprehensive HDR analysis
+    pub is_hdr: bool,
+    pub hdr_analysis: Option<HdrAnalysisResult>,
     pub color_space: Option<String>,
     pub transfer_function: Option<String>,
     pub color_primaries: Option<String>,
@@ -119,11 +116,11 @@ impl FfmpegWrapper {
         let output = TokioCommand::new(&self.ffprobe_path)
             .args([
                 "-v",
-                "error", // Reduced verbosity for cleaner output
+                "error",
                 "-analyzeduration",
-                "5M", // Reduced from 100M to 5M for faster analysis
+                "5M",
                 "-probesize",
-                "5M", // Reduced from 50M to 5M for faster analysis
+                "5M",
                 "-print_format",
                 "json",
                 "-show_format",
@@ -155,28 +152,25 @@ impl FfmpegWrapper {
         let mut cmd_args = vec![
             "-y".to_string(),
             "-loglevel".to_string(),
-            "error".to_string(), // Only show errors, suppress all info/warnings
-            "-hide_banner".to_string(), // Hide FFmpeg banner and build info
+            "error".to_string(),
+            "-hide_banner".to_string(),
         ];
         cmd_args.extend(args);
 
-        // Log the complete FFmpeg command for debugging
-        let full_command = format!("{} {}", self.ffmpeg_path, cmd_args.join(" "));
-        tracing::debug!("Executing FFmpeg command: {}", full_command);
+        tracing::debug!("Executing FFmpeg command: {} {}", self.ffmpeg_path, cmd_args.join(" "));
 
         let mut command = TokioCommand::new(&self.ffmpeg_path);
         command
             .args(&cmd_args)
             .stdin(Stdio::null())
-            .stdout(Stdio::inherit()) // Allow FFmpeg to write directly to terminal
-            .stderr(Stdio::inherit()); // Allow FFmpeg to write directly to terminal
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit());
 
         let child = command.spawn()?;
         Ok(child)
     }
 
     pub fn parse_progress_line(&self, line: &str, total_duration: f64) -> Option<ProgressInfo> {
-        // Skip lines that don't contain progress information
         if !line.contains("frame=") {
             return None;
         }
@@ -191,12 +185,10 @@ impl FfmpegWrapper {
             progress_percentage: 0.0,
         };
 
-        // Parse frame count
         if let Some(captures) = FRAME_REGEX.captures(line) {
             progress.frame = captures[1].parse().ok();
         }
 
-        // Parse current time
         if let Some(captures) = PROGRESS_REGEX.captures(line) {
             let hours: u32 = captures[1].parse().ok()?;
             let minutes: u32 = captures[2].parse().ok()?;
@@ -212,29 +204,24 @@ impl FfmpegWrapper {
             };
         }
 
-        // Parse fps
         if let Some(captures) = FPS_REGEX.captures(line) {
             progress.fps = captures[1].parse().ok();
         }
 
-        // Parse speed
         if let Some(captures) = SPEED_REGEX.captures(line) {
             progress.speed = captures[1].parse().ok();
         }
 
-        // Parse size (look for "Lsize=" format)
         if let Some(captures) = SIZE_REGEX.captures(line) {
             if let Ok(size_kb) = captures[1].parse::<u64>() {
                 progress.total_size = Some(size_kb * 1024);
             }
         }
 
-        // Parse bitrate
         if let Some(captures) = BITRATE_REGEX.captures(line) {
             progress.bitrate = Some(format!("{}kbps", &captures[1]));
         }
 
-        // Only return progress info if we have meaningful data
         if progress.frame.is_some() || progress.time > 0.0 {
             Some(progress)
         } else {

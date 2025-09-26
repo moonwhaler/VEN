@@ -84,17 +84,14 @@ impl EncodingProfile {
         )
     }
 
-    /// Get the pixel format from the profile x265 parameters
     pub fn get_pixel_format(&self) -> Option<String> {
         self.x265_params.get("pix_fmt").cloned()
     }
 
-    /// Get the preset from the profile x265 parameters
     pub fn get_preset(&self) -> Option<String> {
         self.x265_params.get("preset").cloned()
     }
 
-    /// Get the profile from the profile x265 parameters
     pub fn get_profile(&self) -> Option<String> {
         self.x265_params.get("profile").cloned()
     }
@@ -213,7 +210,6 @@ impl EncodingProfile {
             }
         }
 
-        // Remove parameters that should be separate FFmpeg parameters, not x265-params
         params.remove("pix_fmt");
         params.remove("preset");
         params.remove("profile");
@@ -306,7 +302,6 @@ impl EncodingProfile {
             }
         }
 
-        // Remove parameters that should be separate FFmpeg parameters, not x265-params
         params.remove("pix_fmt");
         params.remove("preset");
         params.remove("profile");
@@ -413,29 +408,22 @@ impl EncodingProfile {
                     DolbyVisionProfile::Profile84 => {
                         params.insert("dolby-vision-profile".to_string(), "8.4".to_string());
                     }
-                    _ => {} // Skip profile 7 and others not directly supported by x265
+                    _ => {}
                 }
 
-                // NOTE: VBV settings for Dolby Vision are now handled dynamically
-                // by UnifiedContentManager.get_vbv_settings() based on encoding mode
-                // This ensures optimal performance vs compliance balance
 
-                // Force 10-bit output for Dolby Vision
                 params.insert("output-depth".to_string(), "10".to_string());
 
-                // Ensure proper color parameters for Dolby Vision
                 params.insert("colorprim".to_string(), "bt2020".to_string());
                 params.insert("transfer".to_string(), "smpte2084".to_string());
                 params.insert("colormatrix".to_string(), "bt2020nc".to_string());
             }
         }
 
-        // Remove parameters that should be separate FFmpeg parameters, not x265-params
         params.remove("pix_fmt");
         params.remove("preset");
         params.remove("profile");
 
-        // Build parameter string
         let param_strs: Vec<String> = params
             .into_iter()
             .map(|(key, value)| {

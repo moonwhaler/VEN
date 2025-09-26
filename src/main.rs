@@ -15,19 +15,16 @@ use ffmpeg_autoencoder::{
 async fn main() -> Result<()> {
     let args = CliArgs::parse();
 
-    // If no arguments provided and no info commands, show help
     if !args.is_info_command() && args.input.is_empty() {
         use clap::CommandFactory;
         let mut cmd = CliArgs::command();
         cmd.print_help().unwrap();
-        println!(); // Add newline after help
+        println!();
         return Ok(());
     }
 
-    // Validate arguments first
     args.validate()?;
 
-    // Handle info commands that don't need config first
     if args.help_topic.is_some() {
         if let Some(topic) = &args.help_topic {
             args.print_help_topic(topic);
@@ -43,12 +40,10 @@ async fn main() -> Result<()> {
         config.logging.colored_output && args.should_use_color(),
     )?;
 
-    // Handle info commands that need config
     if handle_commands(&args, &config).await? {
-        return Ok(()); // Info command was handled
+        return Ok(());
     }
 
-    // Handle encoding
     if args.should_encode() {
         handle_encoding(&args, &config).await
     } else {
@@ -64,7 +59,6 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
         .await
         .map_err(|e| Error::ffmpeg(format!("FFmpeg tools not available: {}", e)))?;
 
-    // Initialize stream preservation
     let stream_preservation = StreamPreservation::new(ffmpeg.clone());
 
     if args.input.is_empty() {
@@ -73,7 +67,6 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
         ));
     }
 
-    // Collect all video files from all input paths
     let mut all_video_files = Vec::new();
     for input_path in &args.input {
         let mut files = find_video_files(input_path)?;
@@ -86,7 +79,6 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
     let mut profile_manager = ProfileManager::new();
     profile_manager.load_profiles(config.profiles.clone())?;
 
-    // Validate that the requested profile exists (unless it's "auto")
     if args.profile != "auto" && profile_manager.get_profile(&args.profile).is_none() {
         let available_profiles: Vec<String> = profile_manager.list_profiles()
             .into_iter()
@@ -114,7 +106,6 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
             input_path.display()
         );
 
-        // Check if file exists before processing
         if !input_path.exists() {
             let error_msg = format!("File not found: {}", input_path.display());
             tracing::warn!("{}", error_msg);
@@ -156,7 +147,6 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
         }
     }
 
-    // Report processing summary
     if video_files.len() > 1 {
         info!(
             "Processing complete: {} successful, {} failed",
@@ -172,7 +162,6 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
         }
     }
 
-    // Only return error if all files failed
     if successful_files == 0 && !failed_files.is_empty() {
         return Err(Error::encoding("All files failed to process".to_string()));
     }
