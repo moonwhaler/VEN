@@ -34,6 +34,71 @@ impl CleanFormatter {
         }
     }
 
+    fn wrap_text(&self, text: &str, max_width: usize) -> String {
+        let lines: Vec<&str> = text.lines().collect();
+        let mut wrapped_lines = Vec::new();
+
+        for line in lines {
+            if line.len() <= max_width {
+                wrapped_lines.push(line.to_string());
+            } else {
+                // Check if this is a parameter line starting with "  -> "
+                let (prefix, content) = if let Some(stripped) = line.strip_prefix("  -> ") {
+                    ("  -> ", stripped)
+                } else {
+                    ("", line)
+                };
+
+                // Split long lines at word boundaries
+                let mut current_line = String::new();
+                let words: Vec<&str> = content.split_whitespace().collect();
+                let mut first_line = true;
+
+                for word in &words {
+                    // If adding this word would exceed the limit
+                    let line_with_prefix_len = if first_line {
+                        prefix.len()
+                            + current_line.len()
+                            + word.len()
+                            + if current_line.is_empty() { 0 } else { 1 }
+                    } else {
+                        current_line.len()
+                            + word.len()
+                            + if current_line.is_empty() { 0 } else { 1 }
+                    };
+
+                    if !current_line.is_empty() && line_with_prefix_len > max_width {
+                        // Push the current line and start a new one
+                        if first_line {
+                            wrapped_lines.push(format!("{}{}", prefix, current_line));
+                            first_line = false;
+                        } else {
+                            wrapped_lines.push(current_line);
+                        }
+                        current_line = word.to_string();
+                    } else {
+                        // Add word to current line
+                        if !current_line.is_empty() {
+                            current_line.push(' ');
+                        }
+                        current_line.push_str(word);
+                    }
+                }
+
+                // Don't forget the last line
+                if !current_line.is_empty() {
+                    if first_line && !prefix.is_empty() {
+                        wrapped_lines.push(format!("{}{}", prefix, current_line));
+                    } else {
+                        wrapped_lines.push(current_line);
+                    }
+                }
+            }
+        }
+
+        wrapped_lines.join("\n")
+    }
+
     fn format_level(&self, level: &Level) -> String {
         if !self.use_color {
             match *level {
@@ -141,6 +206,19 @@ impl CleanFormatter {
         let level = self.determine_processing_level(message);
         let prefix = self.get_tree_prefix(level);
 
+        // Calculate available width more accurately
+        // Timestamp: "[HH:MM:SS] " = 11 chars
+        // Level: "WARN " or "" = 0-5 chars
+        // Prefix: "▶ " or " " = 1-2 chars
+        let timestamp_width = if self.show_timestamps { 11 } else { 0 };
+        let level_width = match level {
+            ProcessingLevel::Root => 2,   // "▶ "
+            ProcessingLevel::Stage => 1,  // " "
+            ProcessingLevel::Step => 1,   // " "
+            ProcessingLevel::Detail => 1, // " "
+        };
+        let available_width = 100usize.saturating_sub(timestamp_width + level_width + 4); // 4 chars buffer
+
         // Clean up and format the message based on its type
         let formatted_content = match level {
             ProcessingLevel::Root => {
@@ -199,7 +277,29 @@ impl CleanFormatter {
             }
         };
 
-        format!("{} {}", prefix, formatted_content)
+        // Apply text wrapping to the formatted content
+        let wrapped_content = self.wrap_text(&formatted_content, available_width);
+
+        // Handle multi-line wrapped content
+        if wrapped_content.contains('\n') {
+            let lines: Vec<&str> = wrapped_content.lines().collect();
+            let first_line = format!("{} {}", prefix, lines[0]);
+
+            // Calculate the appropriate indentation for continuation lines
+            let continuation_indent = " ".repeat(timestamp_width + level_width);
+            let continuation_lines: Vec<String> = lines[1..]
+                .iter()
+                .map(|line| format!("{}{}", continuation_indent, line))
+                .collect();
+
+            if continuation_lines.is_empty() {
+                first_line
+            } else {
+                format!("{}\n{}", first_line, continuation_lines.join("\n"))
+            }
+        } else {
+            format!("{} {}", prefix, wrapped_content)
+        }
     }
 
     fn extract_stream_summary(&self, message: &str) -> Option<String> {
