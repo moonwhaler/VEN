@@ -9,7 +9,6 @@ pub struct Config {
     pub app: AppConfig,
     pub tools: ToolsConfig,
     pub logging: LoggingConfig,
-    pub progress: ProgressConfig,
     pub analysis: AnalysisConfig,
     pub profiles: HashMap<String, RawProfile>,
     pub filters: FiltersConfig,
@@ -57,12 +56,6 @@ impl Config {
     }
 
     fn validate(&self) -> Result<()> {
-        if self.progress.update_interval_ms == 0 {
-            return Err(Error::validation(
-                "update_interval_ms must be greater than 0",
-            ));
-        }
-
         if self.profiles.is_empty() {
             return Err(Error::validation("At least one profile must be defined"));
         }
@@ -107,15 +100,13 @@ mod tests {
 
     #[test]
     fn test_config_validation() {
-        let mut config = Config::default();
+        let config = Config::default();
         match config.validate() {
             Ok(()) => {}
             Err(e) => panic!("Config validation failed: {}", e),
         }
 
-        // Test validation with invalid update_interval_ms
-        config.progress.update_interval_ms = 0;
-        assert!(config.validate().is_err());
+        // Test validation - all checks pass for default config
     }
 
     #[test]
@@ -134,8 +125,6 @@ logging:
   show_timestamps: false
   colored_output: true
 
-progress:
-  update_interval_ms: 500
 
 analysis:
   crop_detection:
@@ -178,7 +167,6 @@ filters:
         let config: Config = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(config.logging.level, "debug");
         assert!(!config.logging.show_timestamps);
-        assert_eq!(config.progress.update_interval_ms, 500);
         // web_search was removed from config
     }
 }

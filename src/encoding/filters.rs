@@ -230,9 +230,6 @@ mod tests {
                 show_timestamps: true,
                 colored_output: true,
             },
-            progress: ProgressConfig {
-                update_interval_ms: 1000,
-            },
             analysis: AnalysisConfig {
                 crop_detection: CropDetectionConfig::default(),
                 hdr_detection: HdrDetectionConfig {
@@ -327,7 +324,7 @@ mod tests {
         let filter = filter_result.unwrap();
 
         // Should contain the NNEDI filter with correct field mapping
-        assert!(filter.contains("nnedi="));
+        assert!(filter.starts_with("nnedi="));
         assert!(filter.contains(&format!("weights={}", weights_path)));
         assert!(filter.contains("field=-1")); // "auto" should map to -1
 

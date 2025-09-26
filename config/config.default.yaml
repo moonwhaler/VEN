@@ -18,8 +18,6 @@ logging:
   show_timestamps: true
   colored_output: true
 
-progress:
-  update_interval_ms: 1000
 
 analysis:
   crop_detection:
