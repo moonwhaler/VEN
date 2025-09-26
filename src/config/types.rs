@@ -303,8 +303,7 @@ pub struct FiltersConfig {
 pub struct RawProfile {
     pub title: String,
     pub base_crf: f32,
-    pub base_bitrate: u32,
-    pub hdr_bitrate: u32,
+    pub bitrate: u32,
     pub content_type: String,
     pub x265_params: HashMap<String, serde_yaml::Value>,
 }

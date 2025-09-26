@@ -123,8 +123,7 @@ mod tests {
         let raw = RawProfile {
             title: "Dolby Vision Test Profile".to_string(),
             base_crf: 22.0,
-            base_bitrate: 10000,
-            hdr_bitrate: 13000,
+            bitrate: 10000,
             content_type: "film".to_string(),
             x265_params,
         };
@@ -149,8 +148,7 @@ mod tests {
         let raw = RawProfile {
             title: "DV Test Profile".to_string(),
             base_crf: 22.0,
-            base_bitrate: 10000,
-            hdr_bitrate: 13000,
+            bitrate: 10000,
             content_type: "film".to_string(),
             x265_params,
         };
@@ -341,8 +339,7 @@ pub async fn demo_dolby_vision_workflow() -> Result<(), Box<dyn std::error::Erro
     let raw_profile = RawProfile {
         title: "Dolby Vision Movie Profile".to_string(),
         base_crf: 22.0,
-        base_bitrate: 12000,
-        hdr_bitrate: 16000,
+        bitrate: 12000,
         content_type: "film".to_string(),
         x265_params,
     };

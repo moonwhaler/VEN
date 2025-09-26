@@ -86,8 +86,7 @@ async fn show_profile(config: &Config, name: &str) -> Result<()> {
         println!("{:=<60}", "");
         println!("Title: {}", profile.title);
         println!("Base CRF: {}", profile.base_crf);
-        println!("Base Bitrate: {}kbps", profile.base_bitrate);
-        println!("HDR Bitrate: {}kbps", profile.hdr_bitrate);
+        println!("Bitrate: {}kbps", profile.bitrate);
         println!("Content Type: {}", profile.content_type.as_str());
         println!();
 
@@ -101,8 +100,12 @@ async fn show_profile(config: &Config, name: &str) -> Result<()> {
             "  HDR CRF: {:.1}",
             profile.base_crf + config.analysis.hdr_detection.crf_adjustment
         );
-        println!("  SDR Bitrate: {}kbps", profile.base_bitrate);
-        println!("  HDR Bitrate: {}kbps", profile.hdr_bitrate);
+        println!("  Base Bitrate: {}kbps", profile.bitrate);
+        println!("  HDR Bitrate: {}kbps ({}kbps × {:.1}x)",
+            (profile.bitrate as f32 * config.analysis.hdr.as_ref().unwrap_or(&crate::config::UnifiedHdrConfig::default()).bitrate_multiplier) as u32,
+            profile.bitrate,
+            config.analysis.hdr.as_ref().unwrap_or(&crate::config::UnifiedHdrConfig::default()).bitrate_multiplier
+        );
         println!();
 
         println!("x265 Parameters:");
@@ -294,8 +297,7 @@ mod tests {
             RawProfile {
                 title: "Test Profile".to_string(),
                 base_crf: 22.0,
-                base_bitrate: 10000,
-                hdr_bitrate: 13000,
+                bitrate: 10000,
                 content_type: "film".to_string(),
                 x265_params: HashMap::new(),
             },

@@ -67,8 +67,7 @@ profiles:
   default:
     title: "Default Profile"
     base_crf: 23.0
-    base_bitrate: 5000
-    hdr_bitrate: 6000
+    bitrate: 5000
     content_type: "film"
     x265_params:
       preset: "medium"
