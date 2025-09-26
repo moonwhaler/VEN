@@ -92,21 +92,17 @@ impl Encoder for CrfEncoder {
 
         let mut args = vec!["-i".to_string(), input_path_str.to_string()];
 
-        // Add max muxing queue size to prevent stream sync stalling
         args.extend(vec![
             "-max_muxing_queue_size".to_string(),
             "1024".to_string(),
         ]);
 
-        // Add filter chain
         let filter_args = filters.build_ffmpeg_args();
         let uses_filter_complex = filter_args.contains(&"-filter_complex".to_string());
         args.extend(filter_args);
 
-        // Add comprehensive stream mapping from stream preservation analysis
         let mut mapping_args = stream_mapping.mapping_args.clone();
 
-        // If using filter_complex, replace the video mapping to use [v] instead of 0:v:0
         if uses_filter_complex {
             for i in 0..mapping_args.len() - 1 {
                 if mapping_args[i] == "-map" && mapping_args[i + 1] == "0:v:0" {
@@ -118,39 +114,31 @@ impl Encoder for CrfEncoder {
 
         args.extend(mapping_args);
 
-        // Add video encoding settings
         args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
 
-        // Add preset as separate parameter if specified in profile
         if let Some(preset) = profile.get_preset() {
             args.extend(vec!["-preset".to_string(), preset]);
         }
 
-        // Add profile as separate parameter if specified in profile
         if let Some(profile_name) = profile.get_profile() {
             args.extend(vec!["-profile:v".to_string(), profile_name]);
         }
 
-        // Add pixel format as separate parameter if specified in profile
         if let Some(pix_fmt) = profile.get_pixel_format() {
             args.extend(vec!["-pix_fmt".to_string(), pix_fmt]);
         }
 
-        // Add x265 parameters
         args.extend(vec!["-x265-params".to_string(), x265_params]);
 
-        // Add default mode for subtitle handling
         args.extend(vec![
             "-default_mode".to_string(),
             "infer_no_subs".to_string(),
         ]);
 
-        // Add metadata and stream-specific settings from stream preservation
         let stream_preservation =
             crate::stream::preservation::StreamPreservation::new(ffmpeg.clone());
         args.extend(stream_preservation.get_metadata_args(stream_mapping, custom_title));
 
-        // Add progress monitoring for real-time feedback
         let progress_file = format!("/tmp/ffmpeg_progress_{}.txt", std::process::id());
         args.extend(vec![
             "-progress".to_string(),
@@ -160,7 +148,6 @@ impl Encoder for CrfEncoder {
             "1.0".to_string(),
         ]);
 
-        // Add container optimization
         args.extend(vec![
             "-movflags".to_string(),
             "+faststart".to_string(),
@@ -176,7 +163,6 @@ impl Encoder for CrfEncoder {
                 + stream_mapping.data_streams.len()
         );
 
-        // Log the raw ffmpeg command to the log file
         if let Some(logger) = file_logger {
             if let Err(e) = logger.log_ffmpeg_command(ffmpeg.get_ffmpeg_path(), &args) {
                 tracing::warn!("Failed to log ffmpeg command: {}", e);
@@ -317,14 +303,12 @@ impl AbrEncoder {
         mode_params.insert("pass".to_string(), "1".to_string());
         mode_params.insert("bitrate".to_string(), adaptive_bitrate.to_string());
         mode_params.insert("stats".to_string(), stats_file.to_string());
-        // Use profile preset for consistency, but add no-slow-firstpass for speed
         if let Some(preset) = profile.get_preset() {
             mode_params.insert("preset".to_string(), preset);
         }
         mode_params.insert("no-slow-firstpass".to_string(), "1".to_string());
 
         if is_cbr {
-            // Only add automatic VBV if profile doesn't already specify them
             if !profile.x265_params.contains_key("vbv-bufsize")
                 && !profile.x265_params.contains_key("vbv-maxrate")
             {
@@ -349,7 +333,6 @@ impl AbrEncoder {
 
         let mut args = vec!["-i".to_string(), input_path.to_string()];
 
-        // Add max muxing queue size to prevent stream sync stalling
         args.extend(vec![
             "-max_muxing_queue_size".to_string(),
             "1024".to_string(),
@@ -359,7 +342,6 @@ impl AbrEncoder {
 
         args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
 
-        // Add pixel format as separate parameter if specified in profile
         if let Some(pix_fmt) = profile.get_pixel_format() {
             args.extend(vec!["-pix_fmt".to_string(), pix_fmt]);
         }
@@ -410,7 +392,6 @@ impl AbrEncoder {
         mode_params.insert("stats".to_string(), stats_file.to_string());
 
         if is_cbr {
-            // Only add automatic VBV if profile doesn't already specify them
             if !profile.x265_params.contains_key("vbv-bufsize")
                 && !profile.x265_params.contains_key("vbv-maxrate")
             {
@@ -435,21 +416,17 @@ impl AbrEncoder {
 
         let mut args = vec!["-i".to_string(), input_path.to_string()];
 
-        // Add max muxing queue size to prevent stream sync stalling
         args.extend(vec![
             "-max_muxing_queue_size".to_string(),
             "1024".to_string(),
         ]);
 
-        // Add filter chain
         let filter_args = filters.build_ffmpeg_args();
         let uses_filter_complex = filter_args.contains(&"-filter_complex".to_string());
         args.extend(filter_args);
 
-        // Add comprehensive stream mapping from stream preservation analysis
         let mut mapping_args = stream_mapping.mapping_args.clone();
 
-        // If using filter_complex, replace the video mapping to use [v] instead of 0:v:0
         if uses_filter_complex {
             for i in 0..mapping_args.len() - 1 {
                 if mapping_args[i] == "-map" && mapping_args[i + 1] == "0:v:0" {
@@ -461,39 +438,31 @@ impl AbrEncoder {
 
         args.extend(mapping_args);
 
-        // Add video encoding settings
         args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
 
-        // Add preset as separate parameter if specified in profile
         if let Some(preset) = profile.get_preset() {
             args.extend(vec!["-preset".to_string(), preset]);
         }
 
-        // Add profile as separate parameter if specified in profile
         if let Some(profile_name) = profile.get_profile() {
             args.extend(vec!["-profile:v".to_string(), profile_name]);
         }
 
-        // Add pixel format as separate parameter if specified in profile
         if let Some(pix_fmt) = profile.get_pixel_format() {
             args.extend(vec!["-pix_fmt".to_string(), pix_fmt]);
         }
 
-        // Add x265 parameters
         args.extend(vec!["-x265-params".to_string(), x265_params]);
 
-        // Add default mode for subtitle handling
         args.extend(vec![
             "-default_mode".to_string(),
             "infer_no_subs".to_string(),
         ]);
 
-        // Add metadata and stream-specific settings from stream preservation
         let stream_preservation =
             crate::stream::preservation::StreamPreservation::new(ffmpeg.clone());
         args.extend(stream_preservation.get_metadata_args(stream_mapping, custom_title));
 
-        // Add progress monitoring for real-time feedback
         let progress_file = format!("/tmp/ffmpeg_progress_{}.txt", std::process::id());
         args.extend(vec![
             "-progress".to_string(),
@@ -503,7 +472,6 @@ impl AbrEncoder {
             "1.0".to_string(),
         ]);
 
-        // Add container optimization
         args.extend(vec![
             "-movflags".to_string(),
             "+faststart".to_string(),
@@ -512,7 +480,6 @@ impl AbrEncoder {
 
         tracing::debug!("Running pass 2/2...");
 
-        // Log the raw ffmpeg command to the log file
         if let Some(logger) = file_logger {
             if let Err(e) = logger.log_ffmpeg_command(ffmpeg.get_ffmpeg_path(), &args) {
                 tracing::warn!("Failed to log ffmpeg command: {}", e);

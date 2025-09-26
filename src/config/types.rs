@@ -55,10 +55,10 @@ pub struct AppConfig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DoviToolConfig {
-    pub path: String,                      // Path to dovi_tool binary
-    pub timeout_seconds: u64,              // Tool operation timeout
-    pub extract_args: Option<Vec<String>>, // Custom extraction arguments
-    pub inject_args: Option<Vec<String>>,  // Custom injection arguments
+    pub path: String,
+    pub timeout_seconds: u64,
+    pub extract_args: Option<Vec<String>>,
+    pub inject_args: Option<Vec<String>>,
 }
 
 impl Default for DoviToolConfig {
@@ -77,8 +77,8 @@ pub struct ToolsConfig {
     pub ffmpeg: String,
     pub ffprobe: String,
     pub nnedi_weights: Option<String>,
-    pub dovi_tool: Option<DoviToolConfig>, // NEW: Dolby Vision tool
-    pub hdr10plus_tool: Option<crate::hdr10plus::Hdr10PlusToolConfig>, // NEW: HDR10+ tool
+    pub dovi_tool: Option<DoviToolConfig>,
+    pub hdr10plus_tool: Option<crate::hdr10plus::Hdr10PlusToolConfig>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -96,7 +96,6 @@ pub struct ProgressConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CropDetectionConfig {
     pub enabled: bool,
-    /// Number of evenly distributed sample points across video duration
     pub sample_count: u32,
     pub sdr_crop_limit: u32,
     pub hdr_crop_limit: u32,
@@ -107,7 +106,7 @@ impl Default for CropDetectionConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            sample_count: 3, // Default to 3 evenly distributed samples
+            sample_count: 3,
             sdr_crop_limit: 24,
             hdr_crop_limit: 64,
             min_pixel_change_percent: 1.0,
@@ -115,12 +114,11 @@ impl Default for CropDetectionConfig {
     }
 }
 
-// Legacy HDR detection config - replaced by UnifiedHdrConfig in hdr module
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HdrDetectionConfig {
     pub enabled: bool,
     #[serde(default)]
-    pub passthrough_mode: bool, // Skip x265 HDR metadata injection for passthrough encoding
+    pub passthrough_mode: bool,
     pub crf_adjustment: f32,
 }
 
@@ -134,9 +132,9 @@ pub struct ToneMappingConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UnifiedHdrConfig {
     pub enabled: bool,
-    pub crf_adjustment: f32,         // CRF adjustment for HDR
-    pub bitrate_multiplier: f32,     // Bitrate multiplier for HDR
-    pub tone_mapping: Option<ToneMappingConfig>, // Future tone mapping
+    pub crf_adjustment: f32,
+    pub bitrate_multiplier: f32,
+    pub tone_mapping: Option<ToneMappingConfig>,
 }
 
 impl Default for UnifiedHdrConfig {
@@ -153,21 +151,20 @@ impl Default for UnifiedHdrConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DolbyVisionConfig {
     pub enabled: bool,
-    pub preserve_profile_7: bool,      // Convert P7 to P8.1
-    pub target_profile: String,        // "8.1" or "8.2"
-    pub require_dovi_tool: bool,       // Fail if dovi_tool missing
-    pub temp_dir: Option<String>,      // RPU temporary storage
-    pub auto_profile_conversion: bool, // Auto convert profiles for compatibility
-    pub fallback_to_hdr10: bool,       // Fallback to HDR10 if DV processing fails
+    pub preserve_profile_7: bool,
+    pub target_profile: String,
+    pub require_dovi_tool: bool,
+    pub temp_dir: Option<String>,
+    pub auto_profile_conversion: bool,
+    pub fallback_to_hdr10: bool,
 
-    // NEW: Dolby Vision-specific encoding adjustments
-    pub crf_adjustment: f32, // CRF adjustment for DV content (+0.5 to +1.0)
-    pub bitrate_multiplier: f32, // Bitrate multiplier for DV (1.5-2.0x)
-    pub vbv_crf_bufsize: u32, // VBV buffer size for CRF mode (relaxed)
-    pub vbv_crf_maxrate: u32, // VBV max rate for CRF mode (relaxed)
-    pub vbv_abr_bufsize: u32, // VBV buffer size for ABR/CBR modes (tighter)
-    pub vbv_abr_maxrate: u32, // VBV max rate for ABR/CBR modes (tighter)
-    pub profile_specific_adjustments: bool, // Different settings per profile
+    pub crf_adjustment: f32,
+    pub bitrate_multiplier: f32,
+    pub vbv_crf_bufsize: u32,
+    pub vbv_crf_maxrate: u32,
+    pub vbv_abr_bufsize: u32,
+    pub vbv_abr_maxrate: u32,
+    pub profile_specific_adjustments: bool,
 }
 
 impl Default for DolbyVisionConfig {
@@ -181,14 +178,12 @@ impl Default for DolbyVisionConfig {
             auto_profile_conversion: true,
             fallback_to_hdr10: true,
 
-            // Dolby Vision encoding adjustments based on research
-            crf_adjustment: 1.0,     // Lower than HDR10's +2.0, use +1.0 for DV
-            bitrate_multiplier: 1.8, // Higher than HDR10's 1.3x, use 1.8x for DV
-            // Mode-specific VBV settings for optimal performance vs compliance
-            vbv_crf_bufsize: 80_000,  // Relaxed for CRF mode (50% reduction)
-            vbv_crf_maxrate: 60_000,  // Relaxed for CRF mode (62% reduction)
-            vbv_abr_bufsize: 120_000, // Tighter for ABR/CBR modes (25% reduction)
-            vbv_abr_maxrate: 100_000, // Tighter for ABR/CBR modes (37% reduction)
+            crf_adjustment: 1.0,
+            bitrate_multiplier: 1.8,
+            vbv_crf_bufsize: 80_000,
+            vbv_crf_maxrate: 60_000,
+            vbv_abr_bufsize: 120_000,
+            vbv_abr_maxrate: 100_000,
             profile_specific_adjustments: true,
         }
     }
@@ -196,24 +191,18 @@ impl Default for DolbyVisionConfig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Hdr10PlusConfig {
-    /// Enable HDR10+ dynamic metadata processing
     pub enabled: bool,
 
-    /// Temporary directory for metadata files
     pub temp_dir: Option<String>,
 
-    /// Require hdr10plus_tool to be available (fail if missing)
     pub require_tool: bool,
 
-    /// Fallback to HDR10 if HDR10+ processing fails
     pub fallback_to_hdr10: bool,
 
-    /// HDR10+ encoding adjustments
-    pub crf_adjustment: f32, // CRF adjustment for HDR10+ (+2.5)
-    pub bitrate_multiplier: f32,  // Bitrate multiplier for HDR10+ (1.4x)
-    pub encoding_complexity: f32, // Encoding complexity multiplier (1.4x)
+    pub crf_adjustment: f32,
+    pub bitrate_multiplier: f32,
+    pub encoding_complexity: f32,
 
-    /// Validate tone mapping curves
     pub validate_curves: bool,
 }
 
@@ -222,10 +211,10 @@ impl Default for Hdr10PlusConfig {
         Self {
             enabled: true,
             temp_dir: None,
-            require_tool: false, // Graceful fallback by default
+            require_tool: false,
             fallback_to_hdr10: true,
-            crf_adjustment: 2.5,     // Higher than HDR10's +2.0 due to complexity
-            bitrate_multiplier: 1.4, // 40% increase for dynamic metadata
+            crf_adjustment: 2.5,
+            bitrate_multiplier: 1.4,
             encoding_complexity: 1.4,
             validate_curves: true,
         }
@@ -235,10 +224,10 @@ impl Default for Hdr10PlusConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AnalysisConfig {
     pub crop_detection: CropDetectionConfig,
-    pub hdr_detection: HdrDetectionConfig, // Legacy - kept for backward compatibility
-    pub hdr: Option<UnifiedHdrConfig>,     // New unified HDR config
-    pub dolby_vision: Option<DolbyVisionConfig>, // NEW: Dolby Vision configuration
-    pub hdr10_plus: Option<Hdr10PlusConfig>, // NEW: HDR10+ dynamic metadata configuration
+    pub hdr_detection: HdrDetectionConfig,
+    pub hdr: Option<UnifiedHdrConfig>,
+    pub dolby_vision: Option<DolbyVisionConfig>,
+    pub hdr10_plus: Option<Hdr10PlusConfig>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -262,35 +251,35 @@ pub struct DenoiseConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct AudioSelectionConfig {
     #[serde(default)]
-    pub languages: Option<Vec<String>>, // ISO 639-1/639-2 language codes (e.g., ["eng", "jpn"])
+    pub languages: Option<Vec<String>>,
     #[serde(default)]
-    pub codecs: Option<Vec<String>>, // Codec filters (e.g., ["aac", "ac3"])
+    pub codecs: Option<Vec<String>>,
     #[serde(default)]
-    pub dispositions: Option<Vec<String>>, // Disposition filters (e.g., ["default", "original"])
+    pub dispositions: Option<Vec<String>>,
     #[serde(default)]
-    pub title_patterns: Option<Vec<String>>, // Regex patterns for title matching
+    pub title_patterns: Option<Vec<String>>,
     #[serde(default)]
-    pub exclude_commentary: bool, // Exclude commentary tracks
+    pub exclude_commentary: bool,
     #[serde(default)]
-    pub max_streams: Option<usize>, // Limit number of audio streams
+    pub max_streams: Option<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct SubtitleSelectionConfig {
     #[serde(default)]
-    pub languages: Option<Vec<String>>, // ISO 639-1/639-2 language codes
+    pub languages: Option<Vec<String>>,
     #[serde(default)]
-    pub codecs: Option<Vec<String>>, // Codec filters (e.g., ["subrip", "ass"])
+    pub codecs: Option<Vec<String>>,
     #[serde(default)]
-    pub dispositions: Option<Vec<String>>, // Disposition filters (e.g., ["forced", "hearing_impaired"])
+    pub dispositions: Option<Vec<String>>,
     #[serde(default)]
-    pub title_patterns: Option<Vec<String>>, // Regex patterns for title matching
+    pub title_patterns: Option<Vec<String>>,
     #[serde(default)]
-    pub exclude_commentary: bool, // Exclude commentary subtitles
+    pub exclude_commentary: bool,
     #[serde(default)]
-    pub include_forced_only: bool, // Only include forced subtitles
+    pub include_forced_only: bool,
     #[serde(default)]
-    pub max_streams: Option<usize>, // Limit number of subtitle streams
+    pub max_streams: Option<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -308,7 +297,6 @@ pub struct RawProfile {
     pub x265_params: HashMap<String, serde_yaml::Value>,
 }
 
-// Stream Selection Profile Types
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StreamSelectionProfile {
     pub name: String,

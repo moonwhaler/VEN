@@ -125,7 +125,6 @@ pub fn format_file_size(bytes: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // Unused imports removed
 
     #[test]
     fn test_is_video_file() {
