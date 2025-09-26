@@ -93,18 +93,41 @@ async fn show_profile(config: &Config, name: &str) -> Result<()> {
         println!("HDR Adjustments:");
         println!(
             "  HDR CRF Adjustment: {:+.1}",
-            config.analysis.hdr_detection.crf_adjustment
+            config
+                .analysis
+                .hdr
+                .as_ref()
+                .map(|h| h.crf_adjustment)
+                .unwrap_or(2.0)
         );
         println!("  SDR CRF: {:.1}", profile.base_crf);
         println!(
             "  HDR CRF: {:.1}",
-            profile.base_crf + config.analysis.hdr_detection.crf_adjustment
+            profile.base_crf
+                + config
+                    .analysis
+                    .hdr
+                    .as_ref()
+                    .map(|h| h.crf_adjustment)
+                    .unwrap_or(2.0)
         );
         println!("  Base Bitrate: {}kbps", profile.bitrate);
-        println!("  HDR Bitrate: {}kbps ({}kbps × {:.1}x)",
-            (profile.bitrate as f32 * config.analysis.hdr.as_ref().unwrap_or(&crate::config::UnifiedHdrConfig::default()).bitrate_multiplier) as u32,
+        println!(
+            "  HDR Bitrate: {}kbps ({}kbps × {:.1}x)",
+            (profile.bitrate as f32
+                * config
+                    .analysis
+                    .hdr
+                    .as_ref()
+                    .unwrap_or(&crate::config::UnifiedHdrConfig::default())
+                    .bitrate_multiplier) as u32,
             profile.bitrate,
-            config.analysis.hdr.as_ref().unwrap_or(&crate::config::UnifiedHdrConfig::default()).bitrate_multiplier
+            config
+                .analysis
+                .hdr
+                .as_ref()
+                .unwrap_or(&crate::config::UnifiedHdrConfig::default())
+                .bitrate_multiplier
         );
         println!();
 
@@ -143,7 +166,15 @@ async fn validate_config(config_path: &std::path::Path) -> Result<()> {
             println!("{:-<40}", "");
             println!("Profiles defined: {}", config.profiles.len());
             println!("Crop detection: {}", config.analysis.crop_detection.enabled);
-            println!("HDR detection: {}", config.analysis.hdr_detection.enabled);
+            println!(
+                "HDR processing: {}",
+                config
+                    .analysis
+                    .hdr
+                    .as_ref()
+                    .map(|h| h.enabled)
+                    .unwrap_or(false)
+            );
 
             // Validate profiles
             let mut profile_manager = ProfileManager::new();
@@ -260,7 +291,10 @@ async fn show_stream_profile(config: &Config, name: &str) -> Result<()> {
             println!("  Title patterns: None");
         }
 
-        println!("  Exclude commentary: {}", profile.subtitle.exclude_commentary);
+        println!(
+            "  Exclude commentary: {}",
+            profile.subtitle.exclude_commentary
+        );
         println!("  Forced only: {}", profile.subtitle.include_forced_only);
 
         if let Some(max) = profile.subtitle.max_streams {

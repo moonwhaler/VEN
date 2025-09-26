@@ -133,9 +133,10 @@ analysis:
     sdr_crop_limit: 24
     hdr_crop_limit: 64
     min_pixel_change_percent: 1.0
-  hdr_detection:
+  hdr:
     enabled: true
     crf_adjustment: 2.0
+    bitrate_multiplier: 1.3
 
 
 profiles:

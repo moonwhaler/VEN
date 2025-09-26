@@ -1,4 +1,7 @@
-use super::types::{AudioSelectionConfig, RawStreamSelectionProfile, StreamSelectionProfile, SubtitleSelectionConfig};
+use super::types::{
+    AudioSelectionConfig, RawStreamSelectionProfile, StreamSelectionProfile,
+    SubtitleSelectionConfig,
+};
 use crate::utils::{Error, Result};
 use std::collections::HashMap;
 use tracing::{debug, info};
@@ -57,7 +60,11 @@ impl StreamSelectionProfileManager {
             "default".to_string()
         } else {
             // Return the first available profile
-            self.profiles.keys().next().cloned().unwrap_or_else(|| "none".to_string())
+            self.profiles
+                .keys()
+                .next()
+                .cloned()
+                .unwrap_or_else(|| "none".to_string())
         }
     }
 
@@ -109,9 +116,15 @@ impl StreamSelectionProfileManager {
                 title: "Multi-language - English and Japanese".to_string(),
                 audio: AudioSelectionConfig {
                     languages: Some(vec!["eng".to_string(), "jpn".to_string()]),
-                    codecs: Some(vec!["aac".to_string(), "ac3".to_string(), "dts".to_string()]),
+                    codecs: Some(vec![
+                        "aac".to_string(),
+                        "ac3".to_string(),
+                        "dts".to_string(),
+                    ]),
                     dispositions: Some(vec!["default".to_string(), "original".to_string()]),
-                    title_patterns: Some(vec!["(?i)^(?!.*(commentary|director|behind|making|bonus)).*$".to_string()]),
+                    title_patterns: Some(vec![
+                        "(?i)^(?!.*(commentary|director|behind|making|bonus)).*$".to_string(),
+                    ]),
                     exclude_commentary: true,
                     max_streams: Some(3),
                 },
@@ -119,7 +132,9 @@ impl StreamSelectionProfileManager {
                     languages: Some(vec!["eng".to_string(), "jpn".to_string()]),
                     codecs: Some(vec!["subrip".to_string(), "ass".to_string()]),
                     dispositions: Some(vec!["forced".to_string(), "default".to_string()]),
-                    title_patterns: Some(vec!["(?i)^(?!.*(commentary|director|behind|making|bonus)).*$".to_string()]),
+                    title_patterns: Some(vec![
+                        "(?i)^(?!.*(commentary|director|behind|making|bonus)).*$".to_string(),
+                    ]),
                     exclude_commentary: true,
                     include_forced_only: false,
                     max_streams: Some(4),
@@ -222,9 +237,22 @@ mod tests {
         let manager = StreamSelectionProfileManager::new(HashMap::new()).unwrap();
         let profile = manager.get_profile("multilang").unwrap();
 
-        assert_eq!(profile.audio.languages, Some(vec!["eng".to_string(), "jpn".to_string()]));
-        assert_eq!(profile.audio.codecs, Some(vec!["aac".to_string(), "ac3".to_string(), "dts".to_string()]));
-        assert_eq!(profile.subtitle.dispositions, Some(vec!["forced".to_string(), "default".to_string()]));
+        assert_eq!(
+            profile.audio.languages,
+            Some(vec!["eng".to_string(), "jpn".to_string()])
+        );
+        assert_eq!(
+            profile.audio.codecs,
+            Some(vec![
+                "aac".to_string(),
+                "ac3".to_string(),
+                "dts".to_string()
+            ])
+        );
+        assert_eq!(
+            profile.subtitle.dispositions,
+            Some(vec!["forced".to_string(), "default".to_string()])
+        );
         assert!(profile.audio.title_patterns.is_some());
         assert_eq!(profile.audio.max_streams, Some(3));
         assert_eq!(profile.subtitle.max_streams, Some(4));

@@ -1,4 +1,6 @@
 use chrono::Utc;
+use console::style;
+use std::fmt::{self as std_fmt, Debug};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -10,8 +12,6 @@ use tracing_subscriber::{
     util::SubscriberInitExt,
     EnvFilter,
 };
-use console::style;
-use std::fmt::{self as std_fmt, Debug};
 
 struct CleanFormatter {
     show_timestamps: bool,
@@ -20,10 +20,10 @@ struct CleanFormatter {
 
 #[derive(Debug, Clone, Copy)]
 enum ProcessingLevel {
-    Root,        // Top level operations
-    Stage,       // Major processing stages
-    Step,        // Individual steps within stages
-    Detail,      // Detailed information
+    Root,   // Top level operations
+    Stage,  // Major processing stages
+    Step,   // Individual steps within stages
+    Detail, // Detailed information
 }
 
 impl CleanFormatter {
@@ -79,43 +79,48 @@ impl CleanFormatter {
             "matroska,webm",
         ];
 
-        !noise_patterns.iter().any(|pattern| message.contains(pattern))
+        !noise_patterns
+            .iter()
+            .any(|pattern| message.contains(pattern))
     }
 
     fn determine_processing_level(&self, message: &str) -> ProcessingLevel {
         // Root level - main operations
-        if message.contains("Processing file") ||
-           message.contains("Found") && message.contains("file(s) to process") {
+        if message.contains("Processing file")
+            || message.contains("Found") && message.contains("file(s) to process")
+        {
             return ProcessingLevel::Root;
         }
 
         // Stage level - major processing phases
-        if message.contains("Starting") && (
-            message.contains("encoding") ||
-            message.contains("CRF") ||
-            message.contains("ABR") ||
-            message.contains("CBR") ||
-            message.contains("crop detection") ||
-            message.contains("unified content analysis") ||
-            message.contains("pre-encoding metadata extraction")
-        ) {
+        if message.contains("Starting")
+            && (message.contains("encoding")
+                || message.contains("CRF")
+                || message.contains("ABR")
+                || message.contains("CBR")
+                || message.contains("crop detection")
+                || message.contains("unified content analysis")
+                || message.contains("pre-encoding metadata extraction"))
+        {
             return ProcessingLevel::Stage;
         }
 
-        if message.contains("CONTENT DETECTED") ||
-           message.contains("Recommended encoding approach") ||
-           message.contains("Crop detection completed") {
+        if message.contains("CONTENT DETECTED")
+            || message.contains("Recommended encoding approach")
+            || message.contains("Crop detection completed")
+        {
             return ProcessingLevel::Stage;
         }
 
         // Step level - individual processing steps
-        if message.contains("Analyzing stream structure") ||
-           message.contains("Stream filtering") && message.contains("complete") ||
-           message.contains("Getting video metadata") ||
-           message.contains("External metadata tools are ready") ||
-           message.contains("HDR/DV metadata tools ready") ||
-           message.contains("Processing SDR content") ||
-           message.contains("No external metadata extracted") {
+        if message.contains("Analyzing stream structure")
+            || message.contains("Stream filtering") && message.contains("complete")
+            || message.contains("Getting video metadata")
+            || message.contains("External metadata tools are ready")
+            || message.contains("HDR/DV metadata tools ready")
+            || message.contains("Processing SDR content")
+            || message.contains("No external metadata extracted")
+        {
             return ProcessingLevel::Step;
         }
 
@@ -144,10 +149,11 @@ impl CleanFormatter {
                 } else {
                     message.to_uppercase()
                 }
-            },
+            }
             ProcessingLevel::Stage => {
                 // Clean up stage messages
-                let clean_message = if message.contains("Starting") && message.contains("encoding") {
+                let clean_message = if message.contains("Starting") && message.contains("encoding")
+                {
                     message.replace("Starting ", "")
                 } else if message.contains("CONTENT DETECTED") {
                     message.replace(" CONTENT DETECTED", " content detected")
@@ -160,29 +166,30 @@ impl CleanFormatter {
                 } else {
                     clean_message
                 }
-            },
+            }
             ProcessingLevel::Step => {
                 // Summarize stream filtering results more concisely
-                let clean_message = if message.contains("Stream filtering") && message.contains("complete") {
-                    if let Some(summary) = self.extract_stream_summary(message) {
-                        summary
+                let clean_message =
+                    if message.contains("Stream filtering") && message.contains("complete") {
+                        if let Some(summary) = self.extract_stream_summary(message) {
+                            summary
+                        } else {
+                            message.to_string()
+                        }
+                    } else if message.contains("External metadata tools are ready") {
+                        "HDR/DV metadata tools ready".to_string()
+                    } else if message.contains("Getting video metadata for:") {
+                        "Analyzing video metadata".to_string()
                     } else {
                         message.to_string()
-                    }
-                } else if message.contains("External metadata tools are ready") {
-                    "HDR/DV metadata tools ready".to_string()
-                } else if message.contains("Getting video metadata for:") {
-                    "Analyzing video metadata".to_string()
-                } else {
-                    message.to_string()
-                };
+                    };
 
                 if self.use_color {
                     style(clean_message).cyan().to_string()
                 } else {
                     clean_message
                 }
-            },
+            }
             ProcessingLevel::Detail => {
                 if self.use_color {
                     style(message).dim().to_string()

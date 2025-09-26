@@ -76,7 +76,12 @@ impl ToolRunner {
         self.run_with_logging(args, output_file, false).await
     }
 
-    async fn run_with_logging(&self, args: &[String], output_file: Option<&Path>, log_errors: bool) -> Result<String> {
+    async fn run_with_logging(
+        &self,
+        args: &[String],
+        output_file: Option<&Path>,
+        log_errors: bool,
+    ) -> Result<String> {
         let mut command = Command::new(&self.config.path);
         command.args(args);
 

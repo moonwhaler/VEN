@@ -68,7 +68,6 @@ impl EncodingProfile {
         crf.clamp(1.0, 51.0)
     }
 
-
     pub fn build_x265_params_string(
         &self,
         mode_specific_params: Option<&HashMap<String, String>>,
@@ -411,7 +410,6 @@ impl EncodingProfile {
                     _ => {}
                 }
 
-
                 params.insert("output-depth".to_string(), "10".to_string());
 
                 params.insert("colorprim".to_string(), "bt2020".to_string());
@@ -610,7 +608,6 @@ mod tests {
         assert_eq!(profile.calculate_adaptive_crf(0.0, true, 2.0), 24.0);
         assert_eq!(profile.calculate_adaptive_crf(0.5, true, 2.0), 24.5);
     }
-
 
     #[test]
     fn test_build_x265_params_string() {

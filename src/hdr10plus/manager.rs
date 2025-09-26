@@ -130,8 +130,9 @@ impl Hdr10PlusManager {
                 // Check if this is the expected "no dynamic metadata" case
                 let error_message = e.to_string();
                 if error_message.contains("File doesn't contain dynamic metadata")
-                   || error_message.contains("No dynamic metadata found")
-                   || error_message.contains("Tool failed with exit code exit status: 1") {
+                    || error_message.contains("No dynamic metadata found")
+                    || error_message.contains("Tool failed with exit code exit status: 1")
+                {
                     debug!("No HDR10+ dynamic metadata found in file - this is normal for HDR10 content");
                     info!("No HDR10+ dynamic metadata detected (standard HDR10 content)");
                 } else {
@@ -149,10 +150,12 @@ impl Hdr10PlusManager {
         dv_info: &DolbyVisionInfo,
         hdr_result: &HdrAnalysisResult,
     ) -> Result<Option<Hdr10PlusProcessingResult>> {
-        if !dv_info.is_dolby_vision() || !matches!(
-            hdr_result.metadata.format,
-            HdrFormat::HDR10Plus | HdrFormat::HDR10
-        ) {
+        if !dv_info.is_dolby_vision()
+            || !matches!(
+                hdr_result.metadata.format,
+                HdrFormat::HDR10Plus | HdrFormat::HDR10
+            )
+        {
             debug!("Not dual DV+HDR10/HDR10+ content - skipping dual processing");
             return self
                 .extract_hdr10plus_metadata(input_video, hdr_result)

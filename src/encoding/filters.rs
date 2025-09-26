@@ -232,12 +232,12 @@ mod tests {
             },
             analysis: AnalysisConfig {
                 crop_detection: CropDetectionConfig::default(),
-                hdr_detection: HdrDetectionConfig {
+                hdr: Some(crate::config::types::UnifiedHdrConfig {
                     enabled: true,
-                    passthrough_mode: false,
                     crf_adjustment: 2.0,
-                },
-                hdr: Some(crate::config::UnifiedHdrConfig::default()),
+                    bitrate_multiplier: 1.3,
+                    tone_mapping: None,
+                }),
                 dolby_vision: Some(crate::config::DolbyVisionConfig::default()),
                 hdr10_plus: Some(crate::config::Hdr10PlusConfig::default()),
             },

@@ -29,25 +29,24 @@ fn filter_ffmpeg_stderr(stderr: &str) -> String {
     stderr
         .lines()
         .filter(|line| {
-            !line.contains("Invalid Block Addition") &&
-            !line.contains("Could not find codec parameters") &&
-            !line.contains("Consider increasing the value for") &&
-            !line.contains("analyzeduration") &&
-            !line.contains("probesize") &&
-            !(line.contains("x265 [info]:") && (
-                line.contains("encoder version") ||
-                line.contains("build info") ||
-                line.contains("using cpu capabilities") ||
-                line.contains("Thread pool created") ||
-                line.contains("Coding QT:") ||
-                line.contains("Residual QT:") ||
-                line.contains("ME / range") ||
-                line.contains("Keyframe min") ||
-                line.contains("Lookahead") ||
-                line.contains("b-pyramid") ||
-                line.contains("References") ||
-                line.contains("tools:")
-            ))
+            !line.contains("Invalid Block Addition")
+                && !line.contains("Could not find codec parameters")
+                && !line.contains("Consider increasing the value for")
+                && !line.contains("analyzeduration")
+                && !line.contains("probesize")
+                && !(line.contains("x265 [info]:")
+                    && (line.contains("encoder version")
+                        || line.contains("build info")
+                        || line.contains("using cpu capabilities")
+                        || line.contains("Thread pool created")
+                        || line.contains("Coding QT:")
+                        || line.contains("Residual QT:")
+                        || line.contains("ME / range")
+                        || line.contains("Keyframe min")
+                        || line.contains("Lookahead")
+                        || line.contains("b-pyramid")
+                        || line.contains("References")
+                        || line.contains("tools:")))
         })
         .collect::<Vec<_>>()
         .join("\n")
@@ -157,7 +156,11 @@ impl FfmpegWrapper {
         ];
         cmd_args.extend(args);
 
-        tracing::debug!("Executing FFmpeg command: {} {}", self.ffmpeg_path, cmd_args.join(" "));
+        tracing::debug!(
+            "Executing FFmpeg command: {} {}",
+            self.ffmpeg_path,
+            cmd_args.join(" ")
+        );
 
         let mut command = TokioCommand::new(&self.ffmpeg_path);
         command
@@ -481,7 +484,10 @@ impl FfmpegWrapper {
         if !output.status.success() {
             let raw_error_msg = String::from_utf8_lossy(&output.stderr);
             let error_msg = filter_ffmpeg_stderr(&raw_error_msg);
-            return Err(Error::ffmpeg(format!("ffprobe failed for duration extraction: {}", error_msg)));
+            return Err(Error::ffmpeg(format!(
+                "ffprobe failed for duration extraction: {}",
+                error_msg
+            )));
         }
 
         let text_output = String::from_utf8_lossy(&output.stdout);

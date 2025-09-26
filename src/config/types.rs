@@ -88,7 +88,6 @@ pub struct LoggingConfig {
     pub colored_output: bool,
 }
 
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CropDetectionConfig {
     pub enabled: bool,
@@ -108,14 +107,6 @@ impl Default for CropDetectionConfig {
             min_pixel_change_percent: 1.0,
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct HdrDetectionConfig {
-    pub enabled: bool,
-    #[serde(default)]
-    pub passthrough_mode: bool,
-    pub crf_adjustment: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -220,7 +211,6 @@ impl Default for Hdr10PlusConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AnalysisConfig {
     pub crop_detection: CropDetectionConfig,
-    pub hdr_detection: HdrDetectionConfig,
     pub hdr: Option<UnifiedHdrConfig>,
     pub dolby_vision: Option<DolbyVisionConfig>,
     pub hdr10_plus: Option<Hdr10PlusConfig>,
