@@ -90,8 +90,7 @@ profiles:
   movie:
     title: "Standard Movie"
     base_crf: 22
-    base_bitrate: 10000
-    hdr_bitrate: 12000
+    bitrate: 10000
     content_type: "film"
     x265_params:
       preset: "slow"
@@ -122,8 +121,7 @@ profiles:
   movie_new:
     title: "Standard Movie (clean content) tweaked"
     base_crf: 22
-    base_bitrate: 10000
-    hdr_bitrate: 12000
+    bitrate: 10000
     content_type: "film"
     x265_params:
       preset: "slow"
@@ -158,8 +156,7 @@ profiles:
   movie_mid_grain:
     title: "Movies with lighter grain"
     base_crf: 21
-    base_bitrate: 10000
-    hdr_bitrate: 12000
+    bitrate: 10000
     content_type: "film"
     x265_params:
       preset: "slow"
@@ -194,8 +191,7 @@ profiles:
   movie_mid_grain_new:
     title: "Movies with lighter grain tweaked"
     base_crf: 22
-    base_bitrate: 8000
-    hdr_bitrate: 10000
+    bitrate: 8000
     content_type: "film"
     x265_params:
       preset: "slow"
@@ -230,8 +226,7 @@ profiles:
   movie_size_focused:
     title: "Standard Movie (smaller size)"
     base_crf: 23
-    base_bitrate: 10000
-    hdr_bitrate: 13000
+    bitrate: 10000
     content_type: "film"
     x265_params:
       preset: "slow"
@@ -251,8 +246,7 @@ profiles:
   movie_size_focused_new:
     title: "Standard Movie (smaller size) tweaked"
     base_crf: 23
-    base_bitrate: 9000
-    hdr_bitrate: 12000
+    bitrate: 9000
     content_type: "film"
     x265_params:
       preset: "slow"                    # Optimal size/speed balance[2][62]
@@ -287,8 +281,7 @@ profiles:
   heavy_grain:
     title: "4K heavy grain (consider using --denoise)"
     base_crf: 21
-    base_bitrate: 11000
-    hdr_bitrate: 14000
+    bitrate: 11000
     content_type: "heavy_grain"
     x265_params:
       preset: "slower"
@@ -318,8 +311,7 @@ profiles:
   heavy_grain_new:
     title: "Heavy grain preservation tweaked"
     base_crf: 20               # Lower CRF for grain preservation[51][6]
-    base_bitrate: 11000        # Increased for grain detail
-    hdr_bitrate: 14000         # Higher bitrate for HDR grain
+    bitrate: 11000             # Increased for grain detail
     content_type: "heavy_grain"
     x265_params:
       preset: "slower"         # Essential for grain quality[3][6]
@@ -359,8 +351,7 @@ profiles:
   3d_cgi:
     title: "3D CGI (Pixar-like)"
     base_crf: 22
-    base_bitrate: 9000
-    hdr_bitrate: 12000
+    bitrate: 9000
     content_type: "3d_animation"
     x265_params:
       preset: "slow"
@@ -394,8 +385,7 @@ profiles:
   3d_cgi_new:
     title: "3D CGI (Pixar-like) tweaked"
     base_crf: 22
-    base_bitrate: 9000
-    hdr_bitrate: 12000
+    bitrate: 9000
     content_type: "3d_animation"
     x265_params:
       preset: "slow"                     # Good speed/quality balance for animation
@@ -430,8 +420,7 @@ profiles:
   3d_complex:
     title: "3D complex content (Arcane-like)"
     base_crf: 22
-    base_bitrate: 10000
-    hdr_bitrate: 12000
+    bitrate: 10000
     content_type: "3d_animation"
     x265_params:
       preset: "slow"
@@ -465,8 +454,7 @@ profiles:
   3d_complex_new:
     title: "3D Complex Content (Arcane-like) tweaked"
     base_crf: 22
-    base_bitrate: 10000
-    hdr_bitrate: 12000
+    bitrate: 10000
     content_type: "3d_animation"
     x265_params:
       preset: "slow"
@@ -502,8 +490,7 @@ profiles:
   anime:
     title: "Anime"
     base_crf: 23
-    base_bitrate: 8000
-    hdr_bitrate: 10000
+    bitrate: 8000
     content_type: "anime"
     x265_params:
       preset: "slow"
@@ -534,8 +521,7 @@ profiles:
   anime_new:
     title: "Anime Tweaked"
     base_crf: 23
-    base_bitrate: 8000
-    hdr_bitrate: 10000
+    bitrate: 8000
     content_type: "anime"
     x265_params:
       preset: "slow"
@@ -552,8 +538,7 @@ profiles:
   classic_anime:
     title: "Classic 90s Anime with finer details"
     base_crf: 22
-    base_bitrate: 9000
-    hdr_bitrate: 11000
+    bitrate: 9000
     content_type: "classic_anime"
     x265_params:
       preset: "slower"
@@ -584,8 +569,7 @@ profiles:
   classic_anime_new:
     title: "Classic 90s Anime with finer details, tweaked"
     base_crf: 22
-    base_bitrate: 9000
-    hdr_bitrate: 11000
+    bitrate: 9000
     content_type: "classic_anime"
     x265_params:
       preset: "slower"                  # Essential for preserving line art & grain
@@ -622,8 +606,7 @@ profiles:
   "4k":
     title: "General 4K balanced optimization"
     base_crf: 22
-    base_bitrate: 12000
-    hdr_bitrate: 16000
+    bitrate: 12000
     content_type: "mixed"
     x265_params:
       preset: "medium"
@@ -654,8 +637,7 @@ profiles:
   "4k_heavy_grain":
     title: "4K heavy grain preservation with selective SAO"
     base_crf: 21
-    base_bitrate: 14000
-    hdr_bitrate: 18000
+    bitrate: 14000
     content_type: "heavy_grain"
     x265_params:
       preset: "slower"

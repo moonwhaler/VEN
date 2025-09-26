@@ -75,7 +75,7 @@ impl Config {
                 )));
             }
 
-            if profile.base_bitrate == 0 {
+            if profile.bitrate == 0 {
                 return Err(Error::validation(format!(
                     "Invalid base_bitrate for profile '{}': must be greater than 0",
                     name
@@ -153,8 +153,7 @@ profiles:
   test:
     title: "Test Profile"
     base_crf: 22.0
-    base_bitrate: 5000
-    hdr_bitrate: 6000
+    bitrate: 5000
     content_type: "film"
     x265_params:
       preset: "medium"

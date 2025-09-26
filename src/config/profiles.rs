@@ -10,8 +10,7 @@ pub struct EncodingProfile {
     pub name: String,
     pub title: String,
     pub base_crf: f32,
-    pub base_bitrate: u32,
-    pub hdr_bitrate: u32,
+    pub bitrate: u32,
     pub content_type: ContentType,
     pub x265_params: HashMap<String, String>,
 }
@@ -50,8 +49,7 @@ impl EncodingProfile {
             name,
             title: raw.title,
             base_crf: raw.base_crf,
-            base_bitrate: raw.base_bitrate,
-            hdr_bitrate: raw.hdr_bitrate,
+            bitrate: raw.bitrate,
             content_type,
             x265_params,
         })
@@ -70,14 +68,6 @@ impl EncodingProfile {
         crf.clamp(1.0, 51.0)
     }
 
-    pub fn calculate_adaptive_bitrate(&self, bitrate_multiplier: f32, is_hdr: bool) -> u32 {
-        let base = if is_hdr {
-            self.hdr_bitrate
-        } else {
-            self.base_bitrate
-        };
-        (base as f32 * bitrate_multiplier) as u32
-    }
 
     pub fn build_x265_params_string(
         &self,
@@ -601,8 +591,7 @@ mod tests {
         RawProfile {
             title: "Test Profile".to_string(),
             base_crf: 22.0,
-            base_bitrate: 10000,
-            hdr_bitrate: 13000,
+            bitrate: 10000,
             content_type: "film".to_string(),
             x265_params,
         }
@@ -634,16 +623,6 @@ mod tests {
         assert_eq!(profile.calculate_adaptive_crf(0.5, true, 2.0), 24.5);
     }
 
-    #[test]
-    fn test_calculate_adaptive_bitrate() {
-        let raw = create_test_raw_profile();
-        let profile = EncodingProfile::from_raw("test".to_string(), raw).unwrap();
-
-        assert_eq!(profile.calculate_adaptive_bitrate(1.0, false), 10000);
-        assert_eq!(profile.calculate_adaptive_bitrate(1.5, false), 15000);
-        assert_eq!(profile.calculate_adaptive_bitrate(1.0, true), 13000);
-        assert_eq!(profile.calculate_adaptive_bitrate(1.5, true), 19500);
-    }
 
     #[test]
     fn test_build_x265_params_string() {

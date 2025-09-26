@@ -89,7 +89,7 @@ impl<'a> VideoProcessor<'a> {
 
         let adaptive_crf =
             selected_profile.base_crf + content_analysis.encoding_adjustments.crf_adjustment;
-        let adaptive_bitrate = ((selected_profile.base_bitrate as f32)
+        let adaptive_bitrate = ((selected_profile.bitrate as f32)
             * content_analysis.encoding_adjustments.bitrate_multiplier)
             as u32;
 
@@ -276,7 +276,7 @@ impl<'a> VideoProcessor<'a> {
                 );
                 info!(
                     "  Base Bitrate: {} -> Adjusted Bitrate: {} ({:.1}x multiplier)",
-                    selected_profile.base_bitrate,
+                    selected_profile.bitrate,
                     adaptive_bitrate,
                     content_analysis.encoding_adjustments.bitrate_multiplier
                 );
