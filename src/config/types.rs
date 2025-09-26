@@ -88,10 +88,6 @@ pub struct LoggingConfig {
     pub colored_output: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ProgressConfig {
-    pub update_interval_ms: u64,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CropDetectionConfig {

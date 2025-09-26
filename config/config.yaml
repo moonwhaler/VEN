@@ -25,9 +25,6 @@ logging:
   show_timestamps: true
   colored_output: true
 
-# Progress Tracking
-progress:
-  update_interval_ms: 1000
 
 # Analysis Settings
 analysis:
