@@ -168,7 +168,7 @@ profiles:
       aq-mode: 2
       aq-strength: 0.8
       deblock: "-2,-2"
-      rc-lookahead: 40
+      rc-lookahead: 60
       merange: 57
       max-tu-size: 32
       ctu: 64
