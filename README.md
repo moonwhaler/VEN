@@ -2,49 +2,51 @@
 
 A professional Rust-based video encoding tool built around FFmpeg and x265, designed for reliable batch processing with intelligent content analysis and comprehensive stream preservation.
 
-## 🚀 Features
+## Features
 
 ### Core Encoding
-- **Three encoding modes**: CRF (quality-based), ABR (average bitrate), CBR (constant bitrate)
-- **x265/HEVC encoding** with professionally tuned parameters
-- **Multi-pass encoding** for ABR/CBR modes with optimized first-pass settings
-- **Stream preservation** - losslessly preserves all audio, subtitle, data streams, chapters, and metadata
+- Three encoding modes: CRF (quality-based), ABR (average bitrate), CBR (constant bitrate)
+- x265/HEVC encoding with professionally tuned parameters
+- Multi-pass encoding for ABR/CBR modes with optimized first-pass settings
+- Complete stream preservation - losslessly preserves all audio, subtitle, data streams, chapters, and metadata
 
 ### Intelligent Video Analysis
-- **Unified Content Analysis**: Automatically detects SDR, HDR10, HDR10+, and Dolby Vision to apply optimal encoding parameters.
-- **Dolby Vision Support**: Preserves Dolby Vision metadata (Profiles 5, 7, 8.1, 8.2, 8.4) with profile-specific CRF and VBV adjustments.
-- **HDR10+ Support**: Extracts and preserves HDR10+ dynamic metadata.
-- **Dual Format Handling**: Special conservative settings for content with both Dolby Vision and HDR10+.
-- **Automatic crop detection** with multi-temporal sampling and HDR/SDR-specific thresholds.
-- **Content classification** for optimal profile selection.
-- **Comprehensive metadata extraction** with optimized FFprobe settings.
+- Unified Content Analysis: Automatically detects SDR, HDR10, HDR10+, and Dolby Vision to apply optimal encoding parameters
+- Dolby Vision Support: Preserves Dolby Vision metadata (Profiles 5, 7, 8.1, 8.2, 8.4) with profile-specific CRF and VBV adjustments
+- HDR10+ Support: Extracts and preserves HDR10+ dynamic metadata
+- Dual Format Handling: Special conservative settings for content with both Dolby Vision and HDR10+
+- Automatic crop detection with multi-temporal sampling and HDR/SDR-specific thresholds
+- Content classification for optimal profile selection
+- Comprehensive metadata extraction with optimized FFprobe settings
 
 ### Professional Profiles
 11 content-specific encoding profiles:
-- **movie** - Standard live-action films (CRF=22, 10Mbps)
-- **movie_mid_grain** - Films with moderate grain (CRF=21, 11Mbps)  
-- **movie_size_focused** - Size-optimized films
-- **heavy_grain** - Heavy grain preservation (CRF=21, 12Mbps)
-- **3d_cgi** - Pixar-like 3D animation
-- **3d_complex** - Complex 3D content like Arcane (CRF=22, 11Mbps)
-- **anime** - Modern 2D animation (CRF=23, 9Mbps)
-- **classic_anime** - Traditional animation with grain preservation
-- **4k** - General 4K content (15Mbps)
-- **4k_heavy_grain** - 4K heavy grain preservation (18Mbps)
-- **auto** - Automatic profile selection based on content analysis
+- movie - Standard live-action films (CRF=22, 10Mbps)
+- movie_mid_grain - Films with moderate grain (CRF=21, 11Mbps)
+- movie_size_focused - Size-optimized films
+- heavy_grain - Heavy grain preservation (CRF=21, 12Mbps)
+- 3d_cgi - Pixar-like 3D animation
+- 3d_complex - Complex 3D content like Arcane (CRF=22, 11Mbps)
+- anime - Modern 2D animation (CRF=23, 9Mbps)
+- classic_anime - Traditional animation with grain preservation
+- 4k - General 4K content (15Mbps)
+- 4k_heavy_grain - 4K heavy grain preservation (18Mbps)
+- auto - Automatic profile selection based on content analysis
 
-### Video Processing Pipeline  
-- **Deinterlacing** - NNEDI3 primary with yadif fallback
-- **Denoising** - Configurable hqdn3d temporal/spatial filtering
-- **Crop detection** - Intelligent black bar removal with validation
-- **Progress monitoring** - Real-time encoding progress with ETA calculations
+### Video Processing Pipeline
+- Deinterlacing - NNEDI3 primary with yadif fallback
+- Denoising - Configurable hqdn3d temporal/spatial filtering
+- Crop detection - Intelligent black bar removal with validation
+- Progress monitoring - Real-time encoding progress with ETA calculations
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
-- **Rust** 1.70+ (with Cargo)
-- **FFmpeg** with libx265 support
-- **FFprobe** (included with FFmpeg)
+- Rust 1.70+ (with Cargo)
+- FFmpeg with libx265 support
+- FFprobe (included with FFmpeg)
+- Optional: dovi_tool for Dolby Vision processing
+- Optional: hdr10plus_tool for HDR10+ metadata extraction
 
 ### Build from Source
 ```bash
@@ -55,7 +57,7 @@ cargo build --release
 
 The binary will be created at `target/release/ffmpeg-encoder`.
 
-## 🛠️ Usage
+## Usage
 
 ### Basic Encoding
 ```bash
@@ -81,7 +83,7 @@ The binary will be created at `target/release/ffmpeg-encoder`.
 ./ffmpeg-encoder -i input.mkv -o /custom/path/output.mkv
 ```
 
-## 🎛️ Command Line Options
+## Command Line Options
 
 ### Basic Options
 - `-i, --input <PATH>` - Input file or directory (required)
@@ -89,7 +91,7 @@ The binary will be created at `target/release/ffmpeg-encoder`.
 - `-p, --profile <PROFILE>` - Encoding profile (default: auto)
 - `-m, --mode <MODE>` - Encoding mode: crf/abr/cbr (default: abr)
 
-### Processing Options  
+### Processing Options
 - `--denoise` - Enable video denoising (hqdn3d filter)
 - `--deinterlace` - Enable NNEDI3/yadif deinterlacing
 
@@ -105,7 +107,7 @@ The binary will be created at `target/release/ffmpeg-encoder`.
 - `--debug` - Enable debug logging
 - `--no-color` - Disable colored output
 
-## ⚙️ Configuration
+## Configuration
 
 The tool uses a YAML configuration file (`config.yaml`) with the following structure:
 
@@ -113,15 +115,21 @@ The tool uses a YAML configuration file (`config.yaml`) with the following struc
 ```yaml
 app:
   temp_dir: "/tmp"
-  stats_prefix: "ffmpeg2pass"
+  stats_prefix: "ffmpeg_stats"
 ```
 
 ### Tool Paths
 ```yaml
 tools:
-  ffmpeg: "/usr/bin/ffmpeg" 
-  ffprobe: "/usr/bin/ffprobe"
+  ffmpeg: "ffmpeg"
+  ffprobe: "ffprobe"
   nnedi_weights: null  # Optional NNEDI weights file
+  dovi_tool:
+    path: "/usr/bin/dovi_tool"
+    timeout_seconds: 300
+  hdr10plus_tool:
+    path: "/usr/bin/hdr10plus_tool"
+    timeout_seconds: 300
 ```
 
 ### Video Analysis
@@ -129,28 +137,25 @@ tools:
 analysis:
   crop_detection:
     enabled: true
-    sample_count: 3              # Number of temporal samples
+    sample_count: 8              # Number of temporal samples
     sdr_crop_limit: 24           # SDR content threshold
     hdr_crop_limit: 64           # HDR content threshold
-    min_pixel_change_percent: 1.0
-  
-  hdr_detection:
+    min_pixel_change_percent: 2.0
+
+  hdr:
     enabled: true
-    color_space_patterns: ["bt2020", "rec2020"]
-    transfer_patterns: ["smpte2084", "arib-std-b67"] 
-    crf_adjustment: 2.0          # CRF increase for HDR content
+    crf_adjustment: 1.0
+    bitrate_multiplier: 1.3
 
   dolby_vision:
     enabled: true
+    preserve_profile_7: true
+    target_profile: "8.1"
+    require_dovi_tool: true
     crf_adjustment: 1.0
     bitrate_multiplier: 1.8
-    vbv_bufsize: 160000
-    vbv_maxrate: 160000
-    profile_specific_adjustments: true
-
-  hdr10_plus:
-    enabled: true
-    temp_dir: "/tmp/hdr10plus"
+    vbv_crf_bufsize: 160000
+    vbv_crf_maxrate: 160000
 ```
 
 ### Processing Filters
@@ -161,7 +166,7 @@ filters:
     fallback_method: "yadif"
     nnedi_settings:
       field: "auto"
-  
+
   denoise:
     filter: "hqdn3d"
     params: "1:1:2:2"           # luma_spatial:chroma_spatial:luma_temporal:chroma_temporal
@@ -183,7 +188,7 @@ profiles:
       # ... extensive x265 parameters
 ```
 
-## 🎨 Examples
+## Examples
 
 ### Content-Specific Encoding
 ```bash
@@ -218,49 +223,49 @@ profiles:
 ./ffmpeg-encoder -i content.mkv -p movie -m cbr
 ```
 
-## 🔍 Output and Logging
+## Output and Logging
 
 ### File Naming
-- **Auto-generated names**: `{UUID}.mkv` to prevent conflicts
-- **Custom output**: Use `-o` flag for specific output path
-- **Batch processing**: Creates files alongside originals with UUID names
+- Auto-generated names: `{UUID}.mkv` to prevent conflicts
+- Custom output: Use `-o` flag for specific output path
+- Batch processing: Creates files alongside originals with UUID names
 
 ### Logging
 The tool creates detailed per-file logs (`{output}.log`) containing:
-- **Input/output paths** and selected profile information
-- **Video analysis results** (resolution, duration, HDR detection, crop detection)
-- **Encoding settings** (adaptive CRF/bitrate, filters, x265 parameters)
-- **Stream mapping** (audio/subtitle/data stream preservation)
-- **Performance metrics** (encoding duration, output size, completion status)
+- Input/output paths and selected profile information
+- Video analysis results (resolution, duration, HDR detection, crop detection)
+- Encoding settings (adaptive CRF/bitrate, filters, x265 parameters)
+- Stream mapping (audio/subtitle/data stream preservation)
+- Performance metrics (encoding duration, output size, completion status)
 
 ### Progress Monitoring
 Real-time progress display showing:
-- **Progress bar** with percentage completion
-- **Current FPS** and encoding speed multiplier
-- **ETA calculations** using multiple estimation methods
-- **File size estimates** based on current progress
+- Progress bar with percentage completion
+- Current FPS and encoding speed multiplier
+- ETA calculations using multiple estimation methods
+- File size estimates based on current progress
 
-## 🏗️ Architecture
+## Architecture
 
 ### Core Modules
-- **CLI Interface** (`src/cli/`) - Clap-based command parsing with validation
-- **Configuration** (`src/config/`) - Type-safe YAML configuration management
-- **Encoding Modes** (`src/encoding/`) - CRF/ABR/CBR implementations with multi-pass support
-- **Content Management** (`src/content_manager.rs`) - Unified analysis for SDR, HDR, Dolby Vision, and HDR10+.
-- **Video Analysis** (`src/analysis/`) - Crop detection, HDR detection, content classification
-- **Dolby Vision** (`src/dolby_vision/`) - Dolby Vision detection and metadata handling.
-- **HDR10+** (`src/hdr10plus/`) - HDR10+ metadata extraction and processing.
-- **Stream Processing** (`src/stream/`) - Lossless stream preservation and metadata handling
-- **Utilities** (`src/utils/`) - FFmpeg wrapper, progress monitoring, error handling
+- CLI Interface (`src/cli/`) - Clap-based command parsing with validation
+- Configuration (`src/config/`) - Type-safe YAML configuration management
+- Encoding Modes (`src/encoding/`) - CRF/ABR/CBR implementations with multi-pass support
+- Content Management (`src/content_manager.rs`) - Unified analysis for SDR, HDR, Dolby Vision, and HDR10+
+- Video Analysis (`src/analysis/`) - Crop detection, HDR detection, content classification
+- Dolby Vision (`src/dolby_vision/`) - Dolby Vision detection and metadata handling
+- HDR10+ (`src/hdr10plus/`) - HDR10+ metadata extraction and processing
+- Stream Processing (`src/stream/`) - Lossless stream preservation and metadata handling
+- Utilities (`src/utils/`) - FFmpeg wrapper, progress monitoring, error handling
 
 ### Key Features
-- **Async Architecture** - Non-blocking I/O throughout using Tokio
-- **Type Safety** - Comprehensive Rust type system with Serde for configuration
-- **Error Handling** - Detailed error types with context and recovery
-- **Performance** - Optimized FFprobe settings and efficient progress parsing
-- **Stream Preservation** - Complete audio/subtitle/chapter/metadata retention
+- Async Architecture - Non-blocking I/O throughout using Tokio
+- Type Safety - Comprehensive Rust type system with Serde for configuration
+- Error Handling - Detailed error types with context and recovery
+- Performance - Optimized FFprobe settings and efficient progress parsing
+- Stream Preservation - Complete audio/subtitle/chapter/metadata retention
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -268,12 +273,12 @@ Real-time progress display showing:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## ✨ Acknowledgments
+## Acknowledgments
 
-- **FFmpeg team** for the incredible media processing framework
-- **x265 developers** for the high-quality HEVC encoder
-- **Rust community** for excellent async and CLI libraries
+- FFmpeg team for the incredible media processing framework
+- x265 developers for the high-quality HEVC encoder
+- Rust community for excellent async and CLI libraries
