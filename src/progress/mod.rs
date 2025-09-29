@@ -30,9 +30,9 @@ impl ProgressMonitor {
 
         // Adjust progress bar template for two-pass encoding
         let template = if is_two_pass {
-            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {percent_precise:>5}% (Pass 2/2) | {msg}"
+            "[{wide_bar:.cyan/blue}] {percent_precise:>5}% (Pass 2/2) | {msg}"
         } else {
-            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {percent_precise:>5}% | {msg}"
+            "[{wide_bar:.cyan/blue}] {percent_precise:>5}% | {msg}"
         };
 
         progress_bar.set_style(
