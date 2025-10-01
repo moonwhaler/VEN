@@ -144,11 +144,16 @@ impl RpuManager {
     }
 
     /// Inject RPU metadata into encoded file
+    ///
+    /// This performs a three-step workflow:
+    /// 1. Extract raw HEVC bitstream from MKV container
+    /// 2. Inject RPU metadata into raw HEVC using dovi_tool
+    /// 3. Remux HEVC+RPU back into MKV with all streams
     pub async fn inject_rpu<P: AsRef<Path>>(
         &self,
-        encoded_path: P,
+        encoded_mkv_path: P,
         rpu_metadata: &RpuMetadata,
-        output_path: P,
+        final_output_path: P,
     ) -> Result<()> {
         let dovi_tool = self.dovi_tool.as_ref().ok_or_else(|| {
             Error::DolbyVision(
@@ -169,16 +174,116 @@ impl RpuManager {
             )));
         }
 
+        let encoded_mkv = encoded_mkv_path.as_ref();
+        let final_output = final_output_path.as_ref();
+
         info!(
             "Injecting RPU metadata into: {}",
-            encoded_path.as_ref().display()
+            encoded_mkv.display()
         );
 
-        dovi_tool
-            .inject_rpu(encoded_path, rpu_metadata.temp_file.clone(), output_path)
+        // Step 1: Extract raw HEVC bitstream from MKV
+        let temp_hevc = if let Some(parent) = encoded_mkv.parent() {
+            parent.join(format!(
+                "temp_hevc_{}.hevc",
+                Uuid::new_v4()
+            ))
+        } else {
+            PathBuf::from(format!("temp_hevc_{}.hevc", Uuid::new_v4()))
+        };
+
+        info!("  Step 1/3: Extracting raw HEVC bitstream from MKV...");
+        debug!("    Temp HEVC: {}", temp_hevc.display());
+
+        let extract_status = tokio::process::Command::new("ffmpeg")
+            .args([
+                "-i", &encoded_mkv.to_string_lossy(),
+                "-c:v", "copy",
+                "-bsf:v", "hevc_mp4toannexb",
+                "-f", "hevc",
+                "-y",
+                &temp_hevc.to_string_lossy(),
+            ])
+            .output()
             .await?;
 
-        info!("Successfully injected Dolby Vision RPU metadata");
+        if !extract_status.status.success() {
+            let stderr = String::from_utf8_lossy(&extract_status.stderr);
+            let _ = fs::remove_file(&temp_hevc).await;
+            return Err(Error::Ffmpeg {
+                message: format!("Failed to extract HEVC from MKV: {}", stderr),
+            });
+        }
+
+        // Step 2: Inject RPU into raw HEVC bitstream
+        let hevc_with_rpu = if let Some(parent) = encoded_mkv.parent() {
+            parent.join(format!(
+                "temp_hevc_rpu_{}.hevc",
+                Uuid::new_v4()
+            ))
+        } else {
+            PathBuf::from(format!("temp_hevc_rpu_{}.hevc", Uuid::new_v4()))
+        };
+
+        info!("  Step 2/3: Injecting RPU metadata into HEVC bitstream...");
+        debug!("    Input HEVC: {}", temp_hevc.display());
+        debug!("    RPU file: {}", rpu_metadata.temp_file.display());
+        debug!("    Output HEVC+RPU: {}", hevc_with_rpu.display());
+
+        match dovi_tool
+            .inject_rpu(&temp_hevc, &rpu_metadata.temp_file, &hevc_with_rpu)
+            .await
+        {
+            Ok(_) => {
+                info!("    RPU injection successful!");
+            }
+            Err(e) => {
+                let _ = fs::remove_file(&temp_hevc).await;
+                let _ = fs::remove_file(&hevc_with_rpu).await;
+                return Err(e);
+            }
+        }
+
+        // Clean up intermediate HEVC file
+        let _ = fs::remove_file(&temp_hevc).await;
+
+        // Step 3: Remux HEVC+RPU back into MKV with all streams
+        info!("  Step 3/3: Remuxing HEVC+RPU back into MKV with all streams...");
+        debug!("    Source MKV (for streams): {}", encoded_mkv.display());
+        debug!("    HEVC+RPU: {}", hevc_with_rpu.display());
+        debug!("    Final output: {}", final_output.display());
+
+        let remux_status = tokio::process::Command::new("ffmpeg")
+            .args([
+                "-i", &hevc_with_rpu.to_string_lossy(),
+                "-i", &encoded_mkv.to_string_lossy(),
+                "-map", "0:v:0",        // Video from HEVC+RPU
+                "-map", "1:a?",         // All audio streams from original MKV
+                "-map", "1:s?",         // All subtitle streams from original MKV
+                "-map", "1:t?",         // All attachments from original MKV
+                "-map", "1:d?",         // All data streams from original MKV
+                "-c", "copy",           // Copy all streams without re-encoding
+                "-map_metadata", "1",   // Copy metadata from original MKV
+                "-y",
+                &final_output.to_string_lossy(),
+            ])
+            .output()
+            .await?;
+
+        // Clean up HEVC+RPU file
+        let _ = fs::remove_file(&hevc_with_rpu).await;
+
+        if !remux_status.status.success() {
+            let stderr = String::from_utf8_lossy(&remux_status.stderr);
+            return Err(Error::Ffmpeg {
+                message: format!("Failed to remux HEVC+RPU into MKV: {}", stderr),
+            });
+        }
+
+        info!("Successfully injected Dolby Vision RPU metadata!");
+        info!("  Profile: {}", rpu_metadata.profile.as_str());
+        info!("  Final file: {}", final_output.display());
+
         Ok(())
     }
 
