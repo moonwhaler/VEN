@@ -2,3 +2,4 @@
 target
 *.lock
 *.bash_example_script
+CLAUDE.md
