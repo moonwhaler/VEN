@@ -1,4 +1,4 @@
-# FFmpeg Autoencoder
+# VEN - The ffmpeg video encoder
 
 A professional Rust-based video encoding tool built around FFmpeg and x265, designed for reliable batch processing with intelligent content analysis and comprehensive stream preservation.
 
