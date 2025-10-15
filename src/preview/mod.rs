@@ -198,7 +198,7 @@ impl<'a> PreviewProcessor<'a> {
         };
 
         let filename = format!(
-            "preview_{}_{}_{}_uuid-{}.{}",
+            "{}_preview_{}_{}_uuid-{}.{}",
             input_stem, profile_name, time_info, self.uuid, extension
         );
 
