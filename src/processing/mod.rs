@@ -166,14 +166,45 @@ impl<'a> VideoProcessor<'a> {
         let status = progress_monitor.monitor_encoding(child).await?;
 
         if status.success() && needs_post_processing {
-            metadata_workflow
+            match metadata_workflow
                 .inject_metadata(
                     &actual_output_path,
                     &self.output_path.to_path_buf(),
                     &extracted_metadata,
                     metadata.fps,
                 )
-                .await?;
+                .await
+            {
+                Ok(_) => {
+                    // Metadata injection succeeded, temp file should be cleaned up by inject_rpu
+                }
+                Err(e) => {
+                    // Metadata injection failed, clean up the temp file
+                    if actual_output_path.exists() {
+                        let _ = tokio::fs::remove_file(&actual_output_path).await;
+                        tracing::debug!(
+                            "Cleaned up temporary file after metadata injection failure: {}",
+                            actual_output_path.display()
+                        );
+                    }
+                    return Err(e);
+                }
+            }
+        } else if needs_post_processing && !status.success() {
+            // Encoding failed but temp file was created, clean it up
+            if actual_output_path.exists() {
+                if let Err(e) = tokio::fs::remove_file(&actual_output_path).await {
+                    tracing::warn!(
+                        "Failed to clean up temporary file after encoding failure: {}",
+                        e
+                    );
+                } else {
+                    tracing::debug!(
+                        "Cleaned up temporary file after encoding failure: {}",
+                        actual_output_path.display()
+                    );
+                }
+            }
         }
 
         // Calculate total duration from start to end

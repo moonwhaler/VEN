@@ -7,8 +7,8 @@ app:
   
 # External Tool Paths
 tools:
-  ffmpeg: "ffmpeg"
-  ffprobe: "ffprobe"
+  ffmpeg: "/usr/bin/ffmpeg"
+  ffprobe: "/usr/bin/ffprobe"
   nnedi_weights: "/home/christian/Documents/source/ffmpeg_autoencoder/neural/nnedi3_weights.bin"
   dovi_tool:    
     path: "/usr/bin/dovi_tool"        # Path to dovi_tool binary

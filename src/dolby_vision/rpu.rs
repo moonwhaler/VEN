@@ -276,6 +276,21 @@ impl RpuManager {
                 // Clean up HEVC+RPU file
                 let _ = fs::remove_file(&hevc_with_rpu).await;
 
+                // Clean up the temporary encoded MKV file (no longer needed)
+                if encoded_mkv.exists() {
+                    match fs::remove_file(encoded_mkv).await {
+                        Ok(_) => debug!(
+                            "Cleaned up temporary encoded file: {}",
+                            encoded_mkv.display()
+                        ),
+                        Err(e) => warn!(
+                            "Failed to clean up temporary encoded file {}: {}",
+                            encoded_mkv.display(),
+                            e
+                        ),
+                    }
+                }
+
                 info!("Successfully injected Dolby Vision RPU metadata!");
                 info!("  Profile: {}", rpu_metadata.profile.as_str());
                 info!("  Final file: {}", final_output.display());
