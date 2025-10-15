@@ -85,11 +85,10 @@ impl ToolRunner {
         let mut command = Command::new(&self.config.path);
         command.args(args);
 
-        // In silent mode, capture stdout/stderr to prevent external tool messages from showing
-        if !log_errors {
-            command.stdout(std::process::Stdio::piped());
-            command.stderr(std::process::Stdio::piped());
-        }
+        // Always capture stdout/stderr to prevent external tool messages from showing
+        // without timestamps, which breaks log formatting
+        command.stdout(std::process::Stdio::piped());
+        command.stderr(std::process::Stdio::piped());
 
         debug!("Running: {} {}", self.config.path, args.join(" "));
 
@@ -129,6 +128,28 @@ impl ToolRunner {
             )));
         }
 
+        // Log non-empty stdout/stderr from successful runs
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        if !stdout.is_empty() {
+            // Log tool output line by line to maintain timestamp consistency
+            for line in stdout.lines() {
+                if !line.trim().is_empty() {
+                    debug!("  {}", line);
+                }
+            }
+        }
+
+        if !stderr.is_empty() {
+            // Some tools output progress to stderr even on success
+            for line in stderr.lines() {
+                if !line.trim().is_empty() {
+                    debug!("  {}", line);
+                }
+            }
+        }
+
         if let Some(file) = output_file {
             if !file.exists() {
                 return Err(Error::Tool(
@@ -137,10 +158,7 @@ impl ToolRunner {
             }
         }
 
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        debug!("Tool output: {}", stdout);
-
-        Ok(stdout)
+        Ok(stdout.to_string())
     }
 
     pub async fn run_with_custom_args<P: AsRef<Path>>(

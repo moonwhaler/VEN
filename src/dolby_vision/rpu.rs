@@ -255,6 +255,8 @@ impl RpuManager {
 
         let remux_status = tokio::process::Command::new("ffmpeg")
             .args([
+                "-f", "hevc",           // Explicitly specify raw HEVC input format
+                "-fflags", "+genpts",   // Generate presentation timestamps for raw HEVC
                 "-i", &hevc_with_rpu.to_string_lossy(),
                 "-i", &encoded_mkv.to_string_lossy(),
                 "-map", "0:v:0",        // Video from HEVC+RPU
@@ -264,6 +266,7 @@ impl RpuManager {
                 "-map", "1:d?",         // All data streams from original MKV
                 "-c", "copy",           // Copy all streams without re-encoding
                 "-map_metadata", "1",   // Copy metadata from original MKV
+                "-map_chapters", "1",   // Copy chapters from original MKV
                 "-y",
                 &final_output.to_string_lossy(),
             ])
@@ -275,6 +278,16 @@ impl RpuManager {
 
         if !remux_status.status.success() {
             let stderr = String::from_utf8_lossy(&remux_status.stderr);
+            let stdout = String::from_utf8_lossy(&remux_status.stdout);
+
+            error!("FFmpeg remux failed!");
+            if !stderr.is_empty() {
+                error!("FFmpeg stderr: {}", stderr);
+            }
+            if !stdout.is_empty() {
+                debug!("FFmpeg stdout: {}", stdout);
+            }
+
             return Err(Error::Ffmpeg {
                 message: format!("Failed to remux HEVC+RPU into MKV: {}", stderr),
             });
