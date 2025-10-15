@@ -36,11 +36,6 @@ pub async fn handle_commands(args: &CliArgs, config: &Config) -> Result<bool> {
         return Ok(true);
     }
 
-    if let Some(topic) = &args.help_topic {
-        args.print_help_topic(topic);
-        return Ok(true);
-    }
-
     // No info commands executed
     Ok(false)
 }

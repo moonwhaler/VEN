@@ -26,19 +26,12 @@ async fn main() -> Result<()> {
 
     args.validate()?;
 
-    if args.help_topic.is_some() {
-        if let Some(topic) = &args.help_topic {
-            args.print_help_topic(topic);
-            return Ok(());
-        }
-    }
-
     let config = Config::load_with_fallback(&args.config)?;
 
     setup_logging(
         args.get_log_level(&config.logging.level),
         config.logging.show_timestamps,
-        config.logging.colored_output && args.should_use_color(),
+        config.logging.colored_output,
     )?;
 
     if handle_commands(&args, &config).await? {

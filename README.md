@@ -162,11 +162,6 @@ Real-time progress bar with FPS, speed, ETA, and file size estimates.
 # Show profile details
 ./ffmpeg-encoder --show-profile anime
 
-# Get help on specific topics
-./ffmpeg-encoder --help-topic profiles
-./ffmpeg-encoder --help-topic modes
-./ffmpeg-encoder --help-topic examples
-
 # Validate configuration
 ./ffmpeg-encoder --validate-config
 ```
@@ -185,9 +180,6 @@ Real-time progress bar with FPS, speed, ETA, and file size estimates.
 
 # Debug output
 ./ffmpeg-encoder -i input.mkv --debug
-
-# Plain text (no colors)
-./ffmpeg-encoder -i input.mkv --no-color
 ```
 
 ## Technical Details
