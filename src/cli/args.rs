@@ -104,6 +104,26 @@ pub struct CliArgs {
     /// Show detailed information about a specific stream selection profile
     #[arg(long, value_name = "PROFILE")]
     pub show_stream_profile: Option<String>,
+
+    /// Enable preview mode (generates previews instead of full encoding)
+    #[arg(long)]
+    pub preview: bool,
+
+    /// Preview timestamp in seconds (for single frame image generation)
+    #[arg(long, value_name = "SECONDS")]
+    pub preview_time: Option<f64>,
+
+    /// Preview time range in format "START-END" (for video segment encoding, e.g., "10-20")
+    #[arg(long, value_name = "START-END")]
+    pub preview_range: Option<String>,
+
+    /// Preview profile group to use (from config's preview_profiles section)
+    #[arg(long, value_name = "NAME")]
+    pub preview_profile: Option<String>,
+
+    /// List available preview profile groups
+    #[arg(long)]
+    pub list_preview_profiles: bool,
 }
 
 impl CliArgs {
@@ -125,15 +145,67 @@ impl CliArgs {
             || self.show_profile.is_some()
             || self.list_stream_profiles
             || self.show_stream_profile.is_some()
+            || self.list_preview_profiles
             || self.validate_config
             || self.help_topic.is_some()
     }
 
     pub fn should_encode(&self) -> bool {
-        !self.is_info_command() && !self.input.is_empty()
+        !self.is_info_command() && !self.input.is_empty() && !self.preview
+    }
+
+    pub fn should_preview(&self) -> bool {
+        self.preview && !self.input.is_empty()
     }
 
     pub fn validate(&self) -> Result<()> {
+        // Validate preview mode parameters
+        if self.preview {
+            if self.input.is_empty() {
+                return Err(crate::utils::Error::validation(
+                    "At least one input path is required for preview mode".to_string(),
+                ));
+            }
+
+            // Must specify either preview_time OR preview_range
+            if self.preview_time.is_none() && self.preview_range.is_none() {
+                return Err(crate::utils::Error::validation(
+                    "Preview mode requires either --preview-time or --preview-range".to_string(),
+                ));
+            }
+
+            // Cannot specify both
+            if self.preview_time.is_some() && self.preview_range.is_some() {
+                return Err(crate::utils::Error::validation(
+                    "Cannot use both --preview-time and --preview-range simultaneously".to_string(),
+                ));
+            }
+
+            // Validate preview_time is positive
+            if let Some(time) = self.preview_time {
+                if time < 0.0 {
+                    return Err(crate::utils::Error::validation(
+                        "Preview time must be a positive number".to_string(),
+                    ));
+                }
+            }
+
+            // Validate preview_range format
+            if let Some(range) = &self.preview_range {
+                self.validate_preview_range(range)?;
+            }
+
+            // Validate all input paths exist
+            for input in &self.input {
+                if !input.exists() {
+                    return Err(crate::utils::Error::validation(format!(
+                        "Input path does not exist: {}",
+                        input.display()
+                    )));
+                }
+            }
+        }
+
         // Only validate input if we're encoding
         if self.should_encode() {
             if self.input.is_empty() {
@@ -188,6 +260,55 @@ impl CliArgs {
         // since profiles are defined dynamically in the configuration file
 
         Ok(())
+    }
+
+    fn validate_preview_range(&self, range: &str) -> Result<()> {
+        let parts: Vec<&str> = range.split('-').collect();
+        if parts.len() != 2 {
+            return Err(crate::utils::Error::validation(
+                "Preview range must be in format 'START-END' (e.g., '10-20')".to_string(),
+            ));
+        }
+
+        let start: f64 = parts[0].parse().map_err(|_| {
+            crate::utils::Error::validation(format!(
+                "Invalid start time in preview range: '{}'",
+                parts[0]
+            ))
+        })?;
+
+        let end: f64 = parts[1].parse().map_err(|_| {
+            crate::utils::Error::validation(format!(
+                "Invalid end time in preview range: '{}'",
+                parts[1]
+            ))
+        })?;
+
+        if start < 0.0 || end < 0.0 {
+            return Err(crate::utils::Error::validation(
+                "Preview range times must be positive numbers".to_string(),
+            ));
+        }
+
+        if start >= end {
+            return Err(crate::utils::Error::validation(
+                "Preview range start time must be less than end time".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    pub fn parse_preview_range(&self) -> Option<(f64, f64)> {
+        self.preview_range.as_ref().and_then(|range| {
+            let parts: Vec<&str> = range.split('-').collect();
+            if parts.len() == 2 {
+                if let (Ok(start), Ok(end)) = (parts[0].parse::<f64>(), parts[1].parse::<f64>()) {
+                    return Some((start, end));
+                }
+            }
+            None
+        })
     }
 
     pub fn print_help_topic(&self, topic: &str) {

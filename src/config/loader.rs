@@ -14,6 +14,8 @@ pub struct Config {
     pub filters: FiltersConfig,
     #[serde(default)]
     pub stream_selection_profiles: HashMap<String, RawStreamSelectionProfile>,
+    #[serde(default)]
+    pub preview_profiles: HashMap<String, RawPreviewProfile>,
 }
 
 impl Config {

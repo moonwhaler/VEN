@@ -324,3 +324,26 @@ pub struct RawStreamSelectionProfile {
     pub audio: Option<AudioSelectionConfig>,
     pub subtitle: Option<SubtitleSelectionConfig>,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PreviewProfile {
+    pub name: String,
+    pub title: String,
+    pub profiles: Vec<String>,
+}
+
+impl PreviewProfile {
+    pub fn from_raw(name: String, raw: RawPreviewProfile) -> Self {
+        Self {
+            name,
+            title: raw.title,
+            profiles: raw.profiles,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RawPreviewProfile {
+    pub title: String,
+    pub profiles: Vec<String>,
+}

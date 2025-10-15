@@ -715,3 +715,29 @@ stream_selection_profiles:
       include_forced_only: true
       exclude_commentary: true
       max_streams: 1
+
+# Preview Profile Groups - Define custom profile sets for comparison testing
+preview_profiles:
+  anime_comparison:
+    title: "Anime Profile Comparison"
+    profiles: ["anime", "anime_new", "classic_anime", "classic_anime_new"]
+
+  movie_comparison:
+    title: "Movie Profile Comparison"
+    profiles: ["movie", "movie_new", "movie_mid_grain", "movie_mid_grain_new"]
+
+  grain_handling:
+    title: "Grain Preservation Tests"
+    profiles: ["movie_mid_grain", "movie_mid_grain_new", "heavy_grain", "heavy_grain_new"]
+
+  size_focused:
+    title: "Size-Optimized Comparison"
+    profiles: ["movie_size_focused", "movie_size_focused_new"]
+
+  3d_animation:
+    title: "3D Animation Comparison"
+    profiles: ["3d_cgi", "3d_cgi_new", "3d_complex", "3d_complex_new"]
+
+  4k_tests:
+    title: "4K Encoding Tests"
+    profiles: ["4k", "4k_heavy_grain"]

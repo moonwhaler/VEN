@@ -257,6 +257,7 @@ mod tests {
                 },
             },
             stream_selection_profiles: HashMap::new(),
+            preview_profiles: HashMap::new(),
         }
     }
 

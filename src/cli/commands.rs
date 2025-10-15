@@ -1,6 +1,6 @@
 use crate::{
     cli::CliArgs,
-    config::{Config, ProfileManager, StreamSelectionProfileManager},
+    config::{Config, PreviewProfileManager, ProfileManager, StreamSelectionProfileManager},
     utils::Result,
 };
 
@@ -23,6 +23,11 @@ pub async fn handle_commands(args: &CliArgs, config: &Config) -> Result<bool> {
 
     if let Some(profile_name) = &args.show_stream_profile {
         show_stream_profile(config, profile_name).await?;
+        return Ok(true);
+    }
+
+    if args.list_preview_profiles {
+        list_preview_profiles(config).await?;
         return Ok(true);
     }
 
@@ -310,6 +315,41 @@ async fn show_stream_profile(config: &Config, name: &str) -> Result<()> {
             println!("  - {}", profile_name);
         }
     }
+
+    Ok(())
+}
+
+async fn list_preview_profiles(config: &Config) -> Result<()> {
+    if config.preview_profiles.is_empty() {
+        println!("No preview profile groups defined in configuration.");
+        println!();
+        println!("To define preview profile groups, add a 'preview_profiles' section to your config:");
+        println!("
+preview_profiles:
+  anime_comparison:
+    title: \"Anime Profile Comparison\"
+    profiles: [\"anime\", \"anime_new\", \"classic_anime\"]
+
+  movie_comparison:
+    title: \"Movie Profile Comparison\"
+    profiles: [\"movie\", \"movie_new\", \"movie_size_focused\"]
+");
+        return Ok(());
+    }
+
+    let manager = PreviewProfileManager::new(config.preview_profiles.clone())?;
+
+    println!("Available Preview Profile Groups:");
+    println!("{:=<60}", "");
+
+    for profile in manager.list_profiles() {
+        println!("  {} - {}", profile.name, profile.title);
+        println!("    Encoding profiles: {}", profile.profiles.join(", "));
+        println!();
+    }
+
+    println!("Use --preview-profile <NAME> to use a preview profile group");
+    println!("Example: --preview --preview-time 30 --preview-profile anime_comparison");
 
     Ok(())
 }
