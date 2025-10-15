@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
 
     args.validate()?;
 
-    let config = Config::load_with_fallback(&args.config)?;
+    let config = Config::load_with_discovery(args.config.as_deref())?;
 
     setup_logging(
         args.get_log_level(&config.logging.level),

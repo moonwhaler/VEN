@@ -149,7 +149,11 @@ Control which audio/subtitle streams to include:
 
 ## Configuration
 
-Configuration file: `config.yaml` (use `--config` to specify custom path)
+The app automatically searches for `config.yaml` in this order:
+1. Path specified via `--config` (if provided)
+2. `config/` subdirectory next to the binary
+3. User config directory: `~/.config/ffmpeg-encoder/` (Linux), `~/Library/Application Support/ffmpeg-encoder/` (macOS), `%APPDATA%\ffmpeg-encoder\` (Windows)
+4. Falls back to embedded default configuration
 
 **Key settings:**
 - **Tool paths**: FFmpeg, FFprobe, dovi_tool, hdr10plus_tool, mkvmerge

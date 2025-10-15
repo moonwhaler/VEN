@@ -32,7 +32,7 @@ pub async fn handle_commands(args: &CliArgs, config: &Config) -> Result<bool> {
     }
 
     if args.validate_config {
-        validate_config(&args.config).await?;
+        validate_config(args.config.as_deref()).await?;
         return Ok(true);
     }
 
@@ -155,10 +155,14 @@ async fn show_profile(config: &Config, name: &str) -> Result<()> {
     Ok(())
 }
 
-async fn validate_config(config_path: &std::path::Path) -> Result<()> {
-    match Config::load_with_fallback(config_path) {
+async fn validate_config(config_path: Option<&std::path::Path>) -> Result<()> {
+    match Config::load_with_discovery(config_path) {
         Ok(config) => {
-            println!("✓ Configuration file is valid: {}", config_path.display());
+            if let Some(path) = config_path {
+                println!("✓ Configuration file is valid: {}", path.display());
+            } else {
+                println!("✓ Configuration is valid (using discovered/default config)");
+            }
             println!();
 
             // Show configuration summary

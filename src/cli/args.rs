@@ -61,9 +61,9 @@ pub struct CliArgs {
     #[arg(long)]
     pub deinterlace: bool,
 
-    /// Configuration file path
-    #[arg(long, default_value = "config.yaml", value_name = "FILE")]
-    pub config: PathBuf,
+    /// Configuration file path (optional, auto-discovers if not specified)
+    #[arg(long, value_name = "FILE")]
+    pub config: Option<PathBuf>,
 
     /// Enable verbose logging
     #[arg(short, long)]
@@ -213,27 +213,8 @@ impl CliArgs {
         }
 
         // For validate-config command, we don't need to check if files exist
-        // since the loading logic will handle fallbacks appropriately
-        if !self.validate_config {
-            // Only validate config file for commands that actually need it
-            if (self.should_encode() || self.list_profiles || self.show_profile.is_some())
-                && !self.config.exists()
-            {
-                let default_paths = [
-                    std::path::Path::new("config.default.yaml"),
-                    std::path::Path::new("./config/config.default.yaml"),
-                ];
-
-                let has_default = default_paths.iter().any(|p| p.exists());
-
-                if !has_default {
-                    return Err(crate::utils::Error::validation(format!(
-                        "Configuration file does not exist: {} (and no config.default.yaml found)",
-                        self.config.display()
-                    )));
-                }
-            }
-        }
+        // since the loading logic will handle fallbacks and discovery appropriately
+        // Config validation is now handled by the discovery mechanism
 
         // Validate encoding mode
         if !["crf", "abr", "cbr"].contains(&self.mode.as_str()) {

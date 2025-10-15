@@ -2,7 +2,52 @@ use super::types::*;
 use crate::utils::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// Discovers the config file location in the following priority order:
+/// 1. If explicit_path is Some and exists, use it
+/// 2. Check for config/config.yaml next to the binary
+/// 3. Check user config directory (~/.config/ffmpeg-encoder/ on Linux,
+///    ~/Library/Application Support/ffmpeg-encoder/ on macOS,
+///    %APPDATA%\ffmpeg-encoder\ on Windows)
+/// 4. Fall back to default config
+pub fn discover_config_path(explicit_path: Option<&Path>) -> Option<PathBuf> {
+    // Priority 1: Explicit path provided via CLI argument
+    if let Some(path) = explicit_path {
+        if path.exists() {
+            tracing::debug!("Using explicit config path: {}", path.display());
+            return Some(path.to_path_buf());
+        } else {
+            tracing::debug!("Explicit config path does not exist: {}", path.display());
+        }
+    }
+
+    // Priority 2: Check for config/config.yaml next to the binary
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let binary_config = exe_dir.join("config").join("config.yaml");
+            if binary_config.exists() {
+                tracing::debug!("Found config next to binary: {}", binary_config.display());
+                return Some(binary_config);
+            }
+            tracing::debug!("No config found at: {}", binary_config.display());
+        }
+    }
+
+    // Priority 3: Check user config directory (cross-platform)
+    if let Some(config_dir) = dirs::config_dir() {
+        let user_config = config_dir.join("ffmpeg-encoder").join("config.yaml");
+        if user_config.exists() {
+            tracing::debug!("Found config in user directory: {}", user_config.display());
+            return Some(user_config);
+        }
+        tracing::debug!("No config found at: {}", user_config.display());
+    }
+
+    // Priority 4: No config found, will fall back to default
+    tracing::debug!("No config file found, will use default configuration");
+    None
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Config {
@@ -34,6 +79,19 @@ impl Config {
                 // If the specified config doesn't exist, try default configs
                 Self::load_default()
             }
+        }
+    }
+
+    /// Loads config with automatic discovery.
+    /// If explicit_path is provided and exists, it takes priority.
+    /// Otherwise, searches in: binary dir, user config dir, then falls back to default.
+    pub fn load_with_discovery(explicit_path: Option<&Path>) -> Result<Self> {
+        if let Some(config_path) = discover_config_path(explicit_path) {
+            tracing::info!("Loading configuration from: {}", config_path.display());
+            Self::load(&config_path)
+        } else {
+            tracing::info!("No config file found, using default configuration");
+            Self::load_default()
         }
     }
 
