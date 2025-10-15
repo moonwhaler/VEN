@@ -32,13 +32,44 @@ Rust-based video encoding tool built on FFmpeg and x265/HEVC for batch processin
 - FFmpeg with libx265 support
 - Optional: `dovi_tool` (Dolby Vision), `hdr10plus_tool` (HDR10+), `mkvmerge` (from mkvtoolnix)
 
+### Quick Build
+
+**Linux/macOS:**
 ```bash
 git clone https://github.com/user/ffmpeg_autoencoder_rust.git
 cd ffmpeg_autoencoder_rust
-cargo build --release
+
+# Production build (optimized, recommended)
+./build.sh production
+
+# Or development build (faster compile, includes debug symbols)
+./build.sh dev
 ```
 
-Binary location: `target/release/ffmpeg-encoder`
+**Windows:**
+```cmd
+git clone https://github.com/user/ffmpeg_autoencoder_rust.git
+cd ffmpeg_autoencoder_rust
+
+REM Production build (optimized, recommended)
+build.bat production
+
+REM Or development build (faster compile, includes debug symbols)
+build.bat dev
+```
+
+**Manual build (all platforms):**
+```bash
+# Production build
+cargo build --release
+# Binary: target/release/ffmpeg-encoder
+
+# Development build
+cargo build
+# Binary: target/debug/ffmpeg-encoder
+```
+
+The build scripts will check for required dependencies and provide helpful error messages if anything is missing.
 
 ## Usage
 
