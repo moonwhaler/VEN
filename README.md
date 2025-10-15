@@ -146,9 +146,9 @@ All HDR processing is automatic - just encode as normal. The tool applies approp
 ## Output
 
 **File naming:**
-- Auto-generated: `{UUID}.mkv` (prevents conflicts)
+- Auto-generated: `{original_filename}_{UUID}.{ext}` (prevents conflicts, preserves original name)
 - Custom: Use `-o` flag
-- Logs: `{output}.log` with detailed encoding information
+- Logs: `{original_filename}_{UUID}.log` with detailed encoding information
 
 **Progress display:**
 Real-time progress bar with FPS, speed, ETA, and file size estimates.
