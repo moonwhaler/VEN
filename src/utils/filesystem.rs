@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use uuid::Uuid;
 use walkdir::WalkDir;
 
-const VIDEO_EXTENSIONS: &[&str] = &[".mkv", ".mp4", ".mov", ".m4v", ".avi", ".webm"];
+const VIDEO_EXTENSIONS: &[&str] = &[".mkv", ".mp4", ".mov", ".m4v", ".avi", ".webm", ".ts"];
 
 pub fn find_video_files<P: AsRef<Path>>(path: P) -> Result<Vec<PathBuf>> {
     let path = path.as_ref();

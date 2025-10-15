@@ -224,6 +224,7 @@ mod tests {
                 nnedi_weights: None,
                 dovi_tool: None,
                 hdr10plus_tool: None,
+                mkvmerge: None,
             },
             logging: LoggingConfig {
                 level: "info".to_string(),

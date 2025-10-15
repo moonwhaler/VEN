@@ -84,7 +84,7 @@ mod tests {
     #[test]
     fn test_rpu_manager_creation() {
         let temp_dir = PathBuf::from("/tmp/rpu_test");
-        let manager = RpuManager::new(temp_dir.clone(), None);
+        let manager = RpuManager::new(temp_dir.clone(), None, None);
 
         // Test overhead estimation
         let dv_info_p7 = DolbyVisionInfo {
@@ -253,7 +253,7 @@ mod tests {
         };
 
         // Create manager without dovi_tool
-        let _manager = RpuManager::new(PathBuf::from("/tmp"), None);
+        let _manager = RpuManager::new(PathBuf::from("/tmp"), None, None);
 
         // The manager should handle the missing tool gracefully
         // (This is tested in the async test below)
@@ -262,7 +262,7 @@ mod tests {
     #[tokio::test]
     async fn test_rpu_manager_without_dovi_tool() {
         let temp_dir = PathBuf::from("/tmp/test_rpu");
-        let manager = RpuManager::new(temp_dir, None);
+        let manager = RpuManager::new(temp_dir, None, None);
 
         let dv_info = DolbyVisionInfo {
             profile: DolbyVisionProfile::Profile81,
@@ -318,7 +318,7 @@ pub async fn demo_dolby_vision_workflow() -> Result<(), Box<dyn std::error::Erro
     let temp_dir = PathBuf::from("/tmp");
     let dovi_config = DoviToolConfig::default();
     let dovi_tool = DoviTool::new(dovi_config);
-    let rpu_manager = RpuManager::new(temp_dir, Some(dovi_tool));
+    let rpu_manager = RpuManager::new(temp_dir, Some(dovi_tool), None);
     println!("✓ RPU manager initialized");
 
     // 6. Encoding profile with DV support

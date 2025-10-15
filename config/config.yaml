@@ -13,11 +13,14 @@ tools:
   dovi_tool:    
     path: "/usr/bin/dovi_tool"        # Path to dovi_tool binary
     timeout_seconds: 300              # Tool operation timeout (5 minutes)
-  hdr10plus_tool:              
+  hdr10plus_tool:
     path: "/usr/bin/hdr10plus_tool"   # Path to hdr10plus_tool binary
     timeout_seconds: 300              # Tool operation timeout (5 minutes)
     # extract_args: ["--verbose"]     # Optional custom extraction arguments
     # inject_args: ["--force"]        # Optional custom injection arguments
+  mkvmerge:
+    path: "/usr/bin/mkvmerge"         # Path to mkvmerge binary (from mkvtoolnix)
+    timeout_seconds: 300              # Tool operation timeout (5 minutes)
 
 # Logging Configuration
 logging:

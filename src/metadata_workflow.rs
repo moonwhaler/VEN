@@ -15,6 +15,7 @@ use crate::dolby_vision::{
 };
 use crate::hdr::types::HdrAnalysisResult;
 use crate::hdr10plus::{manager::Hdr10PlusManager, Hdr10PlusProcessingResult};
+use crate::mkvmerge::MkvMergeTool;
 use crate::utils::Result;
 use crate::ContentEncodingApproach;
 use std::path::{Path, PathBuf};
@@ -96,7 +97,10 @@ impl MetadataWorkflowManager {
             } else {
                 None
             };
-            Some(RpuManager::new(temp_dir.clone(), dovi_tool))
+
+            let mkvmerge_tool = config.tools.mkvmerge.as_ref().map(|mkv_config| MkvMergeTool::new(mkv_config.clone()));
+
+            Some(RpuManager::new(temp_dir.clone(), dovi_tool, mkvmerge_tool))
         } else {
             None
         };
@@ -404,11 +408,15 @@ impl MetadataWorkflowManager {
 
     /// Post-encoding step: inject metadata back into the final file
     /// This is the key step that was missing in the original implementation
+    ///
+    /// # Parameters
+    /// * `fps` - Framerate of the video, required for proper RPU injection timing
     pub async fn inject_metadata<P: AsRef<Path>>(
         &self,
         encoded_path: P,
         final_output_path: P,
         extracted: &ExtractedMetadata,
+        fps: f32,
     ) -> Result<()> {
         // If no metadata was extracted, just rename/move the file
         if !extracted.has_metadata() {
@@ -425,9 +433,10 @@ impl MetadataWorkflowManager {
         if let Some(ref dv_meta) = extracted.dolby_vision {
             if dv_meta.extracted_successfully && self.tools_available.dovi_tool {
                 info!("Injecting Dolby Vision RPU metadata using dovi_tool...");
+                info!("   Video framerate: {} fps (required for timing synchronization)", fps);
                 if let Some(ref manager) = self.rpu_manager {
                     match manager
-                        .inject_rpu(&encoded_path, dv_meta, &final_output_path)
+                        .inject_rpu(&encoded_path, dv_meta, &final_output_path, fps)
                         .await
                     {
                         Ok(_) => {

@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::analysis::dolby_vision::{DolbyVisionInfo, DolbyVisionProfile};
 use crate::dolby_vision::tools::DoviTool;
+use crate::mkvmerge::MkvMergeTool;
 use crate::utils::{Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -58,13 +59,15 @@ impl RpuMetadata {
 pub struct RpuManager {
     temp_dir: PathBuf,
     dovi_tool: Option<DoviTool>,
+    mkvmerge_tool: Option<MkvMergeTool>,
 }
 
 impl RpuManager {
-    pub fn new(temp_dir: PathBuf, dovi_tool: Option<DoviTool>) -> Self {
+    pub fn new(temp_dir: PathBuf, dovi_tool: Option<DoviTool>, mkvmerge_tool: Option<MkvMergeTool>) -> Self {
         Self {
             temp_dir,
             dovi_tool,
+            mkvmerge_tool,
         }
     }
 
@@ -149,11 +152,15 @@ impl RpuManager {
     /// 1. Extract raw HEVC bitstream from MKV container
     /// 2. Inject RPU metadata into raw HEVC using dovi_tool
     /// 3. Remux HEVC+RPU back into MKV with all streams
+    ///
+    /// # Parameters
+    /// * `fps` - Framerate of the video. Required for proper timing when remuxing raw HEVC.
     pub async fn inject_rpu<P: AsRef<Path>>(
         &self,
         encoded_mkv_path: P,
         rpu_metadata: &RpuMetadata,
         final_output_path: P,
+        fps: f32,
     ) -> Result<()> {
         let dovi_tool = self.dovi_tool.as_ref().ok_or_else(|| {
             Error::DolbyVision(
@@ -247,57 +254,40 @@ impl RpuManager {
         // Clean up intermediate HEVC file
         let _ = fs::remove_file(&temp_hevc).await;
 
-        // Step 3: Remux HEVC+RPU back into MKV with all streams
+        // Step 3: Remux HEVC+RPU back into MKV with all streams using mkvmerge
         info!("  Step 3/3: Remuxing HEVC+RPU back into MKV with all streams...");
         debug!("    Source MKV (for streams): {}", encoded_mkv.display());
         debug!("    HEVC+RPU: {}", hevc_with_rpu.display());
         debug!("    Final output: {}", final_output.display());
+        debug!("    Video framerate: {} fps", fps);
 
-        let remux_status = tokio::process::Command::new("ffmpeg")
-            .args([
-                "-f", "hevc",           // Explicitly specify raw HEVC input format
-                "-fflags", "+genpts",   // Generate presentation timestamps for raw HEVC
-                "-i", &hevc_with_rpu.to_string_lossy(),
-                "-i", &encoded_mkv.to_string_lossy(),
-                "-map", "0:v:0",        // Video from HEVC+RPU
-                "-map", "1:a?",         // All audio streams from original MKV
-                "-map", "1:s?",         // All subtitle streams from original MKV
-                "-map", "1:t?",         // All attachments from original MKV
-                "-map", "1:d?",         // All data streams from original MKV
-                "-c", "copy",           // Copy all streams without re-encoding
-                "-map_metadata", "1",   // Copy metadata from original MKV
-                "-map_chapters", "1",   // Copy chapters from original MKV
-                "-y",
-                &final_output.to_string_lossy(),
-            ])
-            .output()
-            .await?;
+        let mkvmerge_tool = self.mkvmerge_tool.as_ref().ok_or_else(|| {
+            Error::DolbyVision(
+                "mkvmerge not configured but required for RPU remuxing".to_string(),
+            )
+        })?;
 
-        // Clean up HEVC+RPU file
-        let _ = fs::remove_file(&hevc_with_rpu).await;
+        // Use mkvmerge to combine HEVC+RPU with streams from original MKV
+        match mkvmerge_tool
+            .remux_hevc_with_streams(&hevc_with_rpu, encoded_mkv, final_output, fps)
+            .await
+        {
+            Ok(_) => {
+                // Clean up HEVC+RPU file
+                let _ = fs::remove_file(&hevc_with_rpu).await;
 
-        if !remux_status.status.success() {
-            let stderr = String::from_utf8_lossy(&remux_status.stderr);
-            let stdout = String::from_utf8_lossy(&remux_status.stdout);
+                info!("Successfully injected Dolby Vision RPU metadata!");
+                info!("  Profile: {}", rpu_metadata.profile.as_str());
+                info!("  Final file: {}", final_output.display());
 
-            error!("FFmpeg remux failed!");
-            if !stderr.is_empty() {
-                error!("FFmpeg stderr: {}", stderr);
+                Ok(())
             }
-            if !stdout.is_empty() {
-                debug!("FFmpeg stdout: {}", stdout);
+            Err(e) => {
+                // Clean up HEVC+RPU file on failure
+                let _ = fs::remove_file(&hevc_with_rpu).await;
+                Err(e)
             }
-
-            return Err(Error::Ffmpeg {
-                message: format!("Failed to remux HEVC+RPU into MKV: {}", stderr),
-            });
         }
-
-        info!("Successfully injected Dolby Vision RPU metadata!");
-        info!("  Profile: {}", rpu_metadata.profile.as_str());
-        info!("  Final file: {}", final_output.display());
-
-        Ok(())
     }
 
     /// Clean up temporary RPU file
@@ -421,7 +411,7 @@ mod tests {
     async fn test_rpu_manager_temp_dir_creation() {
         let temp_dir = tempdir().unwrap();
         let rpu_temp_dir = temp_dir.path().join("rpu_test");
-        let manager = RpuManager::new(rpu_temp_dir.clone(), None);
+        let manager = RpuManager::new(rpu_temp_dir.clone(), None, None);
 
         assert!(!rpu_temp_dir.exists());
         manager.ensure_temp_dir().await.unwrap();
@@ -430,7 +420,7 @@ mod tests {
 
     #[test]
     fn test_processing_overhead_estimation() {
-        let manager = RpuManager::new(PathBuf::new(), None);
+        let manager = RpuManager::new(PathBuf::new(), None, None);
 
         let dv_info_p7 = DolbyVisionInfo {
             profile: DolbyVisionProfile::Profile7,

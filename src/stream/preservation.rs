@@ -391,11 +391,13 @@ impl StreamPreservation {
         let mut metadata = Vec::new();
 
         if let Some(format_obj) = json["format"].as_object() {
-            if let Some(tags) = format_obj["tags"].as_object() {
-                for (key, value) in tags {
-                    if let Some(value_str) = value.as_str() {
-                        metadata.push((key.clone(), value_str.to_string()));
-                        debug!("Global metadata: {} = {}", key, value_str);
+            if let Some(tags_value) = format_obj.get("tags") {
+                if let Some(tags) = tags_value.as_object() {
+                    for (key, value) in tags {
+                        if let Some(value_str) = value.as_str() {
+                            metadata.push((key.clone(), value_str.to_string()));
+                            debug!("Global metadata: {} = {}", key, value_str);
+                        }
                     }
                 }
             }

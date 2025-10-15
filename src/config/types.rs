@@ -73,12 +73,28 @@ impl Default for DoviToolConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MkvMergeConfig {
+    pub path: String,
+    pub timeout_seconds: u64,
+}
+
+impl Default for MkvMergeConfig {
+    fn default() -> Self {
+        Self {
+            path: "mkvmerge".to_string(),
+            timeout_seconds: 300,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ToolsConfig {
     pub ffmpeg: String,
     pub ffprobe: String,
     pub nnedi_weights: Option<String>,
     pub dovi_tool: Option<DoviToolConfig>,
     pub hdr10plus_tool: Option<crate::hdr10plus::Hdr10PlusToolConfig>,
+    pub mkvmerge: Option<MkvMergeConfig>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

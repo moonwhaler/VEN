@@ -22,6 +22,7 @@ pub mod encoding;
 pub mod hdr;
 pub mod hdr10plus;
 pub mod metadata_workflow;
+pub mod mkvmerge;
 pub mod processing;
 pub mod progress;
 pub mod stream;
@@ -40,5 +41,6 @@ pub use hdr10plus::{
     Hdr10PlusManager, Hdr10PlusMetadata, Hdr10PlusProcessingResult, Hdr10PlusToolConfig,
 };
 pub use metadata_workflow::{ExtractedMetadata, MetadataWorkflowManager, ToolAvailability};
+pub use mkvmerge::{MkvMergeConfig, MkvMergeTool};
 pub use stream::preservation::{StreamMapping, StreamPreservation};
 pub use utils::{Error, FfmpegWrapper, Result};

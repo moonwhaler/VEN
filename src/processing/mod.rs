@@ -144,6 +144,9 @@ impl<'a> VideoProcessor<'a> {
             Some(external_metadata_params.as_slice())
         };
 
+        // Start timer for encoding duration
+        let encoding_start = std::time::Instant::now();
+
         let child = self
             .start_encoding(
                 &actual_output_path,
@@ -168,11 +171,14 @@ impl<'a> VideoProcessor<'a> {
                     &actual_output_path,
                     &self.output_path.to_path_buf(),
                     &extracted_metadata,
+                    metadata.fps,
                 )
                 .await?;
         }
 
-        self.finalize_logging(&file_logger, status, std::time::Instant::now().elapsed())?;
+        // Calculate total duration from start to end
+        let encoding_duration = encoding_start.elapsed();
+        self.finalize_logging(&file_logger, status, encoding_duration)?;
 
         metadata_workflow.cleanup().await?;
         extracted_metadata.cleanup();
