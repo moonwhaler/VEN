@@ -28,7 +28,6 @@ logging:
   show_timestamps: true
   colored_output: true
 
-
 # Analysis Settings
 analysis:
   crop_detection:
