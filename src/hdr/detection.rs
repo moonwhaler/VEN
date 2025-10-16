@@ -53,14 +53,13 @@ impl HdrDetector {
         ffmpeg: &FfmpegWrapper,
         input_path: P,
     ) -> Result<EnhancedVideoMetadata> {
-        // Enhanced ffprobe command to detect HDR10+ dynamic metadata
         let output = ffmpeg.run_ffprobe(&[
             "-v", "quiet",
             "-select_streams", "v:0",
             "-show_entries",
             "stream=color_space,color_transfer,color_primaries,bits_per_raw_sample,chroma_location:stream_side_data",
             "-show_frames",
-            "-read_intervals", "%+#3", // Check first 3 frames for dynamic metadata
+            "-read_intervals", "%+#3",
             "-print_format", "json",
             &input_path.as_ref().to_string_lossy(),
         ]).await?;
@@ -124,7 +123,6 @@ impl HdrDetector {
                                 content_light_level = Some(cll);
                             }
                         }
-                        // Enhanced HDR10+ dynamic metadata detection
                         "HDR dynamic metadata (SMPTE 2094-40)"
                         | "HDR dynamic metadata SMPTE2094-40"
                         | "HDR10+ dynamic metadata"
@@ -133,7 +131,6 @@ impl HdrDetector {
                             has_dynamic_metadata = true;
                         }
                         _ => {
-                            // Pattern-based detection for HDR10+ variations
                             if self.is_hdr10plus_dynamic_metadata(side_data_type) {
                                 debug!(
                                     "Pattern-matched HDR10+ dynamic metadata: {}",
@@ -147,11 +144,9 @@ impl HdrDetector {
             }
         }
 
-        // Also check frame-level side data if available
         if !has_dynamic_metadata {
             if let Some(frames) = json.get("frames").and_then(|v| v.as_array()) {
                 for frame in frames.iter().take(3) {
-                    // Check first 3 frames
                     if let Some(frame_side_data) =
                         frame.get("side_data_list").and_then(|v| v.as_array())
                     {
@@ -190,9 +185,7 @@ impl HdrDetector {
         })
     }
 
-    /// Enhanced HDR10+ dynamic metadata detection with pattern matching
     fn is_hdr10plus_dynamic_metadata(&self, side_data_type: &str) -> bool {
-        // Exact matches for known HDR10+ side data types
         if matches!(
             side_data_type,
             "HDR dynamic metadata (SMPTE 2094-40)"
@@ -206,10 +199,8 @@ impl HdrDetector {
             return true;
         }
 
-        // Pattern-based detection (case insensitive)
         let lower = side_data_type.to_lowercase();
 
-        // Check for SMPTE 2094-40 standard variations
         if lower.contains("smpte2094-40")
             || lower.contains("smpte 2094-40")
             || lower.contains("smpte2094_40")
@@ -217,12 +208,10 @@ impl HdrDetector {
             return true;
         }
 
-        // Check for HDR10+ specific patterns
         if lower.contains("hdr10+") && lower.contains("dynamic") {
             return true;
         }
 
-        // Check for dynamic metadata with 2094 reference
         if lower.contains("dynamic")
             && lower.contains("metadata")
             && (lower.contains("2094") || lower.contains("hdr10+"))
@@ -234,10 +223,7 @@ impl HdrDetector {
     }
 
     fn extract_mastering_display(&self, side_data: &serde_json::Value) -> Option<String> {
-        // Extract mastering display data from ffprobe output
-        // Format varies, but typically includes RGB primaries and white point
         if let Some(red_x) = side_data.get("red_x").and_then(|v| v.as_str()) {
-            // Build master display string if all components are present
             let red_y = side_data.get("red_y").and_then(|v| v.as_str())?;
             let green_x = side_data.get("green_x").and_then(|v| v.as_str())?;
             let green_y = side_data.get("green_y").and_then(|v| v.as_str())?;
@@ -305,10 +291,8 @@ impl HdrDetector {
     }
 
     fn determine_hdr_format(&self, metadata: &EnhancedVideoMetadata) -> HdrFormat {
-        // Enhanced HDR format detection logic
         if let Some(ref transfer) = metadata.transfer_function {
             if transfer.contains("smpte2084") {
-                // Check for HDR10+ dynamic metadata
                 if metadata.has_dynamic_metadata {
                     return HdrFormat::HDR10Plus;
                 }
@@ -318,12 +302,10 @@ impl HdrDetector {
             }
         }
 
-        // Additional checks for color space and primaries
         if let (Some(ref cs), Some(ref cp)) = (&metadata.color_space, &metadata.color_primaries) {
             if (cs.contains("bt2020") || cs.contains("rec2020"))
                 && (cp.contains("bt2020") || cp.contains("rec2020"))
             {
-                // Probably HDR but without clear transfer function
                 warn!("HDR color space detected but unclear transfer function");
                 return HdrFormat::HDR10;
             }
@@ -359,7 +341,6 @@ impl HdrDetector {
     fn calculate_detection_confidence(&self, metadata: &HdrMetadata) -> f32 {
         let mut confidence: f32 = 0.0;
 
-        // Transfer function gives the strongest signal
         match metadata.transfer_function {
             TransferFunction::Smpte2084 => confidence += 0.8,
             TransferFunction::AribStdB67 => confidence += 0.8,
@@ -367,12 +348,10 @@ impl HdrDetector {
             _ => {}
         }
 
-        // Color space provides additional confirmation
         if metadata.color_space == ColorSpace::Bt2020 {
             confidence += 0.2
         }
 
-        // Metadata presence increases confidence
         if metadata.master_display.is_some() {
             confidence += 0.15;
         }
@@ -384,8 +363,6 @@ impl HdrDetector {
     }
 
     fn requires_tone_mapping(&self, metadata: &HdrMetadata) -> bool {
-        // For now, assume tone mapping is not required
-        // This could be expanded based on display characteristics
         matches!(
             metadata.format,
             HdrFormat::HDR10 | HdrFormat::HDR10Plus | HdrFormat::HLG

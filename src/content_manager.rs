@@ -140,7 +140,7 @@ impl UnifiedContentManager {
                 || hdr_analysis.metadata.format == HdrFormat::HDR10
                 || dv_info.is_dolby_vision()
             {
-                info!("HDR10+ content detected - extracting dynamic metadata");
+                info!("Checking for HDR10+ dynamic metadata");
                 if dv_info.is_dolby_vision() {
                     manager
                         .process_dual_format(&input_path, &dv_info, &hdr_analysis)

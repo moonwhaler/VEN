@@ -54,7 +54,6 @@ impl<'a> VideoProcessor<'a> {
     pub async fn run(&mut self) -> Result<()> {
         let metadata = self.get_metadata().await?;
 
-        // Fast HDR analysis for crop detection threshold selection
         let content_manager = UnifiedContentManager::new(
             self.config.analysis.hdr.clone().unwrap_or_default(),
             self.config.analysis.dolby_vision.clone(),
@@ -64,12 +63,10 @@ impl<'a> VideoProcessor<'a> {
             .analyze_hdr_only(self.ffmpeg, self.input_path)
             .await?;
 
-        // Use HDR result for crop detection (before expensive DV/HDR10+ tools)
         let is_advanced_content = hdr_analysis.metadata.format != crate::hdr::HdrFormat::None;
         let (crop_values, crop_sample_timestamps, crop_analysis_result) =
             self.detect_crop(is_advanced_content, &metadata).await?;
 
-        // Complete content analysis, reusing the HDR analysis
         let content_analysis = content_manager
             .analyze_content_with_hdr_reuse(self.ffmpeg, self.input_path, Some(hdr_analysis))
             .await?;
@@ -175,11 +172,8 @@ impl<'a> VideoProcessor<'a> {
                 )
                 .await
             {
-                Ok(_) => {
-                    // Metadata injection succeeded, temp file should be cleaned up by inject_rpu
-                }
+                Ok(_) => {}
                 Err(e) => {
-                    // Metadata injection failed, clean up the temp file
                     if actual_output_path.exists() {
                         let _ = tokio::fs::remove_file(&actual_output_path).await;
                         tracing::debug!(
@@ -190,24 +184,20 @@ impl<'a> VideoProcessor<'a> {
                     return Err(e);
                 }
             }
-        } else if needs_post_processing && !status.success() {
-            // Encoding failed but temp file was created, clean it up
-            if actual_output_path.exists() {
-                if let Err(e) = tokio::fs::remove_file(&actual_output_path).await {
-                    tracing::warn!(
-                        "Failed to clean up temporary file after encoding failure: {}",
-                        e
-                    );
-                } else {
-                    tracing::debug!(
-                        "Cleaned up temporary file after encoding failure: {}",
-                        actual_output_path.display()
-                    );
-                }
+        } else if needs_post_processing && !status.success() && actual_output_path.exists() {
+            if let Err(e) = tokio::fs::remove_file(&actual_output_path).await {
+                tracing::warn!(
+                    "Failed to clean up temporary file after encoding failure: {}",
+                    e
+                );
+            } else {
+                tracing::debug!(
+                    "Cleaned up temporary file after encoding failure: {}",
+                    actual_output_path.display()
+                );
             }
         }
 
-        // Calculate total duration from start to end
         let encoding_duration = encoding_start.elapsed();
         self.finalize_logging(&file_logger, status, encoding_duration)?;
 
@@ -258,7 +248,6 @@ impl<'a> VideoProcessor<'a> {
         if self.args.profile == "auto" {
             info!("Auto-selecting profile based on content analysis...");
 
-            // Use existing ContentAnalyzer instead of duplicated logic
             let content_analyzer = ContentAnalyzer::new();
             let classification = content_analyzer.classify_content(metadata).await?;
             let content_type = classification.content_type;
@@ -426,14 +415,12 @@ impl<'a> VideoProcessor<'a> {
     }
 
     async fn analyze_streams(&self) -> Result<crate::stream::preservation::StreamMapping> {
-        // Check if a stream selection profile is specified via CLI argument
         if let Some(profile_name) = &self.args.stream_selection_profile {
             let profile = self.stream_profile_manager.get_profile(profile_name)?;
             self.stream_preservation
                 .analyze_streams_with_profile(self.input_path, profile)
                 .await
         } else {
-            // Use default behavior (copy all streams)
             self.stream_preservation
                 .analyze_streams(self.input_path)
                 .await
@@ -547,7 +534,7 @@ impl<'a> VideoProcessor<'a> {
                         self.args.title.as_deref(),
                         Some(file_logger),
                         external_params_ref,
-                        false, // Default to non-passthrough mode
+                        false,
                     )
                     .await
             }
@@ -566,7 +553,7 @@ impl<'a> VideoProcessor<'a> {
                         self.args.title.as_deref(),
                         Some(file_logger),
                         external_params_ref,
-                        false, // Default to non-passthrough mode
+                        false,
                     )
                     .await
             }
@@ -578,7 +565,6 @@ impl<'a> VideoProcessor<'a> {
         metadata: &VideoMetadata,
         encoding_mode: EncodingMode,
     ) -> ProgressMonitor {
-        // Get source file size
         let source_file_size = std::fs::metadata(self.input_path).map(|m| m.len()).ok();
 
         let progress_monitor = ProgressMonitor::new(

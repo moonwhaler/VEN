@@ -138,7 +138,7 @@ impl EncodingProfile {
             color_primaries,
             master_display,
             max_cll,
-            None, // No external metadata
+            None,
             passthrough_mode,
         )
     }
@@ -163,19 +163,15 @@ impl EncodingProfile {
             }
         }
 
-        // Inject HDR-specific parameters if HDR content is detected
         if is_hdr.unwrap_or(false) {
-            // Enable HDR10 optimization for better performance
             params.insert("hdr10_opt".to_string(), "1".to_string());
 
-            // Map color_space to colormatrix parameter
             if let Some(cs) = color_space {
                 if cs.contains("bt2020") || cs.contains("rec2020") {
                     params.insert("colormatrix".to_string(), "bt2020nc".to_string());
                 }
             }
 
-            // Map transfer_function to transfer parameter
             if let Some(tf) = transfer_function {
                 if tf.contains("smpte2084") {
                     params.insert("transfer".to_string(), "smpte2084".to_string());
@@ -184,25 +180,21 @@ impl EncodingProfile {
                 }
             }
 
-            // Map color_primaries to colorprim parameter
             if let Some(cp) = color_primaries {
                 if cp.contains("bt2020") || cp.contains("rec2020") {
                     params.insert("colorprim".to_string(), "bt2020".to_string());
                 }
             }
 
-            // Add master-display metadata if available
             if let Some(md) = master_display {
                 params.insert("master-display".to_string(), md.clone());
             }
 
-            // Add max-cll metadata if available
             if let Some(cll) = max_cll {
                 params.insert("max-cll".to_string(), format!("{},400", cll));
             }
         }
 
-        // Add external metadata parameters (HDR10+, Dolby Vision, etc.)
         if let Some(external_params) = external_metadata_params {
             for (key, value) in external_params {
                 params.insert(key.clone(), value.clone());
@@ -248,23 +240,17 @@ impl EncodingProfile {
             }
         }
 
-        // Suppress x265's verbose output for cleaner console
         params.insert("log-level".to_string(), "error".to_string());
 
-        // Inject HDR-specific parameters if HDR content is detected
         if is_hdr.unwrap_or(false) {
-            // Enable HDR10 optimization for better performance
             params.insert("hdr10_opt".to_string(), "1".to_string());
 
-            // Basic HDR signaling - always include for proper HDR passthrough
-            // Map color_space to colormatrix parameter
             if let Some(cs) = color_space {
                 if cs.contains("bt2020") || cs.contains("rec2020") {
                     params.insert("colormatrix".to_string(), "bt2020nc".to_string());
                 }
             }
 
-            // Map transfer_function to transfer parameter
             if let Some(tf) = transfer_function {
                 if tf.contains("smpte2084") {
                     params.insert("transfer".to_string(), "smpte2084".to_string());
@@ -273,28 +259,23 @@ impl EncodingProfile {
                 }
             }
 
-            // Map color_primaries to colorprim parameter
             if let Some(cp) = color_primaries {
                 if cp.contains("bt2020") || cp.contains("rec2020") {
                     params.insert("colorprim".to_string(), "bt2020".to_string());
                 }
             }
 
-            // Skip complex HDR metadata in passthrough mode (causes slowdowns)
             if !passthrough_mode {
-                // Add master-display metadata if available
                 if let Some(md) = master_display {
                     params.insert("master-display".to_string(), md.clone());
                 }
 
-                // Add max-cll metadata if available
                 if let Some(cll) = max_cll {
                     params.insert("max-cll".to_string(), format!("{},400", cll));
                 }
             }
         }
 
-        // Add external metadata parameters (HDR10+, Dolby Vision, etc.)
         if let Some(external_params) = external_metadata_params {
             for (key, value) in external_params {
                 params.insert(key.clone(), value.clone());
@@ -319,7 +300,6 @@ impl EncodingProfile {
         param_strs.join(":")
     }
 
-    /// Build x265 parameters with Dolby Vision support
     #[allow(clippy::too_many_arguments)]
     pub fn build_x265_params_string_with_dolby_vision(
         &self,
@@ -335,29 +315,23 @@ impl EncodingProfile {
     ) -> String {
         let mut params = self.x265_params.clone();
 
-        // Add mode-specific parameters first
         if let Some(mode_params) = mode_specific_params {
             for (key, value) in mode_params {
                 params.insert(key.clone(), value.clone());
             }
         }
 
-        // Suppress x265's verbose output for cleaner console
         params.insert("log-level".to_string(), "error".to_string());
 
-        // Add HDR parameters if HDR content is detected
         if is_hdr.unwrap_or(false) {
-            // Enable HDR10 optimization for better performance
             params.insert("hdr10_opt".to_string(), "1".to_string());
 
-            // Map color_space to colormatrix parameter
             if let Some(cs) = color_space {
                 if cs.contains("bt2020") || cs.contains("rec2020") {
                     params.insert("colormatrix".to_string(), "bt2020nc".to_string());
                 }
             }
 
-            // Map transfer_function to transfer parameter
             if let Some(tf) = transfer_function {
                 if tf.contains("smpte2084") {
                     params.insert("transfer".to_string(), "smpte2084".to_string());
@@ -366,34 +340,28 @@ impl EncodingProfile {
                 }
             }
 
-            // Map color_primaries to colorprim parameter
             if let Some(cp) = color_primaries {
                 if cp.contains("bt2020") || cp.contains("rec2020") {
                     params.insert("colorprim".to_string(), "bt2020".to_string());
                 }
             }
 
-            // Add master-display metadata if available
             if let Some(md) = master_display {
                 params.insert("master-display".to_string(), md.clone());
             }
 
-            // Add max-cll metadata if available
             if let Some(cll) = max_cll {
                 params.insert("max-cll".to_string(), format!("{},400", cll));
             }
         }
 
-        // Add Dolby Vision specific parameters if DV content is detected
         if let (Some(dv_info), Some(rpu_meta)) = (dv_info, rpu_metadata) {
             if dv_info.is_dolby_vision() && rpu_meta.extracted_successfully {
-                // Add RPU file path
                 params.insert(
                     "dolby-vision-rpu".to_string(),
                     rpu_meta.temp_file.to_string_lossy().to_string(),
                 );
 
-                // Add Dolby Vision profile
                 match rpu_meta.profile {
                     DolbyVisionProfile::Profile5 => {
                         params.insert("dolby-vision-profile".to_string(), "5".to_string());
@@ -436,9 +404,7 @@ impl EncodingProfile {
         param_strs.join(":")
     }
 
-    /// Check if this profile is compatible with Dolby Vision encoding
     pub fn is_dolby_vision_compatible(&self) -> bool {
-        // Check if the profile has 10-bit output and appropriate color settings
         let has_10bit = self
             .x265_params
             .get("output-depth")
