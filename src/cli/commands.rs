@@ -428,7 +428,7 @@ mod tests {
 
         // This test is more complex due to the full config validation
         // For now, we'll just test that the function doesn't panic
-        let result = validate_config(temp_file.path()).await;
+        let result = validate_config(Some(temp_file.path())).await;
         // The result may be an error due to missing required fields, but it shouldn't panic
         assert!(result.is_ok() || result.is_err());
     }
