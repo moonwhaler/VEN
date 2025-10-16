@@ -89,20 +89,25 @@ The build scripts will check for required dependencies and provide helpful error
 ```
 
 ### Preview Mode
-Test encoding settings before processing the full file:
+Test encoding settings before processing the full file. Simply use `--preview-time` or `--preview-range` to automatically enter preview mode:
 
 ```bash
-# Generate single frame preview at 60s
-./ffmpeg-encoder -i input.mkv -p anime --preview --preview-time 60
+# Generate single frame preview image at 60s
+./ffmpeg-encoder -i input.mkv -p anime --preview-time 60
 
-# Generate 10-second segment preview (30s-40s)
-./ffmpeg-encoder -i input.mkv -p anime --preview --preview-range 30-40
+# Generate 10-second video segment preview (30s-40s)
+./ffmpeg-encoder -i input.mkv -p anime --preview-range 30-40
 
-# Compare multiple profiles
-./ffmpeg-encoder -i input.mkv --preview --preview-time 60 --preview-profile anime_comparison
+# Compare multiple profiles with a preview profile group
+./ffmpeg-encoder -i input.mkv --preview-time 60 --preview-profile anime_comparison
 ```
 
-Preview outputs are saved as `{UUID}_preview_{profile}_{timestamp}.{ext}` in the same directory.
+**Preview options:**
+- `--preview-time <SECONDS>` - Generate a single frame image at the specified timestamp
+- `--preview-range <START-END>` - Generate a video segment from start to end time (e.g., "30-40")
+- `--preview-profile <NAME>` - Test multiple encoding profiles simultaneously for comparison
+
+Preview outputs are saved as `{UUID}_preview_{profile}_{timestamp}.{ext}` in the same directory as the input file.
 
 ### Processing Filters
 ```bash

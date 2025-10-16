@@ -348,7 +348,7 @@ preview_profiles:
     }
 
     println!("Use --preview-profile <NAME> to use a preview profile group");
-    println!("Example: --preview --preview-time 30 --preview-profile anime_comparison");
+    println!("Example: --preview-time 30 --preview-profile anime_comparison");
 
     Ok(())
 }

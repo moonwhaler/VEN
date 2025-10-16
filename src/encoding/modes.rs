@@ -338,7 +338,16 @@ impl AbrEncoder {
             "1024".to_string(),
         ]);
 
-        args.extend(filters.build_ffmpeg_args());
+        let filter_args = filters.build_ffmpeg_args();
+        let uses_filter_complex = filter_args.contains(&"-filter_complex".to_string());
+        args.extend(filter_args);
+
+        // For filter_complex, we need to map the output
+        if uses_filter_complex {
+            args.extend(vec!["-map".to_string(), "[v]".to_string()]);
+        } else {
+            args.extend(vec!["-map".to_string(), "0:v".to_string()]);
+        }
 
         args.extend(vec!["-c:v".to_string(), "libx265".to_string()]);
 

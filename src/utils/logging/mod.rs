@@ -32,7 +32,7 @@ use formatter::CleanFormatter;
 ///
 /// # Examples
 /// ```no_run
-/// use ffmpeg_autoencoder_rust::utils::logging::setup_logging;
+/// use ffmpeg_autoencoder::utils::logging::setup_logging;
 ///
 /// setup_logging("info", false, true).expect("Failed to setup logging");
 /// ```

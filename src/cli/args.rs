@@ -97,10 +97,6 @@ pub struct CliArgs {
     #[arg(long, value_name = "PROFILE")]
     pub show_stream_profile: Option<String>,
 
-    /// Enable preview mode (generates previews instead of full encoding)
-    #[arg(long)]
-    pub preview: bool,
-
     /// Preview timestamp in seconds (for single frame image generation)
     #[arg(long, value_name = "SECONDS")]
     pub preview_time: Option<f64>,
@@ -138,26 +134,19 @@ impl CliArgs {
     }
 
     pub fn should_encode(&self) -> bool {
-        !self.is_info_command() && !self.input.is_empty() && !self.preview
+        !self.is_info_command() && !self.input.is_empty() && !self.should_preview()
     }
 
     pub fn should_preview(&self) -> bool {
-        self.preview && !self.input.is_empty()
+        !self.input.is_empty() && (self.preview_time.is_some() || self.preview_range.is_some())
     }
 
     pub fn validate(&self) -> Result<()> {
         // Validate preview mode parameters
-        if self.preview {
+        if self.preview_time.is_some() || self.preview_range.is_some() {
             if self.input.is_empty() {
                 return Err(crate::utils::Error::validation(
                     "At least one input path is required for preview mode".to_string(),
-                ));
-            }
-
-            // Must specify either preview_time OR preview_range
-            if self.preview_time.is_none() && self.preview_range.is_none() {
-                return Err(crate::utils::Error::validation(
-                    "Preview mode requires either --preview-time or --preview-range".to_string(),
                 ));
             }
 
