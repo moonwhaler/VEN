@@ -302,22 +302,21 @@ impl CleanFormatter {
         }
     }
 
-    fn format_message(&self, message: &str) -> String {
+    fn format_message(&self, message: &str, metadata_level: &Level) -> String {
         let level = self.determine_processing_level(message);
         let prefix = self.get_tree_prefix(level);
 
+        // Get level indicator string (for WARN/ERROR)
+        let level_indicator = self.format_level(metadata_level);
+        let level_indicator_width = if level_indicator.is_empty() { 0 } else { level_indicator.len() + 2 }; // +2 for spaces around it
+
         // Calculate available width more accurately
         // Timestamp: "[HH:MM:SS] " = 11 chars
-        // Level: "WARN " or "" = 0-5 chars
+        // Level: "WARN  " or "" = 0-7 chars (with spacing)
         // Prefix: "▶ ", "● ", or "  " = 2 chars
         let timestamp_width = if self.show_timestamps { 11 } else { 0 };
-        let level_width = match level {
-            ProcessingLevel::Root => 2,   // "▶ "
-            ProcessingLevel::Stage => 2,  // "● "
-            ProcessingLevel::Step => 2,   // "  "
-            ProcessingLevel::Detail => 2, // "  "
-        };
-        let available_width = 140usize.saturating_sub(timestamp_width + level_width + 4); // 4 chars buffer
+        let prefix_width = 2; // "▶ " or "● " or "  "
+        let available_width = 140usize.saturating_sub(timestamp_width + prefix_width + level_indicator_width + 4); // 4 chars buffer
 
         // Clean up and format the message based on its type
         let formatted_content = match level {
@@ -381,13 +380,21 @@ impl CleanFormatter {
         // Apply text wrapping to the formatted content
         let wrapped_content = self.wrap_text(&formatted_content, available_width);
 
+        // Build the line with level indicator (if present) after the prefix
+        let level_prefix = if !level_indicator.is_empty() {
+            format!("{} ", level_indicator)
+        } else {
+            String::new()
+        };
+
         // Handle multi-line wrapped content
         if wrapped_content.contains('\n') {
             let lines: Vec<&str> = wrapped_content.lines().collect();
-            let first_line = format!("{} {}", prefix, lines[0]);
+            let first_line = format!("{} {}{}", prefix, level_prefix, lines[0]);
 
             // Calculate the appropriate indentation for continuation lines
-            let continuation_indent = " ".repeat(timestamp_width + level_width);
+            // Must account for prefix + level indicator
+            let continuation_indent = " ".repeat(timestamp_width + prefix_width + level_indicator_width);
             let continuation_lines: Vec<String> = lines[1..]
                 .iter()
                 .map(|line| format!("{}{}", continuation_indent, line))
@@ -399,7 +406,7 @@ impl CleanFormatter {
                 format!("{}\n{}", first_line, continuation_lines.join("\n"))
             }
         } else {
-            format!("{} {}", prefix, wrapped_content)
+            format!("{} {}{}", prefix, level_prefix, wrapped_content)
         }
     }
 
@@ -450,14 +457,8 @@ where
             output.push_str(&format!("[{}] ", timestamp));
         }
 
-        // Add level indicator
-        let level_str = self.format_level(metadata.level());
-        if !level_str.is_empty() {
-            output.push_str(&format!("{} ", level_str));
-        }
-
-        // Add formatted message
-        output.push_str(&self.format_message(&message));
+        // Add formatted message (which now includes the level indicator in the appropriate position)
+        output.push_str(&self.format_message(&message, metadata.level()));
 
         writeln!(writer, "{}", output)
     }
