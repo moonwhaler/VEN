@@ -152,39 +152,139 @@ impl CleanFormatter {
     fn determine_processing_level(&self, message: &str) -> ProcessingLevel {
         // Root level - main operations
         if message.contains("Processing file")
-            || message.contains("Found") && message.contains("file(s) to process")
+            || (message.contains("Found") && message.contains("file(s) to process"))
         {
             return ProcessingLevel::Root;
         }
 
         // Stage level - major processing phases
-        if message.contains("Starting")
+        // Content detection results
+        if message.contains("CONTENT DETECTED")
+            || message.contains("Recommended encoding approach")
+            || message.contains("DUAL FORMAT CONTENT DETECTED")
+        {
+            return ProcessingLevel::Stage;
+        }
+
+        // Major workflow phases - Starting/Initializing
+        if (message.contains("Starting") || message.contains("Initializing"))
             && (message.contains("encoding")
                 || message.contains("CRF")
                 || message.contains("ABR")
                 || message.contains("CBR")
                 || message.contains("crop detection")
                 || message.contains("unified content analysis")
-                || message.contains("pre-encoding metadata extraction"))
+                || message.contains("pre-encoding metadata extraction")
+                || message.contains("post-encoding metadata injection")
+                || message.contains("metadata workflow"))
         {
             return ProcessingLevel::Stage;
         }
 
-        if message.contains("CONTENT DETECTED")
-            || message.contains("Recommended encoding approach")
-            || message.contains("Crop detection completed")
+        // Completion of major phases
+        if message.contains("Crop detection completed")
+            || message.contains("Metadata extraction phase completed")
+            || message.contains("Encoding completed successfully")
+        {
+            return ProcessingLevel::Stage;
+        }
+
+        // Parameter adjustments (major decision point)
+        if message.contains("PARAMETER ADJUSTMENTS")
+            || message.contains("Using standard encoding parameters")
         {
             return ProcessingLevel::Stage;
         }
 
         // Step level - individual processing steps
-        if message.contains("Analyzing stream structure")
-            || message.contains("Stream filtering") && message.contains("complete")
-            || message.contains("Getting video metadata")
+        // Metadata and tool operations
+        if message.contains("Checking external metadata tool availability")
             || message.contains("External metadata tools are ready")
             || message.contains("HDR/DV metadata tools ready")
-            || message.contains("Processing SDR content")
-            || message.contains("No external metadata extracted")
+            || message.contains("No external tools available")
+            || message.contains("External metadata parameters ready")
+        {
+            return ProcessingLevel::Step;
+        }
+
+        // Stream operations
+        if message.contains("Analyzing stream structure")
+            || (message.contains("Stream") && message.contains("complete"))
+            || message.contains("Stream analysis complete")
+            || message.contains("Stream filtering")
+        {
+            return ProcessingLevel::Step;
+        }
+
+        // Video analysis and metadata
+        if message.contains("Getting video metadata")
+            || message.contains("Analyzing video metadata")
+        {
+            return ProcessingLevel::Step;
+        }
+
+        // Profile selection
+        if message.contains("Auto-selecting profile")
+            || message.contains("Selected profile based on")
+            || message.contains("No specific profile found")
+        {
+            return ProcessingLevel::Step;
+        }
+
+        // Content processing substeps
+        if message.contains("Processing") &&
+            (message.contains("SDR content")
+                || message.contains("HDR10+ content")
+                || message.contains("standard HDR10 content")
+                || message.contains("Dolby Vision content")
+                || message.contains("dual format content"))
+        {
+            return ProcessingLevel::Step;
+        }
+
+        // Metadata extraction/injection operations
+        if message.contains("Extracting") &&
+            (message.contains("RPU metadata")
+                || message.contains("HDR10+ dynamic metadata")
+                || message.contains("HDR10+ metadata"))
+        {
+            return ProcessingLevel::Step;
+        }
+
+        if message.contains("Injecting") &&
+            (message.contains("RPU metadata")
+                || message.contains("Dolby Vision"))
+        {
+            return ProcessingLevel::Step;
+        }
+
+        // Extraction/injection results
+        if (message.contains("extraction successful")
+                || message.contains("injection successful")
+                || message.contains("No external metadata extracted"))
+            && !message.contains("  ")  // Not indented detail messages
+        {
+            return ProcessingLevel::Step;
+        }
+
+        // x265 parameter information
+        if message.contains("x265 parameters injected")
+            || (message.contains("x265 parameters") && message.contains("injected"))
+        {
+            return ProcessingLevel::Step;
+        }
+
+        // HDR10+ processing substeps
+        if message.contains("HDR10+ metadata was successfully included")
+            || message.contains("HDR10+ metadata was included during")
+        {
+            return ProcessingLevel::Step;
+        }
+
+        // Skipping operations (important decision points)
+        if message.contains("Skipping") &&
+            (message.contains("RPU extraction")
+                || message.contains("HDR10+ metadata extraction"))
         {
             return ProcessingLevel::Step;
         }
@@ -196,9 +296,9 @@ impl CleanFormatter {
     fn get_tree_prefix(&self, level: ProcessingLevel) -> &'static str {
         match level {
             ProcessingLevel::Root => "▶",
-            ProcessingLevel::Stage => "",
-            ProcessingLevel::Step => "",
-            ProcessingLevel::Detail => "",
+            ProcessingLevel::Stage => "●",
+            ProcessingLevel::Step => " ",
+            ProcessingLevel::Detail => " ",
         }
     }
 
@@ -209,15 +309,15 @@ impl CleanFormatter {
         // Calculate available width more accurately
         // Timestamp: "[HH:MM:SS] " = 11 chars
         // Level: "WARN " or "" = 0-5 chars
-        // Prefix: "▶ " or " " = 1-2 chars
+        // Prefix: "▶ ", "● ", or "  " = 2 chars
         let timestamp_width = if self.show_timestamps { 11 } else { 0 };
         let level_width = match level {
             ProcessingLevel::Root => 2,   // "▶ "
-            ProcessingLevel::Stage => 1,  // " "
-            ProcessingLevel::Step => 1,   // " "
-            ProcessingLevel::Detail => 1, // " "
+            ProcessingLevel::Stage => 2,  // "● "
+            ProcessingLevel::Step => 2,   // "  "
+            ProcessingLevel::Detail => 2, // "  "
         };
-        let available_width = 100usize.saturating_sub(timestamp_width + level_width + 4); // 4 chars buffer
+        let available_width = 140usize.saturating_sub(timestamp_width + level_width + 4); // 4 chars buffer
 
         // Clean up and format the message based on its type
         let formatted_content = match level {
@@ -230,7 +330,8 @@ impl CleanFormatter {
             }
             ProcessingLevel::Stage => {
                 // Clean up stage messages
-                let clean_message = if message.contains("Starting") && message.contains("encoding")
+                let clean_message = if message.starts_with("Starting") && message.contains("encoding")
+                    && !message.contains("pre-encoding") && !message.contains("post-encoding")
                 {
                     message.replace("Starting ", "")
                 } else if message.contains("CONTENT DETECTED") {

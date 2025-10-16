@@ -34,7 +34,7 @@ impl Hdr10PlusTool {
             "Extracting HDR10+ metadata: {} -> {}",
             input_path, output_path
         );
-        info!("  Running hdr10plus_tool (this may take a moment)...");
+        info!("Running hdr10plus_tool (this may take a moment)...");
 
         let base_args = vec![
             "extract".to_string(),
@@ -84,7 +84,7 @@ impl Hdr10PlusTool {
             "Injecting HDR10+ metadata: {} + {} -> {}",
             input_path, json_path, output_path
         );
-        info!("  Running hdr10plus_tool (this may take a moment)...");
+        info!("Running hdr10plus_tool (this may take a moment)...");
 
         let base_args = vec![
             "inject".to_string(),

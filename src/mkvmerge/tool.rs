@@ -51,8 +51,8 @@ impl MkvMergeTool {
             "Remuxing HEVC+RPU with mkvmerge: {} + {} -> {}",
             hevc_path, source_path, output_path
         );
-        info!("  Running mkvmerge (this may take a moment)...");
-        debug!("  Video framerate: {} fps", fps);
+        info!("Running mkvmerge (this may take a moment)...");
+        debug!("Video framerate: {} fps", fps);
 
         // Build mkvmerge command:
         // - Output file
