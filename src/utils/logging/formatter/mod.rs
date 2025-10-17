@@ -4,7 +4,7 @@ pub mod filters;
 pub mod levels;
 pub mod styling;
 
-use chrono::Utc;
+use chrono::Local;
 use console::style;
 use std::fmt::{self as std_fmt, Debug};
 use tracing::Level;
@@ -149,7 +149,7 @@ where
 
         // Add timestamp if enabled (but use shorter format)
         if self.show_timestamps {
-            let now = Utc::now();
+            let now = Local::now();
             let timestamp = if self.use_color {
                 style(now.format("%H:%M:%S").to_string())
                     .dim()
