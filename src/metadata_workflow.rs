@@ -333,7 +333,7 @@ impl MetadataWorkflowManager {
                     info!("HDR10+ metadata extraction successful!");
                     info!(
                         "   Frames: {}, Curves: {}, File: {}",
-                        meta.metadata.num_frames,
+                        meta.metadata.get_frame_count(),
                         meta.curve_count,
                         meta.metadata_file.display()
                     );
@@ -392,7 +392,7 @@ impl MetadataWorkflowManager {
                 );
                 debug!(
                     "   Frames with metadata: {}",
-                    hdr10plus_meta.metadata.num_frames
+                    hdr10plus_meta.metadata.get_frame_count()
                 );
             }
         }

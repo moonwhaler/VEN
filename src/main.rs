@@ -1,7 +1,7 @@
 use clap::Parser;
 use tracing::info;
 
-use ffmpeg_autoencoder::{
+use ven::{
     cli::{handle_commands, CliArgs},
     config::{Config, PreviewProfileManager, ProfileManager},
     preview::{PreviewConfig, PreviewMode, PreviewProcessor},
@@ -70,7 +70,7 @@ async fn handle_encoding(args: &CliArgs, config: &Config) -> Result<()> {
         ));
     }
 
-    let mut all_video_files = Vec::new();
+    let mut all_video_files: Vec<std::path::PathBuf> = Vec::new();
     for input_path in &args.input {
         let mut files = find_video_files(input_path)?;
         all_video_files.append(&mut files);

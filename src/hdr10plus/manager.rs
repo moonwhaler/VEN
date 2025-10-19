@@ -113,7 +113,8 @@ impl Hdr10PlusManager {
 
                         info!(
                             "Successfully extracted HDR10+ metadata: {} frames, {} scenes",
-                            result.metadata.num_frames, result.scene_count
+                            result.metadata.get_frame_count(),
+                            result.metadata.get_scene_count()
                         );
 
                         Ok(Some(result))
@@ -169,27 +170,12 @@ impl Hdr10PlusManager {
             .extract_hdr10plus_metadata(&input_video, hdr_result)
             .await
         {
-            Ok(Some(mut result)) => {
-                // Enhance metadata with dual-format information
-                result.metadata.source = Some(super::metadata::SourceInfo {
-                    filename: Some(format!(
-                        "DV+HDR10+ dual format: {}",
-                        input_video
-                            .as_ref()
-                            .file_name()
-                            .unwrap_or_default()
-                            .to_string_lossy()
-                    )),
-                    file_size: None,
-                    created_at: Some(chrono::Utc::now().to_rfc3339()),
-                    resolution: None,
-                    frame_rate: None,
-                });
-
+            Ok(Some(result)) => {
+                // Metadata successfully extracted for dual format
                 info!(
                     "Dual format processing complete: DV Profile {} + HDR10+ ({} frames)",
                     dv_info.profile.as_str(),
-                    result.metadata.num_frames
+                    result.metadata.get_frame_count()
                 );
 
                 Ok(Some(result))

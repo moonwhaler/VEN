@@ -2,123 +2,110 @@ use crate::utils::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// HDR10+ dynamic metadata structure based on SMPTE ST 2094-40
+/// HDR10+ dynamic metadata structure based on hdr10plus_tool JSON output
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct Hdr10PlusMetadata {
-    /// Version of HDR10+ metadata format
-    pub version: String,
+    /// JSON metadata info
+    #[serde(rename = "JSONInfo")]
+    pub json_info: JsonInfo,
 
-    /// Number of frames with metadata
-    pub num_frames: u32,
+    /// Scene-based metadata (per-frame or per-scene)
+    pub scene_info: Vec<SceneMetadata>,
 
-    /// Scene cuts information for Samsung compatibility
-    pub scene_info: Option<Vec<SceneInfo>>,
-
-    /// Per-frame tone mapping metadata
-    pub frames: Vec<FrameMetadata>,
-
-    /// Source file information
-    pub source: Option<SourceInfo>,
+    /// Tool information
+    pub tool_info: Option<ToolInfo>,
 }
 
-/// Scene information for Samsung HDR10+ compatibility
+/// JSON metadata information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SceneInfo {
-    /// Scene ID/number
+#[serde(rename_all = "PascalCase")]
+pub struct JsonInfo {
+    /// HDR10+ profile (A, B, etc.)
+    #[serde(rename = "HDR10plusProfile")]
+    pub hdr10plus_profile: String,
+
+    /// Version of the metadata format
+    pub version: String,
+}
+
+/// Tool information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ToolInfo {
+    /// Tool name
+    pub tool: String,
+
+    /// Tool version
+    pub version: String,
+}
+
+/// Scene metadata from hdr10plus_tool
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SceneMetadata {
+    /// Scene ID
     pub scene_id: u32,
 
-    /// First frame index of this scene
-    pub first_frame: u32,
+    /// Scene frame index (frame number within scene)
+    pub scene_frame_index: u32,
 
-    /// Last frame index of this scene
-    pub last_frame: u32,
+    /// Sequence frame index (absolute frame number)
+    pub sequence_frame_index: u32,
 
-    /// Average brightness for the scene
-    pub average_maxrgb: Option<f64>,
+    /// Number of processing windows
+    pub number_of_windows: u32,
+
+    /// Target system display maximum luminance (nits)
+    pub targeted_system_display_maximum_luminance: u32,
+
+    /// Bezier curve data for tone mapping
+    pub bezier_curve_data: BezierCurveData,
+
+    /// Luminance parameters
+    pub luminance_parameters: LuminanceParameters,
 }
 
-/// Per-frame HDR10+ dynamic metadata
+/// Bezier curve data for tone mapping
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FrameMetadata {
-    /// Frame number (0-based)
-    pub frame_index: u32,
+#[serde(rename_all = "PascalCase")]
+pub struct BezierCurveData {
+    /// Knee point X coordinate
+    pub knee_point_x: u32,
 
-    /// Target system display maximum luminance
-    pub targeted_system_display_maximum_luminance: Option<f64>,
+    /// Knee point Y coordinate
+    pub knee_point_y: u32,
 
-    /// Application version (usually 0 or 1)
-    pub application_version: Option<u32>,
-
-    /// Maximum of maxRGB values in the frame
-    pub maxscl: Option<Vec<f64>>,
-
-    /// Average of maxRGB values in the frame
-    pub average_maxrgb: Option<f64>,
-
-    /// Tone mapping parameters
-    pub tone_mapping: Option<ToneMappingParams>,
-
-    /// Color volume transform parameters
-    pub color_volume_transform: Option<ColorVolumeTransform>,
+    /// Anchor points for bezier curve
+    pub anchors: Vec<u32>,
 }
 
-/// Tone mapping parameters for HDR10+
+/// Luminance parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToneMappingParams {
-    /// Knee point x coordinate (0-1 range)
-    pub knee_point_x: f64,
+#[serde(rename_all = "PascalCase")]
+pub struct LuminanceParameters {
+    /// Average RGB value
+    #[serde(rename = "AverageRGB")]
+    pub average_rgb: u32,
 
-    /// Knee point y coordinate (0-1 range)  
-    pub knee_point_y: f64,
+    /// Maximum Scene Content Light Level (MaxSCL) for R, G, B
+    pub max_scl: Vec<u32>,
 
-    /// Number of anchors in the tone mapping curve
-    pub num_anchors: u32,
-
-    /// Anchor points for tone mapping curve
-    pub anchors: Vec<AnchorPoint>,
+    /// Luminance distribution information
+    pub luminance_distributions: Option<LuminanceDistributions>,
 }
 
-/// Anchor point for tone mapping curve
+/// Luminance distribution data
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AnchorPoint {
-    /// Input luminance value
-    pub input: f64,
+#[serde(rename_all = "PascalCase")]
+pub struct LuminanceDistributions {
+    /// Distribution percentile indices
+    pub distribution_index: Vec<u32>,
 
-    /// Output luminance value
-    pub output: f64,
+    /// Distribution values for each index
+    pub distribution_values: Vec<u32>,
 }
 
-/// Color volume transform parameters
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ColorVolumeTransform {
-    /// Processing mode
-    pub mode: u32,
-
-    /// Color saturation gain
-    pub saturation_gain: Option<f64>,
-
-    /// Brightness adjustment
-    pub brightness_adjustment: Option<f64>,
-}
-
-/// Source file information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SourceInfo {
-    /// Original filename
-    pub filename: Option<String>,
-
-    /// File size in bytes
-    pub file_size: Option<u64>,
-
-    /// Creation timestamp
-    pub created_at: Option<String>,
-
-    /// Video resolution
-    pub resolution: Option<String>,
-
-    /// Frame rate
-    pub frame_rate: Option<f64>,
-}
 
 /// HDR10+ metadata processing result
 #[derive(Debug, Clone)]
@@ -166,107 +153,102 @@ impl Hdr10PlusMetadata {
         Ok(())
     }
 
-    /// Get the number of frames with tone mapping data
-    pub fn get_tone_mapping_frame_count(&self) -> u32 {
-        self.frames
+    /// Get the number of frames with metadata
+    pub fn get_frame_count(&self) -> u32 {
+        self.scene_info.len() as u32
+    }
+
+    /// Get the number of unique scenes
+    pub fn get_scene_count(&self) -> u32 {
+        if self.scene_info.is_empty() {
+            return 0;
+        }
+        self.scene_info
             .iter()
-            .filter(|frame| frame.tone_mapping.is_some())
-            .count() as u32
+            .map(|s| s.scene_id)
+            .max()
+            .unwrap_or(0)
+            + 1
     }
 
     /// Get the average brightness across all frames
     pub fn get_average_brightness(&self) -> Option<f64> {
-        let brightness_values: Vec<f64> = self
-            .frames
-            .iter()
-            .filter_map(|frame| frame.average_maxrgb)
-            .collect();
-
-        if brightness_values.is_empty() {
-            None
-        } else {
-            Some(brightness_values.iter().sum::<f64>() / brightness_values.len() as f64)
+        if self.scene_info.is_empty() {
+            return None;
         }
+
+        let sum: u32 = self
+            .scene_info
+            .iter()
+            .map(|s| s.luminance_parameters.average_rgb)
+            .sum();
+
+        Some(sum as f64 / self.scene_info.len() as f64)
     }
 
     /// Get the peak brightness across all frames
-    pub fn get_peak_brightness(&self) -> Option<f64> {
-        self.frames
+    pub fn get_peak_brightness(&self) -> Option<u32> {
+        self.scene_info
             .iter()
-            .filter_map(|frame| frame.maxscl.as_ref())
-            .flatten()
-            .fold(None, |acc, &val| match acc {
-                None => Some(val),
-                Some(max) => Some(max.max(val)),
-            })
+            .flat_map(|s| s.luminance_parameters.max_scl.iter())
+            .max()
+            .copied()
     }
 
     /// Check if metadata contains valid tone mapping curves
     pub fn has_tone_mapping_curves(&self) -> bool {
-        self.frames.iter().any(|frame| {
-            frame.tone_mapping.is_some() && !frame.tone_mapping.as_ref().unwrap().anchors.is_empty()
-        })
+        self.scene_info
+            .iter()
+            .any(|s| !s.bezier_curve_data.anchors.is_empty())
     }
 
-    /// Get frame count with dynamic metadata
-    pub fn get_dynamic_frame_count(&self) -> u32 {
-        self.frames
+    /// Get the number of frames with tone mapping data
+    pub fn get_tone_mapping_frame_count(&self) -> u32 {
+        self.scene_info
             .iter()
-            .filter(|frame| frame.tone_mapping.is_some() || frame.color_volume_transform.is_some())
+            .filter(|s| !s.bezier_curve_data.anchors.is_empty())
             .count() as u32
     }
 
     /// Validate metadata consistency
     pub fn validate(&self) -> Result<()> {
-        if self.frames.is_empty() {
+        if self.scene_info.is_empty() {
             return Err(Error::Validation {
-                message: "HDR10+ metadata contains no frame data".to_string(),
+                message: "HDR10+ metadata contains no scene data".to_string(),
             });
         }
 
-        if self.num_frames != self.frames.len() as u32 {
-            return Err(Error::Validation {
-                message: format!(
-                    "HDR10+ metadata frame count mismatch: declared {} but found {}",
-                    self.num_frames,
-                    self.frames.len()
-                ),
-            });
-        }
+        // Validate that sequence frame indices are sequential
+        for (i, scene) in self.scene_info.iter().enumerate() {
+            if scene.sequence_frame_index != i as u32 {
+                return Err(Error::Validation {
+                    message: format!(
+                        "Scene {} has sequence_frame_index {}, expected {}",
+                        i, scene.sequence_frame_index, i
+                    ),
+                });
+            }
 
-        // Validate tone mapping curves
-        for (i, frame) in self.frames.iter().enumerate() {
-            if let Some(ref tm) = frame.tone_mapping {
-                if tm.anchors.len() != tm.num_anchors as usize {
-                    return Err(Error::Validation {
-                        message: format!(
-                            "Frame {} tone mapping anchor count mismatch: declared {} but found {}",
-                            i,
-                            tm.num_anchors,
-                            tm.anchors.len()
-                        ),
-                    });
-                }
+            // Validate MaxSCL has 3 components (R, G, B)
+            if scene.luminance_parameters.max_scl.len() != 3 {
+                return Err(Error::Validation {
+                    message: format!(
+                        "Frame {} MaxSCL should have 3 components, found {}",
+                        i,
+                        scene.luminance_parameters.max_scl.len()
+                    ),
+                });
+            }
 
-                // Validate anchor points are in valid range
-                for (j, anchor) in tm.anchors.iter().enumerate() {
-                    if anchor.input < 0.0 || anchor.input > 1.0 {
-                        return Err(Error::Validation {
-                            message: format!(
-                                "Frame {} anchor {} input value {} out of range [0.0, 1.0]",
-                                i, j, anchor.input
-                            ),
-                        });
-                    }
-                    if anchor.output < 0.0 || anchor.output > 1.0 {
-                        return Err(Error::Validation {
-                            message: format!(
-                                "Frame {} anchor {} output value {} out of range [0.0, 1.0]",
-                                i, j, anchor.output
-                            ),
-                        });
-                    }
-                }
+            // Validate bezier curve has exactly 9 anchors
+            let anchor_count = scene.bezier_curve_data.anchors.len();
+            if anchor_count != 0 && anchor_count != 9 {
+                return Err(Error::Validation {
+                    message: format!(
+                        "Frame {} bezier curve should have 0 or 9 anchors, found {}",
+                        i, anchor_count
+                    ),
+                });
             }
         }
 
@@ -277,11 +259,12 @@ impl Hdr10PlusMetadata {
 impl Default for Hdr10PlusMetadata {
     fn default() -> Self {
         Self {
-            version: "1.0".to_string(),
-            num_frames: 0,
-            scene_info: None,
-            frames: Vec::new(),
-            source: None,
+            json_info: JsonInfo {
+                hdr10plus_profile: "B".to_string(),
+                version: "1.0".to_string(),
+            },
+            scene_info: Vec::new(),
+            tool_info: None,
         }
     }
 }
@@ -294,11 +277,7 @@ impl Hdr10PlusProcessingResult {
         extraction_successful: bool,
     ) -> Self {
         let curve_count = metadata.get_tone_mapping_frame_count();
-        let scene_count = metadata
-            .scene_info
-            .as_ref()
-            .map(|scenes| scenes.len() as u32)
-            .unwrap_or(0);
+        let scene_count = metadata.get_scene_count();
 
         Self {
             metadata_file,

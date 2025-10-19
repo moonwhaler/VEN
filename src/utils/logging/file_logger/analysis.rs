@@ -348,57 +348,71 @@ fn log_hdr10plus_metadata<W: Write>(
 
     // Access metadata fields directly since it's not optional
     let metadata = &hdr10plus_result.metadata;
-    writeln!(writer, "  Metadata Version: {}", metadata.version)?;
-    writeln!(writer, "  Frame Count: {}", metadata.num_frames)?;
+    writeln!(
+        writer,
+        "  Metadata Version: {}",
+        metadata.json_info.version
+    )?;
+    writeln!(
+        writer,
+        "  HDR10+ Profile: {}",
+        metadata.json_info.hdr10plus_profile
+    )?;
+    writeln!(
+        writer,
+        "  Frame Count: {}",
+        metadata.get_frame_count()
+    )?;
+    writeln!(
+        writer,
+        "  Scene Count: {}",
+        metadata.get_scene_count()
+    )?;
 
-    if let Some(ref source) = metadata.source {
+    if let Some(ref tool_info) = metadata.tool_info {
         writeln!(
             writer,
-            "  Source: {}",
-            source.filename.as_deref().unwrap_or("Unknown")
+            "  Extracted with: {} v{}",
+            tool_info.tool, tool_info.version
         )?;
-        if let Some(resolution) = &source.resolution {
-            writeln!(writer, "  Source Resolution: {}", resolution)?;
-        }
-        if let Some(frame_rate) = source.frame_rate {
-            writeln!(writer, "  Source Frame Rate: {:.2} fps", frame_rate)?;
-        }
     }
 
-    // Scene information
-    if let Some(ref scene_info) = metadata.scene_info {
-        writeln!(writer, "  Scene Count: {}", scene_info.len())?;
-        for (i, scene) in scene_info.iter().enumerate().take(3) {
-            // Limit to first 3
+    // Scene information (first few scenes)
+    if !metadata.scene_info.is_empty() {
+        for (_i, scene) in metadata.scene_info.iter().enumerate().take(3) {
             writeln!(
                 writer,
-                "    Scene {}: Frames {}-{}, Avg MaxRGB: {:.2}",
-                i + 1,
-                scene.first_frame,
-                scene.last_frame,
-                scene.average_maxrgb.unwrap_or(0.0)
+                "    Scene {}: Frame {}, Avg RGB: {}, Target Lum: {} nits",
+                scene.scene_id,
+                scene.sequence_frame_index,
+                scene.luminance_parameters.average_rgb,
+                scene.targeted_system_display_maximum_luminance
             )?;
         }
-        if scene_info.len() > 3 {
-            writeln!(writer, "    ... and {} more scenes", scene_info.len() - 3)?;
+        if metadata.scene_info.len() > 3 {
+            writeln!(
+                writer,
+                "    ... and {} more frames",
+                metadata.scene_info.len() - 3
+            )?;
         }
     }
 
-    // Frame metadata summary
-    if !metadata.frames.is_empty() {
+    // Tone mapping summary
+    if metadata.has_tone_mapping_curves() {
         writeln!(
             writer,
-            "  Frame Metadata: {} frames with tone mapping data",
-            metadata.frames.len()
+            "  Frames with tone mapping: {}",
+            metadata.get_tone_mapping_frame_count()
         )?;
-        if let Some(first_frame) = metadata.frames.first() {
-            if let Some(app_version) = first_frame.application_version {
-                writeln!(writer, "  Application Version: {}", app_version)?;
-            }
-            if let Some(target_lum) = first_frame.targeted_system_display_maximum_luminance {
-                writeln!(writer, "  Target Max Luminance: {:.1} nits", target_lum)?;
-            }
-        }
+    }
+
+    // Peak brightness info
+    if let Some(peak) = metadata.get_peak_brightness() {
+        writeln!(writer, "  Peak MaxSCL: {}", peak)?;
+    }
+    if let Some(avg) = metadata.get_average_brightness() {
+        writeln!(writer, "  Average RGB: {:.2}", avg)?;
     }
 
     Ok(())

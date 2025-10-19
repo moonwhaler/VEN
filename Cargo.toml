@@ -1,5 +1,5 @@
 [package]
-name = "ffmpeg_autoencoder"
+name = "ven"
 version = "3.2.0"
 edition = "2021"
 authors = ["moonwhaler"]
