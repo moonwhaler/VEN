@@ -34,6 +34,13 @@ async fn main() -> Result<()> {
         config.logging.colored_output,
     )?;
 
+    // Display application banner
+    info!(
+        "{} v{}",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    );
+
     if handle_commands(&args, &config).await? {
         return Ok(());
     }
