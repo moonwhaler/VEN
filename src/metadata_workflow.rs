@@ -137,7 +137,7 @@ impl MetadataWorkflowManager {
     }
 
     async fn check_and_log_tool_availability(&mut self) -> Result<()> {
-        info!("Checking external metadata tool availability...");
+        debug!("Checking external metadata tool availability...");
 
         // Check dovi_tool availability
         if let Some(ref manager) = self.rpu_manager {
@@ -189,7 +189,7 @@ impl MetadataWorkflowManager {
 
         // Summary
         if self.tools_available.dovi_tool || self.tools_available.hdr10plus_tool {
-            info!("External metadata tools are ready - enhanced preservation enabled!");
+            info!("HDR/DV metadata tools ready");
         } else {
             info!("No external tools available - using x265 built-in HDR support only");
         }

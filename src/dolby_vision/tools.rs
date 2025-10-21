@@ -1,6 +1,6 @@
 use crate::utils::{Result, ToolConfig, ToolRunner};
 use std::path::Path;
-use tracing::info;
+use tracing::{debug, info};
 
 pub type DoviToolConfig = ToolConfig;
 
@@ -28,7 +28,7 @@ impl DoviTool {
         let output_str = output_rpu.as_ref().to_string_lossy();
 
         info!("Extracting RPU: {} -> {}", input_str, output_str);
-        info!("Running dovi_tool (this may take a moment)...");
+        debug!("Running dovi_tool (this may take a moment)...");
 
         let base_args = vec![
             "extract-rpu".to_string(),
@@ -61,7 +61,7 @@ impl DoviTool {
             "Injecting RPU: {} + {} -> {}",
             input_str, rpu_str, output_str
         );
-        info!("Running dovi_tool (this may take a moment)...");
+        debug!("Running dovi_tool (this may take a moment)...");
 
         let base_args = vec![
             "inject-rpu".to_string(),
