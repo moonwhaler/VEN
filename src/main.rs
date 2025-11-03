@@ -49,6 +49,8 @@ async fn main() -> Result<()> {
         handle_encoding(&args, &config).await
     } else if args.should_preview() {
         handle_preview(&args, &config).await
+    } else if args.should_strip_metadata() {
+        handle_metadata_stripping(&args, &config).await
     } else {
         Ok(())
     }
@@ -257,6 +259,176 @@ async fn handle_preview(args: &CliArgs, config: &Config) -> Result<()> {
     let _results = processor.generate_previews().await?;
 
     Ok(())
+}
+
+async fn handle_metadata_stripping(args: &CliArgs, config: &Config) -> Result<()> {
+    let ffmpeg = FfmpegWrapper::new(config.tools.ffmpeg.clone(), config.tools.ffprobe.clone());
+
+    ffmpeg
+        .check_availability()
+        .await
+        .map_err(|e| Error::ffmpeg(format!("FFmpeg tools not available: {}", e)))?;
+
+    if args.input.is_empty() {
+        return Err(Error::validation(
+            "At least one input path is required for metadata stripping".to_string(),
+        ));
+    }
+
+    let mut all_video_files: Vec<std::path::PathBuf> = Vec::new();
+    for input_path in &args.input {
+        let mut files = find_video_files(input_path)?;
+        all_video_files.append(&mut files);
+    }
+
+    let video_files = all_video_files;
+    info!("Found {} video file(s) to process", video_files.len());
+
+    let mut successful_files = 0;
+    let mut failed_files = Vec::new();
+
+    for (index, input_path) in video_files.iter().enumerate() {
+        info!(
+            "Processing file {}/{}: {}",
+            index + 1,
+            video_files.len(),
+            input_path.display()
+        );
+
+        if !input_path.exists() {
+            let error_msg = format!("File not found: {}", input_path.display());
+            tracing::warn!("{}", error_msg);
+            failed_files.push((input_path.clone(), error_msg));
+            continue;
+        }
+
+        let output_path = if let Some(output) = &args.output {
+            if video_files.len() > 1 {
+                let parent = output.parent().unwrap_or(output);
+                generate_uuid_filename(input_path, Some(parent))
+            } else {
+                output.clone()
+            }
+        } else {
+            generate_uuid_filename(input_path, None::<&std::path::Path>)
+        };
+
+        match strip_metadata_from_file(&ffmpeg, args, input_path, &output_path).await {
+            Ok(()) => {
+                successful_files += 1;
+                info!("✓ Successfully processed: {}", input_path.display());
+            }
+            Err(e) => {
+                let error_msg = format!("Failed to process {}: {}", input_path.display(), e);
+                tracing::error!("{}", error_msg);
+                failed_files.push((input_path.clone(), error_msg));
+            }
+        }
+    }
+
+    if video_files.len() > 1 {
+        info!(
+            "Processing complete: {} successful, {} failed",
+            successful_files,
+            failed_files.len()
+        );
+
+        if !failed_files.is_empty() {
+            info!("Failed files:");
+            for (path, error) in &failed_files {
+                info!("  - {}: {}", path.display(), error);
+            }
+        }
+    }
+
+    if successful_files == 0 && !failed_files.is_empty() {
+        return Err(Error::encoding("All files failed to process".to_string()));
+    }
+
+    Ok(())
+}
+
+async fn strip_metadata_from_file(
+    ffmpeg: &FfmpegWrapper,
+    args: &CliArgs,
+    input_path: &std::path::Path,
+    output_path: &std::path::Path,
+) -> Result<()> {
+    let start_time = std::time::Instant::now();
+
+    if args.strip_dolby_vision {
+        info!("Stripping Dolby Vision metadata from: {}", input_path.display());
+    } else if args.strip_hdr10_plus {
+        info!("Stripping HDR10+ metadata from: {}", input_path.display());
+    }
+
+    // Build ffmpeg command for stream copy with metadata stripping
+    let mut args_vec = vec![
+        "-i".to_string(),
+        input_path.to_string_lossy().to_string(),
+    ];
+
+    // Copy all streams without re-encoding
+    args_vec.extend(vec![
+        "-map".to_string(),
+        "0".to_string(),
+        "-c".to_string(),
+        "copy".to_string(),
+    ]);
+
+    if args.strip_dolby_vision {
+        // Strip Dolby Vision RPU metadata using dovi_rpu bitstream filter
+        args_vec.extend(vec![
+            "-bsf:v".to_string(),
+            "dovi_rpu=strip=1".to_string(),
+        ]);
+    } else if args.strip_hdr10_plus {
+        // Strip HDR10+ dynamic metadata
+        // Note: We strip side data that contains HDR10+ dynamic metadata (SEI messages)
+        args_vec.extend(vec![
+            "-bsf:v".to_string(),
+            "filter_units=remove_types=39".to_string(), // SEI suffix type 39 is HDR10+
+        ]);
+    }
+
+    args_vec.extend(vec![
+        "-movflags".to_string(),
+        "+faststart".to_string(),
+        output_path.to_string_lossy().to_string(),
+    ]);
+
+    info!("Starting stream copy with metadata stripping...");
+    tracing::debug!("FFmpeg command: {} {}", ffmpeg.get_ffmpeg_path(), args_vec.join(" "));
+
+    let mut child = ffmpeg
+        .start_encoding(input_path, output_path, args_vec)
+        .await?;
+
+    let status = child.wait().await?;
+
+    let duration = start_time.elapsed();
+
+    if status.success() {
+        let output_size = std::fs::metadata(output_path).map(|m| m.len()).ok();
+        if let Some(size) = output_size {
+            info!(
+                "Metadata stripping completed successfully in {:.2}s, output size: {:.2} MB",
+                duration.as_secs_f64(),
+                size as f64 / 1_048_576.0
+            );
+        } else {
+            info!(
+                "Metadata stripping completed successfully in {:.2}s",
+                duration.as_secs_f64()
+            );
+        }
+        Ok(())
+    } else {
+        Err(Error::encoding(format!(
+            "Metadata stripping failed with exit code: {}",
+            status.code().unwrap_or(-1)
+        )))
+    }
 }
 
 fn get_preview_profile_names(

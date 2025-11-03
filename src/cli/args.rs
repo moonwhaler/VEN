@@ -112,6 +112,14 @@ pub struct CliArgs {
     /// List available preview profile groups
     #[arg(long)]
     pub list_preview_profiles: bool,
+
+    /// Strip Dolby Vision metadata from the video (CLI mode only)
+    #[arg(long)]
+    pub strip_dolby_vision: bool,
+
+    /// Strip HDR10+ metadata from the video (CLI mode only)
+    #[arg(long)]
+    pub strip_hdr10_plus: bool,
 }
 
 impl CliArgs {
@@ -134,14 +142,25 @@ impl CliArgs {
     }
 
     pub fn should_encode(&self) -> bool {
-        !self.is_info_command() && !self.input.is_empty() && !self.should_preview()
+        !self.is_info_command() && !self.input.is_empty() && !self.should_preview() && !self.should_strip_metadata()
     }
 
     pub fn should_preview(&self) -> bool {
         !self.input.is_empty() && (self.preview_time.is_some() || self.preview_range.is_some())
     }
 
+    pub fn should_strip_metadata(&self) -> bool {
+        !self.input.is_empty() && (self.strip_dolby_vision || self.strip_hdr10_plus)
+    }
+
     pub fn validate(&self) -> Result<()> {
+        // Validate metadata stripping flags - only for CLI mode (not config mode)
+        if self.strip_dolby_vision && self.strip_hdr10_plus {
+            return Err(crate::utils::Error::validation(
+                "Cannot strip both Dolby Vision and HDR10+ simultaneously. Choose one.".to_string(),
+            ));
+        }
+
         // Validate preview mode parameters
         if self.preview_time.is_some() || self.preview_range.is_some() {
             if self.input.is_empty() {

@@ -82,6 +82,14 @@ impl<'a> VideoProcessor<'a> {
 
         self.log_content_analysis(&metadata, &content_analysis);
 
+        // Log metadata stripping if requested
+        if self.args.strip_dolby_vision {
+            info!("Dolby Vision metadata will be removed from output (--strip-dolby-vision flag set)");
+        }
+        if self.args.strip_hdr10_plus {
+            info!("HDR10+ metadata will be removed from output (--strip-hdr10-plus flag set)");
+        }
+
         let selected_profile = self.select_profile(&metadata).await?;
         let file_logger = FileLogger::new(self.output_path)?;
 
@@ -156,6 +164,8 @@ impl<'a> VideoProcessor<'a> {
                 encoding_mode,
                 &file_logger,
                 external_params_ref,
+                self.args.strip_dolby_vision,
+                self.args.strip_hdr10_plus,
             )
             .await?;
 
@@ -498,6 +508,8 @@ impl<'a> VideoProcessor<'a> {
         encoding_mode: EncodingMode,
         file_logger: &FileLogger,
         external_params_ref: Option<&[(String, String)]>,
+        strip_dolby_vision: bool,
+        strip_hdr10_plus: bool,
     ) -> Result<tokio::process::Child> {
         match encoding_mode {
             EncodingMode::CRF => {
@@ -516,6 +528,8 @@ impl<'a> VideoProcessor<'a> {
                         Some(file_logger),
                         external_params_ref,
                         false, // Default to non-passthrough mode
+                        strip_dolby_vision,
+                        strip_hdr10_plus,
                     )
                     .await
             }
@@ -535,6 +549,8 @@ impl<'a> VideoProcessor<'a> {
                         Some(file_logger),
                         external_params_ref,
                         false,
+                        strip_dolby_vision,
+                        strip_hdr10_plus,
                     )
                     .await
             }
@@ -554,6 +570,8 @@ impl<'a> VideoProcessor<'a> {
                         Some(file_logger),
                         external_params_ref,
                         false,
+                        strip_dolby_vision,
+                        strip_hdr10_plus,
                     )
                     .await
             }

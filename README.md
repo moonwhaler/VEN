@@ -13,12 +13,16 @@ Rust-based video encoding tool built on FFmpeg and x265/HEVC for batch processin
 
 # Batch process directory
 ./ffmpeg-encoder -i /path/to/videos/ -p auto
+
+# Strip Dolby Vision metadata (fast, no re-encode)
+./ffmpeg-encoder -i input.mkv --strip-dolby-vision
 ```
 
 ## Key Features
 
 - **Three encoding modes**: CRF (quality), ABR (average bitrate), CBR (constant bitrate)
 - **HDR support**: Dolby Vision (profiles 5, 7, 8.1, 8.2, 8.4) and HDR10+ with metadata preservation
+- **Metadata stripping**: Fast removal of Dolby Vision or HDR10+ metadata without re-encoding (copy mode)
 - **Auto crop detection**: Multi-sample temporal analysis with HDR/SDR-specific thresholds
 - **Stream preservation**: Losslessly copies all audio, subtitles, chapters, and metadata
 - **11 content-specific profiles**: From anime to heavy grain 4K content
@@ -108,6 +112,37 @@ Test encoding settings before processing the full file. Simply use `--preview-ti
 - `--preview-profile <NAME>` - Test multiple encoding profiles simultaneously for comparison
 
 Preview outputs are saved as `{UUID}_preview_{profile}_{timestamp}.{ext}` in the same directory as the input file.
+
+### Metadata Stripping (Fast Copy Mode)
+
+Strip Dolby Vision or HDR10+ metadata without re-encoding. This operation is very fast (seconds instead of hours) as it simply copies all streams and removes the specified metadata:
+
+```bash
+# Strip Dolby Vision metadata (keeps base HDR10)
+./ffmpeg-encoder -i "Dolby Vision Movie.mkv" --strip-dolby-vision
+
+# Strip HDR10+ dynamic metadata (keeps base HDR10)
+./ffmpeg-encoder -i "HDR10+ Movie.mkv" --strip-hdr10-plus
+
+# With custom output
+./ffmpeg-encoder -i input.mkv --strip-dolby-vision -o output.mkv
+
+# Batch process entire directory
+./ffmpeg-encoder -i /movies/ --strip-dolby-vision
+```
+
+**What gets stripped:**
+- `--strip-dolby-vision`: Removes Dolby Vision RPU data and configuration records
+- `--strip-hdr10-plus`: Removes HDR10+ dynamic metadata (SEI messages)
+
+**What gets preserved:**
+- Base HDR10 static metadata (master display, max content light level)
+- All video streams (copied, not re-encoded)
+- All audio streams
+- All subtitle streams
+- Chapters and attachments
+
+**Note:** You cannot use both flags simultaneously - choose one based on your source content.
 
 ### Processing Filters
 ```bash
@@ -204,6 +239,9 @@ Real-time progress bar with FPS, speed, ETA, and file size estimates.
 
 # Validate configuration
 ./ffmpeg-encoder --validate-config
+
+# View all available options
+./ffmpeg-encoder --help
 ```
 
 ## Advanced Usage

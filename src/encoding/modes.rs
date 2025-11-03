@@ -50,6 +50,8 @@ pub trait Encoder {
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
         hdr_passthrough_mode: bool,
+        strip_dolby_vision: bool,
+        strip_hdr10_plus: bool,
     ) -> Result<tokio::process::Child>;
 }
 
@@ -71,12 +73,20 @@ impl Encoder for CrfEncoder {
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
         hdr_passthrough_mode: bool,
+        strip_dolby_vision: bool,
+        strip_hdr10_plus: bool,
     ) -> Result<tokio::process::Child> {
         let input_path_str = input_path.as_ref().to_string_lossy();
         let output_path_str = output_path.as_ref().to_string_lossy();
 
         let mut mode_params = HashMap::new();
         mode_params.insert("crf".to_string(), adaptive_crf.to_string());
+
+        // Handle Dolby Vision stripping
+        if strip_dolby_vision {
+            mode_params.insert("dolbyvision".to_string(), "0".to_string());
+            tracing::info!("Stripping Dolby Vision metadata from output");
+        }
 
         let x265_params = profile.build_x265_params_string_with_external_metadata_passthrough(
             Some(&mode_params),
@@ -91,6 +101,17 @@ impl Encoder for CrfEncoder {
         );
 
         let mut args = vec!["-i".to_string(), input_path_str.to_string()];
+
+        // Add FFmpeg flags for metadata stripping
+        if strip_dolby_vision {
+            // Strip Dolby Vision RPU side data
+            args.extend(vec!["-strict".to_string(), "-2".to_string()]);
+        }
+
+        if strip_hdr10_plus {
+            // Strip HDR10+ dynamic metadata by not copying side data
+            tracing::info!("Stripping HDR10+ metadata from output");
+        }
 
         args.extend(vec![
             "-max_muxing_queue_size".to_string(),
@@ -191,6 +212,8 @@ impl Encoder for AbrEncoder {
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
         hdr_passthrough_mode: bool,
+        strip_dolby_vision: bool,
+        strip_hdr10_plus: bool,
     ) -> Result<tokio::process::Child> {
         self.run_two_pass_encoding(
             ffmpeg,
@@ -207,6 +230,8 @@ impl Encoder for AbrEncoder {
             external_metadata_params,
             false,
             hdr_passthrough_mode,
+            strip_dolby_vision,
+            strip_hdr10_plus,
         )
         .await
     }
@@ -230,6 +255,8 @@ impl AbrEncoder {
         external_metadata_params: Option<&[(String, String)]>,
         is_cbr: bool,
         hdr_passthrough_mode: bool,
+        strip_dolby_vision: bool,
+        strip_hdr10_plus: bool,
     ) -> Result<tokio::process::Child> {
         let input_path_str = input_path.as_ref().to_string_lossy();
         let output_path_str = output_path.as_ref().to_string_lossy();
@@ -253,6 +280,8 @@ impl AbrEncoder {
                 &stats_file,
                 is_cbr,
                 hdr_passthrough_mode,
+                strip_dolby_vision,
+                strip_hdr10_plus,
             )
             .await;
 
@@ -278,6 +307,8 @@ impl AbrEncoder {
                 &stats_file,
                 is_cbr,
                 hdr_passthrough_mode,
+                strip_dolby_vision,
+                strip_hdr10_plus,
             )
             .await;
 
@@ -296,8 +327,10 @@ impl AbrEncoder {
         adaptive_bitrate: u32,
         external_metadata_params: Option<&[(String, String)]>,
         stats_file: &str,
-        hdr_passthrough_mode: bool,
         is_cbr: bool,
+        hdr_passthrough_mode: bool,
+        strip_dolby_vision: bool,
+        _strip_hdr10_plus: bool,
     ) -> Result<()> {
         let mut mode_params = HashMap::new();
         mode_params.insert("pass".to_string(), "1".to_string());
@@ -307,6 +340,11 @@ impl AbrEncoder {
             mode_params.insert("preset".to_string(), preset);
         }
         mode_params.insert("no-slow-firstpass".to_string(), "1".to_string());
+
+        // Handle Dolby Vision stripping
+        if strip_dolby_vision {
+            mode_params.insert("dolbyvision".to_string(), "0".to_string());
+        }
 
         if is_cbr {
             if !profile.x265_params.contains_key("vbv-bufsize")
@@ -332,6 +370,11 @@ impl AbrEncoder {
         );
 
         let mut args = vec!["-i".to_string(), input_path.to_string()];
+
+        // Add FFmpeg flags for metadata stripping in pass 1
+        if strip_dolby_vision {
+            args.extend(vec!["-strict".to_string(), "-2".to_string()]);
+        }
 
         args.extend(vec![
             "-max_muxing_queue_size".to_string(),
@@ -392,13 +435,20 @@ impl AbrEncoder {
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
         stats_file: &str,
-        hdr_passthrough_mode: bool,
         is_cbr: bool,
+        hdr_passthrough_mode: bool,
+        strip_dolby_vision: bool,
+        _strip_hdr10_plus: bool,
     ) -> Result<tokio::process::Child> {
         let mut mode_params = HashMap::new();
         mode_params.insert("pass".to_string(), "2".to_string());
         mode_params.insert("bitrate".to_string(), adaptive_bitrate.to_string());
         mode_params.insert("stats".to_string(), stats_file.to_string());
+
+        // Handle Dolby Vision stripping
+        if strip_dolby_vision {
+            mode_params.insert("dolbyvision".to_string(), "0".to_string());
+        }
 
         if is_cbr {
             if !profile.x265_params.contains_key("vbv-bufsize")
@@ -424,6 +474,11 @@ impl AbrEncoder {
         );
 
         let mut args = vec!["-i".to_string(), input_path.to_string()];
+
+        // Add FFmpeg flags for metadata stripping in pass 2
+        if strip_dolby_vision {
+            args.extend(vec!["-strict".to_string(), "-2".to_string()]);
+        }
 
         args.extend(vec![
             "-max_muxing_queue_size".to_string(),
@@ -547,6 +602,8 @@ impl Encoder for CbrEncoder {
         file_logger: Option<&crate::utils::logging::FileLogger>,
         external_metadata_params: Option<&[(String, String)]>,
         hdr_passthrough_mode: bool,
+        strip_dolby_vision: bool,
+        strip_hdr10_plus: bool,
     ) -> Result<tokio::process::Child> {
         tracing::debug!(
             "Starting CBR encoding (constant bitrate={}kbps)",
@@ -569,6 +626,8 @@ impl Encoder for CbrEncoder {
                 external_metadata_params,
                 true,
                 hdr_passthrough_mode,
+                strip_dolby_vision,
+                strip_hdr10_plus,
             )
             .await
     }
