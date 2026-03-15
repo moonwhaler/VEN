@@ -3,6 +3,7 @@ use crate::encoding::FilterChain;
 use crate::stream::preservation::StreamMapping;
 use crate::utils::ffmpeg::VideoMetadata;
 use crate::utils::{Error, FfmpegWrapper, Result};
+use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -398,11 +399,17 @@ impl AbrEncoder {
             args.extend(vec!["-pix_fmt".to_string(), pix_fmt]);
         }
 
+        let progress_file = format!("/tmp/ffmpeg_progress_{}.txt", std::process::id());
         args.extend(vec![
             "-x265-params".to_string(),
             x265_params,
             "-an".to_string(),
             "-sn".to_string(),
+            "-progress".to_string(),
+            progress_file.clone(),
+            "-nostats".to_string(),
+            "-stats_period".to_string(),
+            "1.0".to_string(),
             "-f".to_string(),
             "null".to_string(),
             "/dev/null".to_string(),
@@ -410,7 +417,86 @@ impl AbrEncoder {
 
         tracing::debug!("Running pass 1/2...");
         let mut child = ffmpeg.start_encoding(input_path, "/dev/null", args).await?;
-        let status = child.wait().await?;
+
+        // Monitor pass 1 progress instead of blocking silently
+        let total_duration = metadata.duration;
+        let pb = ProgressBar::new(10000);
+        pb.set_style(
+            ProgressStyle::with_template(
+                "[{wide_bar:.cyan/blue}] {percent_precise:>5}% (Pass 1/2 - analysis) | {msg}",
+            )
+            .unwrap()
+            .with_key(
+                "percent_precise",
+                |state: &indicatif::ProgressState, w: &mut dyn std::fmt::Write| {
+                    _ = write!(w, "{:>4.1}", state.fraction() * 100.0);
+                },
+            )
+            .progress_chars("█▉▊▋▌▍▎▏ "),
+        );
+
+        let start_time = std::time::Instant::now();
+        let mut interval_timer = tokio::time::interval(std::time::Duration::from_millis(1000));
+
+        let status = loop {
+            interval_timer.tick().await;
+
+            match child.try_wait()? {
+                Some(status) => {
+                    pb.set_position(10000);
+                    let duration = start_time.elapsed();
+                    pb.finish_with_message(format!(
+                        "Pass 1 completed in {}",
+                        format_pass_duration(duration)
+                    ));
+                    let _ = std::fs::remove_file(&progress_file);
+                    break status;
+                }
+                None => {
+                    let progress_path = std::path::Path::new(&progress_file);
+                    if progress_path.exists() {
+                        if let Ok(content) = tokio::fs::read_to_string(&progress_file).await {
+                            if let Some((time_secs, fps, speed)) =
+                                parse_pass1_progress(&content)
+                            {
+                                if total_duration > 0.0 && time_secs > 0.0 {
+                                    let progress =
+                                        (time_secs / total_duration).min(1.0);
+                                    pb.set_position((progress * 10000.0) as u64);
+
+                                    let mut parts = vec![];
+                                    if let Some(f) = fps {
+                                        parts.push(format!("{:.1}fps", f));
+                                    }
+                                    if let Some(s) = speed {
+                                        parts.push(format!("{:.1}x", s));
+                                    }
+
+                                    // ETA calculation
+                                    if progress > 0.005 {
+                                        let elapsed =
+                                            start_time.elapsed().as_secs_f64();
+                                        let eta =
+                                            (elapsed / progress) - elapsed;
+                                        if eta > 0.0 && eta < 24.0 * 3600.0 {
+                                            let eta_dur = std::time::Duration::from_secs_f64(eta);
+                                            parts.push(format!(
+                                                "ETA {}",
+                                                format_pass_duration(eta_dur)
+                                            ));
+                                        }
+                                    }
+
+                                    if !parts.is_empty() {
+                                        pb.set_message(parts.join(" • "));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
 
         if !status.success() {
             return Err(Error::encoding("First pass encoding failed"));
@@ -630,6 +716,65 @@ impl Encoder for CbrEncoder {
                 strip_hdr10_plus,
             )
             .await
+    }
+}
+
+/// Parse progress data from ffmpeg's `-progress` output file for pass 1 monitoring.
+/// Returns (time_in_seconds, optional_fps, optional_speed).
+fn parse_pass1_progress(content: &str) -> Option<(f64, Option<f32>, Option<f32>)> {
+    let mut time_secs = 0.0f64;
+    let mut fps: Option<f32> = None;
+    let mut speed: Option<f32> = None;
+
+    // Read the last ~20 lines to get the most recent progress block
+    let lines: Vec<&str> = content.lines().collect();
+    let last_lines: Vec<&str> = lines.iter().rev().take(20).cloned().collect();
+
+    for line in last_lines.iter().rev() {
+        let line = line.trim();
+        if let Some((key, value)) = line.split_once('=') {
+            let key = key.trim();
+            let value = value.trim();
+            match key {
+                "out_time_us" => {
+                    if value != "N/A" {
+                        if let Ok(us) = value.parse::<u64>() {
+                            time_secs = us as f64 / 1_000_000.0;
+                        }
+                    }
+                }
+                "fps" => {
+                    if value != "N/A" {
+                        fps = value.parse().ok();
+                    }
+                }
+                "speed" => {
+                    if value != "N/A" {
+                        speed = value.trim_end_matches('x').parse().ok();
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    if time_secs > 0.0 {
+        Some((time_secs, fps, speed))
+    } else {
+        None
+    }
+}
+
+fn format_pass_duration(duration: std::time::Duration) -> String {
+    let total_secs = duration.as_secs();
+    let hours = total_secs / 3600;
+    let minutes = (total_secs % 3600) / 60;
+    let seconds = total_secs % 60;
+
+    if hours > 0 {
+        format!("{}:{:02}:{:02}", hours, minutes, seconds)
+    } else {
+        format!("{}:{:02}", minutes, seconds)
     }
 }
 

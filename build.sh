@@ -80,7 +80,7 @@ if [ -f "$BINARY_PATH" ]; then
     echo -e "  $BINARY_PATH --help"
     echo ""
     echo -e "${YELLOW}To install system-wide (optional):${NC}"
-    echo -e "  sudo cp $BINARY_PATH /usr/local/bin/"
+    echo -e "  ./install.sh"
 fi
 
 echo -e "${GREEN}Build process complete!${NC}"
